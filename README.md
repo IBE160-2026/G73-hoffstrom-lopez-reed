@@ -7,4 +7,5 @@ Repoet inneholder gruppens applikasjon og dokumentasjon av utvikling, testing og
 ## Medlemmer
 
 - Theodor Gimming Hoffstrøm
-- Felipe Knudstad Lopez
+- Felipe Knudstad-Lopez
+- Thomas Kvile-Reed
