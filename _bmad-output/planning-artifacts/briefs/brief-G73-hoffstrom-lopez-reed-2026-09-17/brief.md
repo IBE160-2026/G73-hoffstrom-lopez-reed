@@ -7,88 +7,71 @@ updated: 2026-09-17
 
 # Product Brief: AIS-basert ankomstprediksjon (working title)
 
-> **Session paused 2026-09-17 (second pause).** Sections below are marked `[DRAFT]` (raw material captured, not yet reviewed/confirmed with the group), `[PARTIAL]` (grounded in research but waiting on a group decision), or `[NOT STARTED]`. See `.memlog.md` for the full trail and the next questions to pick up with.
-
 ## Executive Summary
 
-**[DRAFT — raw material from initial brain dump, not yet polished or reviewed]**
-
-A decision-support tool that predicts when ships will actually arrive at port, built on open AIS and voyage data from Kystverket's Kystdatahuset. The raw data only reports each vessel's self-reported planned ETA, so the group derives *actual* arrival time from AIS tracks and builds a dataset of deviations between reported and real arrival. A model is trained on this dataset to estimate arrival time 6 and 24 hours ahead, benchmarked against the vessel's own reported ETA as the reference baseline. A generative AI layer summarizes the output as a daily "disruption brief" for a port operator, including a map and a stated reason for each expected deviation.
+For the havnevakt in Bergen Havn's Maritime Operations Center, we are building a decision-support tool that predicts when a ship will actually arrive — not just what it reported — so quay allocation can be planned against a number worth trusting instead of a self-reported ETA. Today, the havnevakt assigns quay space continuously based on vessel-reported ETAs, with no reliable way to know in advance which reports to trust and which will be hours off. The gap matters now because Bergen Havn — Norway's largest cargo port and largest cruise port — is already a named participant in Kystverket's NOK 10.5M "Digital tvilling i havn" initiative, whose explicit goal is streamlining vessel arrivals and reducing port waiting time. This project builds the prediction layer that initiative does not yet provide, using the same open AIS data Kystverket already publishes through Kystdatahuset.
 
 ## The Problem
 
-**[PARTIAL — anchor port confirmed (Bergen Havn); status-quo cost grounded via research 2026-09-17; still waiting on which operational role is the primary user]**
+Bergen Havn runs berth allocation through the havnevakt (duty officer) in its Maritime Operations Center — a shift-staffed role that continuously assigns quay space based on vessels' self-reported ETAs. The job, in one concrete scenario: a ship reports ETA 08:00; the next vessel is due at the same quay at 14:00; does the first ship actually arrive at 08:00, or 11:30 — and does anything need reassigning right now?
 
-Confirmed about Bergen Havn (public sources, 2026-09-17 research pass):
-- Norway's largest cargo port and largest cruise port, run by Bergen og Omland Havnevesen (BOH). Handles cruise traffic (~300–328 calls/year, ~590,000–631,000 passengers in 2024), offshore/supply vessels as a core segment, plus other cargo. Current total port-call volume could not be confirmed — the only figure found (~27,000–29,000 calls/year) dates to 2006–2011 and should not be used without a fresher source.
-- Bergen Havn is a **named, confirmed participant** in Kystverket's "Digital tvilling i havn" (Digital Twin in Harbor) project (NOK 10.5M, 20 Norwegian ports + Kartverket, led by Oslo Havn), whose stated purpose is to streamline vessel arrival and port calls, reducing port time and waiting. This is real, current institutional appetite for this kind of tool — a genuine "why now," not an invented one. It is digital-twin/mapping infrastructure, not itself an ETA-prediction tool, so it is a tailwind, not a competitor.
-- **No documentation found** of actual congestion, delay, or berth-scheduling problems specific to Bergen Havn. This must stay a reasoned inference from the general industry pattern below, never stated as a confirmed Bergen Havn pain point.
-- **No direct public link found** between Bergen Havn and Kystdatahuset specifically.
-
-General industry pattern (NOT Bergen-specific — applied here by analogy; final prose must keep this framing explicit):
-- IMO's Just-In-Time (JIT) Arrival Guide names the exact mechanism this product targets: a vessel's self-reported ETA does not reflect berth, pilot, or tug readiness, so a ship can be perfectly "on time" by its own report and still cause avoidable waiting.
-- Documented pattern elsewhere: better port-call coordination is linked to up to ~20% fuel savings per voyage (IMO estimate); one Port of Algeciras case reported a 40% reduction in idle time and 32.9 tonnes CO2 saved per call.
-- No industry-wide monetary figure (e.g. "$X per hour of idle berth time") was found. Any such figure used in the brief must be labeled illustrative, not sourced.
-
-Still open: which specific role at Bergen Havn is the primary user (see Who This Serves) — this decides whether the "today" workflow being disrupted is berth planning, pilot/tug dispatch, or something else, and that in turn decides which concrete daily task the AI brief needs to support.
+Reported ETAs are known industry-wide to diverge from actual arrival, because they don't reflect berth, pilot, or tug readiness — IMO's Just-In-Time Arrival Guide names this exact mechanism: a vessel can be perfectly "on time" by its own report and still cause avoidable waiting or a scramble to reassign a quay. No public documentation confirms this specific pain at Bergen Havn — that stays a reasoned inference from the general industry pattern, not a claimed fact. But the port has already committed real money to the adjacent problem: it is a named participant in Kystverket's "Digital tvilling i havn" project, whose stated purpose is to streamline vessel arrivals and reduce port time — evidence the institution already treats today's ETA information as insufficient to plan against.
 
 ## The Solution
 
-**[DRAFT — raw material from brain dump, not yet polished or confirmed]**
+A decision-support tool that predicts when a ship will actually arrive at Bergen Havn — 6 and 24 hours ahead — built on open AIS and voyage data from Kystverket's Kystdatahuset. Because the raw data only carries each vessel's self-reported ETA, the pipeline first derives actual arrival events from AIS tracks (a standard technique: a port-area polygon combined with a stopped-speed threshold) to build a labeled dataset of the deviation between reported and real arrival. A model trained on that dataset produces the 6h/24h predictions, benchmarked against the vessel's own reported ETA — the reference every prediction has to beat. A generative AI layer turns each day's predictions into a short daily brief for the havnevakt: a map plus a stated reason for each expected deviation, so the operator sees not just a number but why it is likely wrong.
 
-Pipeline: ingest open AIS/voyage data from Kystdatahuset → derive actual arrival events from AIS tracks (the group has not yet fixed the exact detection method, though research below suggests this part is technically standard) → build a labeled dataset of deviation between reported and actual arrival → train a model predicting arrival 6h and 24h out → benchmark against the vessel's own reported ETA → generative AI layer produces a daily disruption brief per port operator, with a map and a stated reason for each predicted deviation.
-
-Delivery form: a website/dashboard, tentatively decided — the group flagged this could still change. Whether it needs a login is explicitly left open (see Scope).
+v1 ships as a web dashboard, open without login (see Scope). The group's stated ambition is a live pipeline against fresh Kystdatahuset data, with a tested contingency plan if live data proves too gappy within the course timeline (full plan in the addendum).
 
 ## What Makes This Different
 
-**[PARTIAL — grounded in web research done 2026-09-17, not yet turned into brief prose or confirmed with the group]**
+No AIS-ETA vendor found in the market — Portcast, PortXchange, Awake.AI, Sinay, Windward, MarineTraffic — publishes an audited, reproducible accuracy benchmark; their claims are marketing copy, not documented methodology. That is itself a legitimate differentiator: this project measures itself, in public, against the one honest baseline available — the vessel's own reported ETA. Kystdatahuset is a data source, not a prediction product, so no existing tool sits on top of exactly this data today.
 
-Key research findings to build this section from:
-- No vendor found (Portcast, PortXchange, Awake.AI, Sinay, Windward, MarineTraffic) publishes an audited, reproducible ETA-accuracy benchmark — claims are marketing copy, not documented methodology. This is itself a legitimate differentiation point: nobody else is being rigorous here either.
-- Kystdatahuset is a data source, not a prediction product — Kystverket itself does not appear to run an ETA model on top of it.
-- Closest Nordic academic precedent: an NTNU thesis predicting ship turnaround time (AIS + AutoML/TPOT) at Mongstad — cautionary conclusion ("a convoluted task with many hidden variables"), useful as an honest reference point, not a bar to claim beating by a wide margin.
-- Deriving "actual arrival" from AIS (port polygon + ~0.5 knot speed threshold) is standard technique, not the hard part of this project — the hard part is the prediction itself.
-- Strong feasibility precedent (added 2026-09-17): a Hong Kong study combining AIS trajectories with port-call data via XGBoost reduced ETA mean-absolute-error by **52.98% versus the vessel's own self-reported ETA** — near-identical method to this project's approach, at a different port. This is a citable proof the method works, not a promise this group will match it.
+The closest Nordic academic precedent, an NTNU thesis on AIS-based turnaround-time prediction at Mongstad, reached a cautionary conclusion ("a convoluted task with many hidden variables") — an honest reference point, not a bar this project claims to clear easily. A closer methodological precedent exists outside Norway: a Hong Kong study combining AIS trajectories with port-call data via XGBoost cut ETA error by 52.98% against the vessel's own reported ETA, using a near-identical approach at a different port — real evidence the method works, not a promise this group will match that number.
 
-Not yet drafted: an explicit "why would a port operator switch to this" statement per the template's honesty rule (no fabricated moat).
+Honestly: there is no technical moat here. The advantage is being first to point this exact method at Bergen Havn's exact ETA-accuracy problem, and being transparent about the resulting number instead of asserting one.
 
 ## Who This Serves
 
-**[INCOMPLETE — anchor port is now decided (Bergen Havn), but the specific operational role is not]**
+**Primary: the havnevakt in Bergen Havn's Maritime Operations Center** (public 24/7 contact: havnevakt@bergenhavn.no) — a shift-based role that continuously assigns quay space. Success for them: fewer last-minute quay reassignments, and a trustworthy answer to "will this ship actually be here when it says it will."
 
-Placeholder: a port operator role at Bergen Havn. Still needs to become concrete — is this a berth planner, a pilot/tug dispatcher, a traffic controller (trafikkleder), or something else? That choice decides what the daily AI brief actually needs to help someone *do*, and what "success" looks like for them day to day. Asked, not yet answered.
+**Secondary: havnekaptein / driftsleder** — tactical planning over weeks rather than single port calls, using the same predictions rolled up into patterns and capacity views.
+
+**Explicitly not a v1 user:** shipping companies, ship agents, cargo owners. Widening the audience to them is a deliberate later-stage decision (see Vision), not an oversight.
 
 ## Success Criteria
 
-**[PARTIAL]**
+**Functional.** The model predicts arrival 6h and 24h ahead for vessels calling at Bergen Havn, scored against that vessel's own reported ETA as the baseline it has to beat. Since no external, audited industry benchmark exists (see What Makes This Different), the group will compute its own reported-ETA error baseline directly from Kystdatahuset data and set the target as a percentage improvement over that self-computed baseline. The Hong Kong precedent (52.98% MAE reduction vs. self-reported ETA) is a useful aspirational reference for what "good" looks like with this method — not a number to adopt directly, since it comes from a different port and pipeline.
 
-Functional direction agreed: the model predicts arrival 6h and 24h ahead and is measured against the ship's own reported ETA as the baseline reference.
+**Data quality.** Daily AIS coverage is logged as an explicit metric; voyages where actual arrival cannot be derived are dropped and counted, not silently interpolated (full contingency plan in the addendum).
 
-Research recommendation (not yet a group decision): since no external, audited ETA-error benchmark exists in the industry or literature, the group should compute its own baseline — how far off the reported ETA actually is, at 6h and 24h out, using Kystdatahuset data — and set the success criterion as a percentage improvement over that self-computed baseline, rather than citing an external number. Published literature MAE ranges from ~6 minutes (near-port/short-sea) to 2-5 hours (ocean-going, multi-day) depending on horizon, for calibration only. The Hong Kong AIS+XGBoost precedent (52.98% MAE reduction vs. self-reported ETA, see What Makes This Different) is a useful aspirational reference for what "good" looks like with this method — but it is a different port with a different pipeline, so it should not be adopted directly as this group's target number.
+**Product.** The havnevakt can read a daily brief and understand, without asking anyone, which of tomorrow's expected arrivals to distrust and why.
 
 ## Scope
 
-**[INCOMPLETE — ambition level decided, boundary details still open]**
+**IN — v1 (this course, ~12 weeks):**
+1. Historical AIS/voyage ingestion from Kystdatahuset for a verified data window at Bergen Havn.
+2. Derivation of actual-arrival events from AIS tracks, with a logged per-day coverage metric.
+3. A trained model predicting arrival 6h and 24h ahead, benchmarked against reported ETA.
+4. A web dashboard showing the daily brief: predicted arrivals, a map, and a stated reason per expected deviation, generated by an AI summarization layer.
+5. Open access, no login — source data is open (NLOD), no personal data is processed, and v1 has a single user role. If the demo must be reachable remotely, a single shared HTTP Basic Auth stands in front of it (not user accounts). Full rationale in the addendum.
 
-Decided: the group is going for the ambitious end-to-end version — a live pipeline against fresh Kystdatahuset data, not a bounded historical-data proof. User's words: "vi kjører på."
-
-Still open / flagged but not yet answered:
-- **AIS data-quality risk**: AIS has known coverage gaps and noise. Coach's question, asked but not yet answered: does the group have a fallback if live data turns out too messy for the full live-pipeline ambition within 12 weeks, or is the live-pipeline commitment firm regardless? This risk should be named explicitly in the final Scope section, not hidden.
-- **Login/auth for v1**: explicitly left undecided by the group ("ikke bestemt"). The course's own evaluation framework (see `docs/kilder/Prosjektforslag...pdf`) asks projects to state a position on "Sikkerhet/innlogging" — this needs a real answer before the brief is finished, even if the answer is "no login in v1, because X."
-- IN/OUT boundary list itself (capability-level, not feature list) has not been drafted yet — depends on the above being settled first.
+**OUT — deliberately deferred, not rejected:**
+1. Real-time/live data as the primary source — the group is committed to attempting it, with a tested fallback to BarentsWatch Live AIS if the Kystdatahuset archive proves too gappy (addendum: contingency plan).
+2. Additional ports beyond Bergen Havn.
+3. Prediction exposed as an API for other consumers.
+4. Time-in-port and departure prediction, and berth-capacity-linked reallocation suggestions.
+5. Role-based access control (havnevakt vs. havnekaptein vs. read-only) — deferred because it only matters once this extends past a single pilot.
+6. Any external-facing consumer (shipping companies, agents, cargo owners).
 
 ## Vision
 
-**[NOT STARTED]**
-
-Open question, asked but not yet answered: where does this go in 2-3 years if it works — stays a Bergen Havn tool, expands to more Norwegian ports, or generalizes beyond port arrival (e.g. other AIS-driven maritime prediction problems)?
+In three years, Norwegian ports plan quay use against a shared, data-driven arrival estimate — not against a number the ship self-reported a day in advance. The path there: this semester, one port and historical data prove the method against the vessel's own reported ETA. Within a year, the same pipeline runs in real time across 3-5 ports and the prediction is exposed as an API. Within two to three years, it extends from arrival to time-in-port and departure, connects to berth capacity so the system suggests reallocation instead of only flagging a deviation, and the same estimate is shared with terminal and transporter so the whole chain plans against one number instead of each link guessing separately.
 
 ---
 
 ## Known constraints (not part of the brief itself, kept here for continuity)
 
 - Course: IBE160 Programmering med KI, Høgskolen i Molde, group G73 (Theodor Gimming Hoffstrøm, Felipe Knudstad-Lopez, Thomas Kvile-Reed).
-- This brief is due in 3 days; the full project runs ~12 weeks total and must end in a working prototype.
 - Self-defined project — not one of the 8 course-suggested proposals.
-- No prior written material existed for this idea before this session.
+- Technical/implementation depth (AIS data-quality contingency plan, security design detail, roadmap detail) lives in `addendum.md`.
