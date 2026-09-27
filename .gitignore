@@ -51,6 +51,9 @@ _bmad/custom/*.user.toml
 _bmad/render/
 .claude/settings.local.json
 
+# Pipeline: fetched/derived data is regenerable, not source of truth
+pipeline/data/
+
 # Operating system / editors
 .DS_Store
 Thumbs.db
