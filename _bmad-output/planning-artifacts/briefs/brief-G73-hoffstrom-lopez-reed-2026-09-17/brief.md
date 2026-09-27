@@ -7,6 +7,12 @@ updated: 2026-09-17
 
 # Product Brief: AIS-basert ankomstprediksjon (working title)
 
+> **Session paused 2026-09-21.** All 7 sections below are content-complete — nothing here is half-finished. Two decisions are still open, asked but not yet answered:
+> 1. **Title** — still a working title. Do you have a product name, or should it stay as-is until finalize?
+> 2. **Language** — this draft defaults to English (per project config `document_output_language` and the existing example brief in `docs/kilder/`). Say the word if you want it in Norwegian instead.
+>
+> See `.memlog.md` for the full decision trail.
+
 ## Executive Summary
 
 For the havnevakt in Bergen Havn's Maritime Operations Center, we are building a decision-support tool that predicts when a ship will actually arrive — not just what it reported — so quay allocation can be planned against a number worth trusting instead of a self-reported ETA. Today, the havnevakt assigns quay space continuously based on vessel-reported ETAs, with no reliable way to know in advance which reports to trust and which will be hours off. The gap matters now because Bergen Havn — Norway's largest cargo port and largest cruise port — is already a named participant in Kystverket's NOK 10.5M "Digital tvilling i havn" initiative, whose explicit goal is streamlining vessel arrivals and reducing port waiting time. This project builds the prediction layer that initiative does not yet provide, using the same open AIS data Kystverket already publishes through Kystdatahuset.
