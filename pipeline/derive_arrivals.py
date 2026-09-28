@@ -491,8 +491,16 @@ def main() -> None:
             "deviation_calibrated_minutes": "", "er_forsinket": "",
         }
 
-        with open(os.path.join(CACHE_DIR, f"{voyageid}.json"), encoding="utf-8") as cf:
-            positions = json.load(cf)
+        cache_path = os.path.join(CACHE_DIR, f"{voyageid}.json")
+        try:
+            with open(cache_path, encoding="utf-8") as cf:
+                positions = json.load(cf)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                f"Corrupt cache file for voyage {voyageid}: {cache_path} ({exc}). "
+                f"Likely truncated by an interrupted fetch -- delete this file and "
+                f"re-run fetch_ais.py to repair it before trusting any results."
+            ) from exc
 
         if not positions:
             row_out["status_in_area"] = "empty"

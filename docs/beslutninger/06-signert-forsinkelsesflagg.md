@@ -25,3 +25,5 @@ Kryssjekken beholdes likevel, men omplassert: hvor ofte de to etikettene er enig
 ## Konsekvens
 
 `er_forsinket` og `deviation_calibrated_minutes` er lagret som egne kolonner i output-datasettet, klare til bruk som modellmål fra 6. oktober. Ingen presisjon/recall-tall rapporteres før da. Enighetsprosenten mellom de to etikettene inngår i briefens metode-/begrensningsdel, ikke i resultatdelen.
+
+**Fullbatch-tall (n=5 010 med begge etiketter, låst 2026-09-28):** de to etikettene er enige om `er_forsinket`-flagget i 97,0 % av tilfellene (4 859/5 010) — men dette utvalget er skjevt mot større, mer rutepregede fartøy (se beslutning 07-tilstøtende funn i addendum), så enighetstallet sier mest om de enkle tilfellene.

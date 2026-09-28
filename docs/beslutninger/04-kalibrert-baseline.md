@@ -25,3 +25,5 @@ Offset beregnes per `ship_group` fordi rutegående og ikke-rutegående trafikk h
 ## Konsekvens
 
 Rapportering må alltid vise både naiv og kalibrert baseline, begge evaluert på samme (test-)utvalg, med en forklarende setning om at forskjellen skyldes at de måler to ulike fysiske hendelser — ikke at kalibrert er en "bedre modell". Kalibreringstallet i seg selv er en støtte for å tolke baseline riktig, ikke et resultat å optimalisere isolert.
+
+**Fullbatch-tall (n=7 826, låst 2026-09-28):** offset = 44,8 min for rutegående (trent på n=1 700), 64,2 min for ikke-rutegående (n=2 228). Kalibrering løfter andel innenfor ±30 min fra 7,4 % til 79,6 % for rutegående, og fra 12,9 % til 46,6 % for ikke-rutegående — men MAE for ikke-rutegående er nesten uendret (155→136 min), som bekrefter at kalibrering retter opp typisk-tilfellet, ikke halen.

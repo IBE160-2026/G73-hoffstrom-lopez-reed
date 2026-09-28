@@ -18,6 +18,8 @@ Contributed by the group 2026-09-17, in response to the coaching question about 
 
 **Beslutningspunkt uke 2:** hvis fasit (faktisk ankomst) kan utledes for under 70% av seilasene i pilotmåneden, gå til nivå 3 som primærkilde fremfor Kystdatahuset-arkivet.
 
+**Status per 2026-09-28: nivå 3 (BarentsWatch Live AIS) ble ikke utløst.** Fullbatch-dekningen på `arrival_in_area` endte på 87,1% (n=7 826) — godt over 70%-terskelen, så beslutningspunktet i uke 2 ble aldri nådd. Planen over står uendret i dokumentet: at den fantes og var klar til å tre i kraft er verdt å vise, selv om den ikke ble nødvendig — pipelinen var bygget til å tåle en dårligere datasituasjon enn den som faktisk oppstod.
+
 **Rapporteringsverdi:** nivå-1-håndtering (droppe enkeltseilaser, logge dekningsgrad) gir naturlig stoff til et datakvalitetskapittel i sluttrapporten — leses som grundighet, ikke svakhet.
 
 Note (not yet independently verified by research — this is the group's own finding from testing the API/archive directly): the claim that Kystdatahuset's archive responds for Oct 2025–Mar 2026 but is empty from Apr 2026 onward should be re-checked close to project start, since it may reflect a temporary indexing lag rather than a permanent gap.

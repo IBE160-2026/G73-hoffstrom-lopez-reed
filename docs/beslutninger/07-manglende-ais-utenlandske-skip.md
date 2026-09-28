@@ -21,3 +21,5 @@ Den direkte testen (IMO-oppslag) er blokkert: endepunktet krever rollen `Kystdat
 ## Konsekvens
 
 Dekningstallet for ikke-rutegående/utenlandsk trafikk vil være lavere enn det ellers ville vært, av en årsak vi ikke fullt ut forstår. Dette står som en dokumentert begrensning i briefens risikoseksjon. Dersom gruppen på et senere tidspunkt får tilgang til en konto med høyere rolle, er testen beskrevet over klar til å kjøres direkte.
+
+**Fullbatch-tall (n=7 826, låst 2026-09-28):** 935 seilaser (11,9 %) ga null AIS-posisjoner i hentevinduet. Flagg-fordelingen (norsk vs. utenlandsk) er ikke re-verifisert på fullbatchen — kun målt på pilotutvalget (n=100) — så mønsteret over er sannsynliggjort, ikke bekreftet i full skala.
