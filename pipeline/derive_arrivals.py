@@ -432,7 +432,7 @@ def check_dwell_selection_bias(output_rows: list, voyages: list) -> None:
 
 def summarize_coverage(rows: list, label: str) -> None:
     n_total = len(rows)
-    print(f"\n-- {label} (n={n_total}, PRELIMINARY -- pilot batch) --", file=sys.stderr)
+    print(f"\n-- {label} (n={n_total}) --", file=sys.stderr)
     for zone_label, status_key in [("arrival_in_area (PRIMARY)", "status_in_area"), ("arrival_at_quay (secondary)", "status_at_quay")]:
         status_counts = defaultdict(int)
         for r in rows:
