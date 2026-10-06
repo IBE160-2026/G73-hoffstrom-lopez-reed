@@ -7,6 +7,8 @@
 | **Tilbakemelding fra** | Faglærer i IBE160 (utarbeidet med KI-støtte) |
 | **Dato** | 2026-10-06 |
 
+Repoet har flere briefer. Den andre (`brief.no.md`) har fått egen tilbakemelding i [`tilbakemelding-brief.no.md`](tilbakemelding-brief.no.md).
+
 ## Samlet vurdering
 
 - **Godt utgangspunkt med justeringer.** Gruppen kan gå videre og innarbeide punktene under.
