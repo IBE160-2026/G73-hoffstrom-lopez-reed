@@ -35,6 +35,8 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | E0-S03 | Arkitektur | `docs/arkitektur.md` | ✅ |
 | E0-S04 | Epics og stories | `docs/epics.md` | ✅ |
 | E0-S05 | Plan, arbeidsflyt og promptlogg oppdatert | `docs/plan.md`, `docs/prompts/` | ✅ |
+| E0-S06 | BMAD-validering av PRD, og PRD oppdatert med funnene | `_bmad-output/planning-artifacts/prds/…/validation-report.md`, `docs/prd.md` | ✅ |
+| E0-S07 | Beslutning 08 (horisont ved rapportert ETA − H) og nedstrøms dokumenter oppdatert | `docs/beslutninger/08-…`, `docs/epics.md`, `docs/arkitektur.md`, `docs/ux/dashbord.md` | ✅ |
 
 ---
 
@@ -77,7 +79,8 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 ### E1-S05 — Metrikkmodul og dataregresjon ☐
 **Krav:** FR8, NFR3, A6 · **Avhenger av:** E1-S04
 - `andel_innenfor(prediksjoner, anlop, minutter=30)` regner bare på anløp med fasit.
-- På testsplitten av det ekte utdraget gir baselinen **46,6 %** (øvrige) og **79,6 %** (passasjer), og naiv ETA gir **12,9 %** (øvrige), avrundet til én desimal.
+- På testsplitten av det ekte utdraget gir baselinen **46,6 %** (Øvrige) og **79,6 %** (Passasjer). Naiv ETA gir **12,9 %** (Øvrige) og **7,4 %** (Passasjer). Alt avrundes til én desimal.
+- `dekning()` gir antall per status. Testperioden har 1 427 av 1 566 med fasit: 126 `empty`, 8 `not_detected` og 5 `avkortet_av_neste_seilas`.
 
 **Test:** `tests/test_metrikker.py` (fixture), `tests/test_dataregresjon.py` (ekte utdrag)
 
@@ -85,7 +88,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 **Krav:** FR2, FR3, UX skjerm A · **Avhenger av:** E1-S05
 - `GET /` uten parametre viser vinduet fra 08.10.2025 08:00 norsk tid: 15 anløp, sortert etter predikert ankomst, med kolonnene fra skjerm A.
 - Prediktor-stripa viser «Kalibrert baseline» og teksten om at baselinen ikke varsler. Varselkolonnen viser «–».
-- Tider vises i norsk tid som «ons 09:55». Horisonten er ≤ 6 t, 6–24 t eller «–» når predikert ankomst ligger før «nå».
+- Tider vises i norsk tid som «ons 09:55». Horisonten regnes fra **rapportert ETA − nå**: ≤ 6 t eller 6–24 t (PRD FR2). Predikert ankomst før «nå» får hjelpeteksten «predikert før valgt tidspunkt».
 - Tomt vindu gir meldingen fra UX §5.
 
 **Test:** `tests/test_ruter.py::test_standardvindu`, `::test_tomt_vindu`, `tests/test_visning.py`
@@ -106,23 +109,23 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 ### E1-S09 — Fasit-bryter ☐
 **Krav:** FR4, UU3, UX skjerm A2 · **Avhenger av:** E1-S08
-- `fasit=1` legger til kolonnene Faktisk og Avvik. Avvik over 120 min viser ▲ + «FORSINKET» + varselfarge.
+- `fasit=1` legger til kolonnene Faktisk og Avvik. Avvik = faktisk − **kalibrert baseline** (ordliste, PRD §3), aldri mot den aktive prediktoren. Avvik over 120 min viser ▲ + «FORSINKET» + varselfarge.
 - I standardvinduet er BERGEN ENERGY, OCEAN RESPONSE og SIEM PEARL merket FORSINKET.
-- Anløp uten AIS viser «Fasit mangler (ingen AIS-data)».
+- Anløp uten fasit viser årsaken: tre ulike tekster for `empty`, `not_detected` og `avkortet_av_neste_seilas` (PRD FR4).
 - `fasit=0` (standard) viser ingen fasitdata i HTML-en.
 
-**Test:** `tests/test_ruter.py::test_fasit_av_skjuler`, `::test_fasit_merker_forsinket`, `::test_fasit_mangler`
+**Test:** `tests/test_ruter.py::test_fasit_av_skjuler`, `::test_fasit_merker_forsinket`, `::test_fasit_mangler_tre_aarsaker`
 
 ### E1-S10 — Sortering ☐
 **Krav:** FR6, UU7 · **Avhenger av:** E1-S09
 - Sorteringsknappene ligger i `<th>`, og aktiv kolonne har `aria-sort`.
-- `sorter=avvik` virker bare når `fasit=1`. Ellers faller den tilbake til predikert ankomst uten feil.
+- `sorter=avvik` sorterer synkende (mest forsinket først) og virker bare når `fasit=1`. Ellers faller den tilbake til predikert ankomst uten feil.
 
 **Test:** `tests/test_ruter.py::test_sorter_avvik`, `::test_sorter_avvik_uten_fasit`
 
 ### E1-S11 — Detaljside for anløp ☐
 **Krav:** FR7, UX skjerm C · **Avhenger av:** E1-S10
-- `/anlop/<id>` viser skipsdata, tidspunkter i `<dl>` og forklaringen fra `Prediksjon.forklaring`.
+- `/anlop/<id>` viser skipsdata, tidspunkter i `<dl>` og forklaringen fra `Prediksjon.forklaring`, med malen per gruppe fra PRD FR7 (44,8 eller 64,2 min).
 - «Tilbake» beholder `naa`, `vis`, `fasit` og `sorter`. Fasit vises bare hvis `fasit=1`.
 - Ukjent ID gir 404 med lenke tilbake.
 
@@ -130,8 +133,8 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 ### E1-S12 — Treffsikkerhetspanel og metodeside ☐
 **Krav:** FR8 · **Avhenger av:** E1-S11
-- Panelet viser de tre tallene fra E1-S05, regnet med `metrikker.py` (ikke hardkodet), merket «hele testperioden».
-- Søylene har tekstverdi, så de ikke bare er grafikk. `/metode` forklarer baseline, ±30 min og testperioden og lenker til beslutning 04/05.
+- Panelet viser de fire tallene og dekningen fra E1-S05, regnet med `metrikker.py` (ikke hardkodet) og merket «hele testperioden».
+- Søylene har tekstverdi, så de ikke bare er grafikk. `/metode` forklarer baseline, ±30 min og testperioden, viser dekning per status og MAE/median som støttetall, har forklaringssetningen fra beslutning 04 og lenker til beslutning 04/05.
 
 **Test:** `tests/test_ruter.py::test_panel_tall`, `::test_metode`
 
@@ -174,65 +177,92 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 **Mål:** en modell som slår den kalibrerte baselinen, synlig i det samme dashbordet. Klarer den det ikke, skal det vises ærlig. **Ferdig når:** dashbordet viser modellen som standard, og resultatnotatet er skrevet.
 
-### E2-S01 — Featureliste og horisont (beslutning 08) ☐
-**Krav:** PRD §7 · **Avhenger av:** E1-S05
-- `docs/beslutninger/08-features-og-horisont.md` avgjør tre ting:
-  - hvilke features som brukes, og for hver av dem hvorfor den er kjent ved prediksjonstidspunktet
-  - hva som skiller 6 t- fra 24 t-prediksjonen når datasettet har én rapportert ETA per seilas
-  - om det skal være separate modeller for passasjer og øvrige
-- Avvik fra stories E2-S02–S09 som følger av beslutningen, oppdateres her.
+**Grunnlag:** [beslutning 08](beslutninger/08-horisont-kuttes-pa-rapportert-eta.md). Kuttpunktet er `t_H = rapportert ETA − H`, aldri faktisk ankomst (PRD FR9a). Dagens AIS-cache har posisjon ved kuttpunktet for bare 31 % (6 t) og 7 % (24 t) av Øvrige i testperioden. Derfor kommer det en egen henting (S02) før noe trenes.
 
-**Test:** beslutningen finnes og er gjennomgått av hele gruppa (godkjent i PR).
+### E2-S01 — Gjenstående modellvalg ◐
+**Krav:** PRD §8, §9 · **Avhenger av:** E1-S05
+- Horisonten er avgjort i beslutning 08 (16.10.2026).
+- Gjenstår, og legges til i beslutning 08 eller en ny beslutning:
+  - én eller to modeller (Passasjer/Øvrige)
+  - om rapportert ETA er kjent ved `t_24` (A1). Sjekk Kystdatahuset-dokumentasjonen og rådata.
+  - bekreftelse av suksesskriteriet for varsel (A2)
+- Endres A2 eller A3, oppdateres PRD FR9/FR10 først.
 
-### E2-S02 — Feature-bygging uten lekkasje ☐
-**Krav:** NFR3 · **Avhenger av:** E2-S01
-- `app/prediksjon/features.py` bygger features for ett anløp gitt `naa`. Historikkfeatures (for eksempel fartøyets tidligere avvik) bruker bare treningsrader med ETA før `naa`.
+**Test:** beslutningen er gjennomgått av hele gruppa (godkjent i PR).
 
-**Test:** `tests/test_features.py::test_ingen_lekkasje`. Når en fremtidig rad endres, endres ikke featuren.
+### E2-S02 — Målrettet AIS-henting ved kuttpunktene ☐
+**Krav:** FR9a · **Avhenger av:** E2-S01
+- `pipeline/fetch_ais_kutt.py` henter AIS for [`t_H` − 3 t, `t_H`] per anløp og H ∈ {6, 24}, med samme caching og pausing som `fetch_ais.py`.
+- Vinduet regnes bare fra rapportert ETA. Skriptet leser ikke `arrival_in_area`.
+- Dekning per horisont, gruppe og splitt logges i `pipeline/data/ais_kutt_dekning.csv`.
 
-### E2-S03 — Treningsskript og første modell ☐
-**Krav:** FR9, A7 · **Avhenger av:** E2-S02
-- `scripts/tren.py` trener på `split=train` med fast seed og lagrer `data/modell/modell_6t.joblib`. scikit-learn legges i `requirements.txt`.
+**Test:** `tests/test_fetch_ais_kutt.py::test_vindu_fra_rapportert_eta` (vinduet endres ikke når faktisk ankomst endres) og en loggført dekningstabell.
 
-**Test:** `tests/test_tren.py`. Skriptet kjører på fixturen og gir samme prediksjon to ganger.
+### E2-S03 — Tilstandsutdrag og lekkasjetest ☐
+**Krav:** FR9a, NFR1 · **Avhenger av:** E2-S02
+- `scripts/lag_tilstand.py` skriver `data/utdrag/tilstand_ved_kutt.csv`: én rad per anløp og H, med posisjon, gjenstående distanse, fart, kurs, alder på posisjon og flagget `allerede_ankommet`. Fila committes, og kildens sjekksum legges i `data/baseline.json`.
+- Mangler posisjon i [`t_H` − 3 t, `t_H`], blir feltene tomme, og raden beholdes.
 
-### E2-S04 — 24 t-horisont ☐
-**Krav:** FR9 · **Avhenger av:** E2-S03
-- `modell_24t.joblib` (eller den løsningen beslutning 08 har valgt) lagres. Dashbordet velger modell etter horisont-bøtta.
+**Test:** `tests/test_tilstand.py::test_ingen_lekkasje` (punkter etter `t_H` fjernet eller flyttet, faktisk ankomst endret → identisk rad) og `::test_mangler_posisjon`
 
-**Test:** `tests/test_tren.py::test_24t`
+### E2-S04 — Features og valideringssplitt ☐
+**Krav:** FR9a, NFR3 · **Avhenger av:** E2-S03
+- `app/prediksjon/features.py` slår sammen tilstand og historikk. Historikken (for eksempel fartøyets tidligere avvik) kommer bare fra treningsanløp med faktisk ankomst før `t_H`.
+- Valideringsdelen er de siste 20 % av treningsdataene, kronologisk, og testperioden røres ikke.
 
-### E2-S05 — Evalueringsskript ☐
-**Krav:** FR10, NFR3, A6 · **Avhenger av:** E2-S04
-- `scripts/evaluer.py` bruker `app/metrikker.py` og skriver `data/modell/metrikker.json`: andel innenfor ±30 min, presisjon og recall på forsinket, MAE og median (som støttetall) per gruppe og horisont, for både modell og baseline.
+**Test:** `tests/test_features.py::test_historikk_uten_lekkasje`, `::test_valideringssplitt_kronologisk`
 
-**Test:** `tests/test_evaluer.py`. Baseline-tallene i `metrikker.json` er lik dataregresjonen fra E1-S05.
+### E2-S05 — Tren 6 t- og 24 t-modell ☐
+**Krav:** FR9, A7 · **Avhenger av:** E2-S04
+- `scripts/tren.py` trener én modell per horisont med fast seed. Modellvalget gjøres på valideringsdelen.
+- Resultatet lagres i `data/modell/modell_6t.joblib` og `modell_24t.joblib`, og scikit-learn legges i `requirements.txt`.
 
-### E2-S06 — ModellPrediktor ☐
-**Krav:** FR9, A5 · **Avhenger av:** E2-S05
-- Implementerer kontrakten, `kan_varsle = True`. `forklaring` inneholder de faktiske featureverdiene.
+**Test:** `tests/test_tren.py`. Kjøring på fixturen gir samme prediksjon to ganger.
 
-**Test:** legges til i `tests/test_prediktor_kontrakt.py`
+### E2-S06 — Evalueringsskript ☐
+**Krav:** FR10, NFR3, A6 · **Avhenger av:** E2-S05
+- `scripts/evaluer.py` bruker `app/metrikker.py` og skriver `data/modell/metrikker.json`, med følgende per horisont og gruppe, for modell og baseline på samme anløp:
+  - andel innenfor ±30 min
+  - presisjon, recall og F1 på varsel, mot «varsle alle»
+  - MAE og median
+  - dekning av tilstand
+  - antall `allerede_ankommet`
+- Skriptet teller kjøringer mot testperioden (`--test`) og lagrer antallet.
 
-### E2-S07 — Bytt inn i dashbordet ☐
-**Krav:** FR3, FR9, UX §5 · **Avhenger av:** E2-S06
-- `PREDIKTOR=auto` velger modellen når artefaktet finnes. Prediktor-stripa viser «Modell v1», og varselkolonnen viser ▲ + «VARSEL».
+**Test:** `tests/test_evaluer.py`. Baselinetallene er lik dataregresjonen fra E1-S05.
+
+### E2-S07 — ModellPrediktor ☐
+**Krav:** FR9, A5 · **Avhenger av:** E2-S06
+- Implementerer kontrakten, med `kan_varsle = True`. Horisonten velges fra `rapportert ETA − nå` (PRD FR2).
+- Varselet er `predikert − kalibrert baseline > 120 min`. Uten tilstand brukes baselinen, merket.
+
+**Test:** legges til i `tests/test_prediktor_kontrakt.py`, pluss `::test_kutt_ikke_etter_naa`. For alle rader i en avspilling er `t_H ≤ nå`.
+
+### E2-S08 — Bytt inn i dashbordet ☐
+**Krav:** FR3, FR4, FR9, UX §5 · **Avhenger av:** E2-S07
+- `PREDIKTOR=auto` velger modellen når artefaktet finnes. Prediktor-stripa viser «Modell v1», varselkolonnen viser ▲ + «VARSEL», og med fasit på kommer kolonnen Prediksjonsfeil.
 - Mangler artefaktet, faller appen tilbake til baseline med melding.
-- *Ingen endring i malene utover stripa og varselkolonnen.* Det er testen på at A5 holdt.
+- Malene endres ikke utover stripa, varselkolonnen og prediksjonsfeil. Det er testen på at A5 holdt.
 
-**Test:** `tests/test_ruter.py::test_modell_standard`, `::test_fallback_baseline`
+**Test:** `tests/test_ruter.py::test_modell_standard`, `::test_fallback_baseline`, og `::test_fasit_uavhengig_av_prediktor` (avvik og FORSINKET er like med `PREDIKTOR=baseline` og `PREDIKTOR=modell`)
 
-### E2-S08 — Panel: modell mot baseline ☐
-**Krav:** FR10 · **Avhenger av:** E2-S07
-- Panelet viser modell og baseline side om side, pluss presisjon/recall, lest fra `metrikker.json`. Taper modellen, vises det med samme tydelighet.
+### E2-S09 — Panel: modell mot baseline ☐
+**Krav:** FR10 · **Avhenger av:** E2-S08
+- Panelet viser modell og baseline side om side per horisont, pluss presisjon, recall og F1 mot referansen, lest fra `metrikker.json`. Taper modellen, vises det med samme tydelighet.
 
 **Test:** `tests/test_ruter.py::test_panel_modell_mot_baseline`
 
-### E2-S09 — Resultatnotat ☐
-**Krav:** brief Success Criteria · **Avhenger av:** E2-S08
-- `docs/resultater.md` gjør rede for modell og baseline på testsplitten, begrensningene (vintervridd test, AIS-hull), og om målene ble nådd. Et negativt resultat rapporteres. README nevner modellen.
+### E2-S10 — Resultatnotat ☐
+**Krav:** brief Success Criteria, NFR3 · **Avhenger av:** E2-S09
+- `docs/resultater.md` dekker:
+  - modell og baseline på testperioden per horisont
+  - antall testkjøringer
+  - dekning ved kutt
+  - begrensningene: vintervridd test, AIS-hull og A1
+  - om målene ble nådd
+- Et negativt resultat rapporteres. README nevner modellen.
 
-**Test:** tallene i notatet er lik `metrikker.json` (sjekkes i PR)
+**Test:** tallene i notatet er lik `metrikker.json` (sjekkes i PR).
 
 ---
 
@@ -241,7 +271,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 **Mål:** begrunnelser sensor kan se uten nøkkel. **Ferdig når:** appen kjører med `LLM_MODUS=test` uten nett, og ekte modus er vist og logget minst én gang.
 
 ### E3-S01 — Adapter og testmodus ☐
-**Krav:** FR13, A8, NFR6 · **Avhenger av:** E2-S06 (eller E1-S04 hvis E2 glipper)
+**Krav:** FR13, A8, NFR6 · **Avhenger av:** E2-S07 (eller E1-S04 hvis E2 glipper)
 - `hent_begrunnelse(prediksjon, anlop)` og `hent_brief(vindu)`. `LLM_MODUS=test` er standard og gir en deterministisk mal-tekst merket «Testmodus».
 - Ingen nettkall i testmodus.
 
@@ -263,19 +293,21 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 ### E3-S04 — Begrunnelse på detaljsiden ☐
 **Krav:** FR11 · **Avhenger av:** E3-S03
-- Skjerm C viser begrunnelsen merket «KI-GENERERT» (eller «Testmodus»).
+- Skjerm C viser begrunnelsen merket «KI-GENERERT» (eller «Testmodus»): høyst 3 setninger og ≤ 400 tegn (PRD FR11).
+- Alle tall og skipsnavn i teksten finnes i inputen. På baseline påstår teksten aldri at et avvik er ventet.
 
-**Test:** `tests/test_ruter.py::test_detalj_begrunnelse`
+**Test:** `tests/test_ruter.py::test_detalj_begrunnelse`, `tests/test_begrunnelse.py::test_tall_finnes_i_input`
 
 ### E3-S05 — Forstyrrelsesbrief på hovedskjermen ☐
 **Krav:** FR12 · **Avhenger av:** E3-S04
-- 3–5 setninger øverst på skjerm A, som nevner anløpene med varsel i vinduet.
+- 3–5 setninger øverst på skjerm A om høyst 3 varslede anløp, sortert etter predikert avvik. Uten varsler, eller på baseline, sier briefen det rett ut (PRD FR12).
+- Manuell sjekk: en person utenfor gruppa leser briefen for standardvinduet. Resultatet logges i `docs/ux/dashbord.md` §6.
 
-**Test:** `tests/test_ruter.py::test_brief_nevner_varslede`
+**Test:** `tests/test_ruter.py::test_brief_nevner_varslede`, `::test_brief_uten_varsler`, og den manuelle sjekken
 
 ### E3-S06 — Opptak av ekte svar for demodager ☐
 **Krav:** FR13 · **Avhenger av:** E3-S05
-- `scripts/ta_opp_begrunnelser.py` kjører ekte modus for 2–3 demovinduer og lagrer svarene i `data/begrunnelser_opptak.json`. Testmodus viser opptaket når det finnes, så sensor ser ekte output uten nøkkel.
+- `scripts/ta_opp_begrunnelser.py` kjører ekte modus for demovinduene 08.10.2025 08:00 og 17.09.2025 08:00 og lagrer svarene i `data/begrunnelser_opptak.json`. Testmodus viser opptaket når det finnes, så sensor ser ekte output uten nøkkel.
 
 **Test:** `tests/test_begrunnelse.py::test_testmodus_bruker_opptak`
 
@@ -300,25 +332,31 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 |---|---|
 | FR1 | E1-S07 |
 | FR2 | E1-S03, E1-S06 |
-| FR3 | E1-S04, E1-S06, E2-S07 |
-| FR4 | E1-S09 |
+| FR3 | E1-S04, E1-S06, E2-S08 |
+| FR4 | E1-S09, E2-S08 |
 | FR5 | E1-S03, E1-S08 |
 | FR6 | E1-S10 |
 | FR7 | E1-S11 |
 | FR8 | E1-S05, E1-S12 |
-| FR9 | E2-S03, E2-S04, E2-S06, E2-S07 |
-| FR10 | E2-S05, E2-S08 |
+| FR9a | E2-S02, E2-S03, E2-S04, E2-S07 |
+| FR9 | E2-S05, E2-S07, E2-S08 |
+| FR10 | E2-S06, E2-S09, E2-S10 |
 | FR11 | E3-S02, E3-S03, E3-S04 |
 | FR12 | E3-S05 |
 | FR13 | E3-S01, E3-S06 |
 | FR14 | E3-S08 |
 | UU1 | E1-S13 |
 | UU2–UU7 | E1-S07, E1-S08, E1-S10, E1-S14, E1-S15 |
-| NFR1 | E1-S01, E1-S02, E1-S16, E3-S07 |
+| NFR1 | E1-S01, E1-S02, E1-S16, E2-S03, E3-S07 |
 | NFR2 | alle (test per story) |
-| NFR3 | E1-S05, E2-S02, E2-S05 |
+| NFR3 | E1-S05, E2-S04, E2-S06, E2-S10 |
 | NFR4 | arbeidsreglene øverst |
+| NFR5 | E1-S01 (A1–A3) |
+| NFR6 | E1-S01, E3-S01, E3-S03 |
 
 ## Endringslogg
 
 - **2026-10-16** — Første versjon (E0-S04): E0 ferdig, og E1 (17 stories), E2 (9) og E3 (8) planlagt.
+- **2026-10-16** — Etter PRD-validering og beslutning 08 (E0-S07):
+  - E2 er skrevet om til 10 stories. Det er nye stories for AIS-henting ved kuttpunkt (S02), tilstandsutdrag med lekkasjetest (S03) og valideringssplitt (S04). E2 var ikke startet, så nummereringen er lagt om nå, før merge.
+  - E1-S05/S06/S09/S10/S11/S12 og E3-S04/S05/S06 er tilpasset PRD-oppdateringen.

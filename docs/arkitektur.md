@@ -58,6 +58,7 @@ from typing import Optional, Protocol, Sequence
 @dataclass(frozen=True)
 class Prediksjon:
     voyageid: int
+    horisont_timer: int                  # 6 eller 24, valgt fra rapportert ETA − naa (PRD FR2)
     predikert_ankomst: datetime          # UTC, tz-aware
     forventet_forsinket: Optional[bool]  # None = prediktoren kan ikke varsle (baseline)
     forklaring: dict                     # input som ble brukt; vises på detaljsiden og mates til AI-laget (E3)
@@ -71,7 +72,8 @@ def velg_prediktor() -> Prediktor:
     """PREDIKTOR=baseline|modell|auto (standard auto: modell hvis artefakt finnes, ellers baseline)."""
 ```
 
-- `naa` sendes med, slik at en modell bare kan bruke informasjon som fantes på det tidspunktet. Baselinen ignorerer den.
+- `naa` sendes med, slik at horisonten kan velges: ≤ 6 t hvis `eta_reported − naa ≤ 6 t`, ellers 24 t. Kuttpunktet `t_H = eta_reported − H` er da alltid ≤ `naa` (PRD FR9a). Modellen leser tilstanden ved `t_H` fra `tilstand_ved_kutt.csv` og aldri noe nyere. Baselinen bruker bare horisonten til visning.
+- *Avvik* og *forsinket* (fasit) regnes i `metrikker.py` mot kalibrert baseline og er aldri en del av `Prediksjon`. Bytter man prediktor, endres derfor ikke fasiten (PRD §3).
 - Den samme kontrakttesten (`tests/test_prediktor_kontrakt.py`) kjøres parametrisert mot alle prediktorer. En ny prediktor er ikke ferdig før den består.
 
 ## 4. Data
@@ -82,6 +84,7 @@ def velg_prediktor() -> Prediktor:
 
 - `split` er `train` eller `test`, fra den samme kronologiske 80/20-splitten som i beslutning 04 (6 260 / 1 566 rader, testperioden starter 2025-09-14T03:15Z).
 - Avvik og `er_forsinket` regnes ut i appen fra baselinen. De lagres ikke, for da kunne de drifte fra hverandre.
+- Valideringsdelen for modellvalg (de siste 20 % av `train`, kronologisk, PRD NFR3) avledes i `scripts/` og lagres ikke som egen verdi. Offset regnes fortsatt på hele `train` (beslutning 04), så baselinetallene ikke endres.
 - Ventet størrelse er ~700 kB, og fila committes.
 
 **`data/baseline.json`**
@@ -95,6 +98,12 @@ def velg_prediktor() -> Prediktor:
   "laget": "2026-10-xx"
 }
 ```
+
+**`data/utdrag/tilstand_ved_kutt.csv`** (E2-S03) — én rad per anløp og horisont, regnet med `scripts/lag_tilstand.py` fra AIS hentet av `pipeline/fetch_ais_kutt.py` (vindu [`t_H` − 3 t, `t_H`], beslutning 08):
+
+`voyageid, horisont_timer, t_kutt_utc, lat, lon, distanse_km, fart_knop, kurs_grader, posisjon_alder_min, allerede_ankommet`
+
+Feltene er tomme når posisjon mangler, og raden beholdes. Fila er ~15 600 rader og ~1,5 MB og committes. Det er den eneste AIS-avledede inputen modellen får hos sensor (PRD NFR1).
 
 **Tidssoner:** all lagring og beregning skjer i UTC. `arrival_in_area_utc` mangler tidssonesuffiks i kilden og normaliseres ved innlasting. Visning skjer i `Europe/Oslo` via `zoneinfo`. `tzdata` ligger i `requirements.txt` fordi Windows ikke har tidssonedatabasen.
 
@@ -120,9 +129,9 @@ app/
   templates/  base.html, dashbord.html, anlop.html, metode.html, _feil.html
   static/     style.css
 data/         utdrag/anlop.csv, baseline.json, modell/ (E2), begrunnelser_opptak.json (E3)
-scripts/      lag_utdrag.py (E1), tren.py + evaluer.py (E2), ta_opp_begrunnelser.py (E3)
+scripts/      lag_utdrag.py (E1), lag_tilstand.py + tren.py + evaluer.py (E2), ta_opp_begrunnelser.py (E3)
 tests/        fixtures/anlop_mini.csv + én testfil per modul
-pipeline/     uendret
+pipeline/     + fetch_ais_kutt.py (E2-S02); øvrige uendret
 .env.example  requirements.txt  README.md
 ```
 
@@ -149,8 +158,9 @@ LLM_MODELL=claude-haiku-5-5
 | Nivå | Hva | Hvor |
 |---|---|---|
 | Enhet | datalag, baseline, metrikker, formatering | `tests/test_*.py` mot `tests/fixtures/anlop_mini.csv` (håndlagde rader med kjente svar) |
-| Kontrakt | alle prediktorer mot §3 | `tests/test_prediktor_kontrakt.py` (parametrisert) |
-| Dataregresjon | utdraget gir 46,6 % / 79,6 % / 12,9 % på testsplitten | `tests/test_dataregresjon.py` (PRD FR8, NFR3) |
+| Kontrakt | alle prediktorer mot §3, inkludert `t_H ≤ naa` | `tests/test_prediktor_kontrakt.py` (parametrisert) |
+| Lekkasje | tilstand og features er uendret når AIS etter `t_H` eller faktisk ankomst endres | `tests/test_tilstand.py`, `tests/test_features.py` (PRD FR9a) |
+| Dataregresjon | utdraget gir 46,6 % / 79,6 % (naiv 12,9 % / 7,4 %) og 1 427/1 566 med fasit på testsplitten | `tests/test_dataregresjon.py` (PRD FR8, NFR3) |
 | Rute | statuskoder, rader, feilmeldinger, at URL-tilstanden bevares | Flask-testklient |
 | UU-struktur | `lang`, `label for`, `th scope`, `aria-sort`, alt-tekst, én `h1` | `tests/test_uu_struktur.py` med `html.parser` fra standardbiblioteket |
 | Kontrast | tokenpar fra `style.css` ≥ 4,5:1 / 3:1 | `tests/test_kontrast.py` |
@@ -165,3 +175,8 @@ LLM_MODELL=claude-haiku-5-5
 ## Endringslogg
 
 - **2026-10-16** — Første versjon (E0-S03). A1–A8 og prediktor-kontrakten.
+- **2026-10-16** — Etter PRD-validering og beslutning 08 (E0-S07):
+  - `Prediksjon.horisont_timer` er lagt til, og horisonten velges fra rapportert ETA − naa.
+  - Nye filer: `tilstand_ved_kutt.csv` og `fetch_ais_kutt.py`.
+  - Det står nå eksplisitt at fasiten regnes utenfor prediktoren.
+  - Valideringsdel er lagt til, og teststrategien har fått en egen rad for lekkasje.

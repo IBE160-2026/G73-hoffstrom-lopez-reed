@@ -54,14 +54,14 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 │                                                              │ hele testperioden      │
 │ Skip ▲▼        Gruppe     Rapportert  Predikert▼  Horis.  Varsel│                     │
 │ ───────────── ────────── ─────────── ─────────── ─────── ────── │ Øvrige (hovedtall)  │
-│ ROTTERDAM      Passasjer  ons 08:00   ons 07:15*  –       –     │ Innenfor ±30 min    │
-│ EINARSON       Fisk       ons 09:00   ons 07:55*  –       –     │ ██████████░░ 46,6 % │
+│ ROTTERDAM      Passasjer  ons 08:00   ons 07:15*  ≤ 6 t   –     │ Innenfor ±30 min    │
+│ EINARSON       Fisk       ons 09:00   ons 07:55*  ≤ 6 t   –     │ ██████████░░ 46,6 % │
 │ TROLLFJORD     Passasjer  ons 10:00   ons 09:15   ≤ 6 t   –     │ Naiv ETA: 12,9 %    │
 │ BERGEN ENERGY  Tank       ons 11:00   ons 09:55   ≤ 6 t   –     │ Passasjer (kontroll)│
 │ VASCO DA GAMA  Passasjer  ons 11:00   ons 10:15   ≤ 6 t   –     │ ███████████░ 79,6 % │
-│ ELEKTRON       Last       ons 11:30   ons 10:25   ≤ 6 t   –     │                     │
-│ STAVANGERFJORD Passasjer  ons 13:06   ons 12:21   ≤ 6 t   –     │ Hva betyr tallene?  │
-│ OCEAN RESPONSE Last       ons 13:45   ons 12:40   ≤ 6 t   –     │ (lenke til metode)  │
+│ ELEKTRON       Last       ons 11:30   ons 10:25   ≤ 6 t   –     │ Naiv ETA: 7,4 %     │
+│ STAVANGERFJORD Passasjer  ons 13:06   ons 12:21   ≤ 6 t   –     │ Fasit: 1 427/1 566  │
+│ OCEAN RESPONSE Last       ons 13:45   ons 12:40   ≤ 6 t   –     │ Hva betyr tallene? ›│
 │ ELDJARN        Fisk       ons 14:00   ons 12:55   ≤ 6 t   –     │                     │
 │ …                                                               │                     │
 │ SIEM PEARL     Slep       ons 16:30   ons 15:25   6–24 t  –     │                     │
@@ -73,12 +73,12 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 
 **Merknader:**
 
-- **Utvalg i vinduet:** anløp med *rapportert* ETA i [nå, nå + 24 t]. Sorteringen følger *predikert* ankomst. Predikert kan derfor ligge før «nå» (ROTTERDAM og EINARSON, merket `*`). Raden vises da med «–» i horisont og hjelpeteksten «predikert før valgt tidspunkt».
-- **Horisont:** ≤ 6 t / 6–24 t fra «nå» til predikert ankomst. Det er her 6 t- og 24 t-modellene fra E2 kobles inn.
+- **Utvalg i vinduet:** anløp med *rapportert* ETA i [nå, nå + 24 t). Sorteringen følger *predikert* ankomst. Predikert kan derfor ligge før «nå» (ROTTERDAM og EINARSON, merket `*`). Raden får da hjelpeteksten «predikert før valgt tidspunkt».
+- **Horisont:** ≤ 6 t / 6–24 t fra «nå» til **rapportert ETA**, ikke predikert ankomst (PRD FR2). Det er her 6 t- og 24 t-modellene fra E2 kobles inn. Med horisonten regnet fra rapportert ETA ligger kuttpunktet aldri etter «nå». Skissen ble rettet etter PRD-valideringen: første versjon regnet fra predikert ankomst, og det ville latt 6 t-modellen bruke AIS-data fra etter «nå».
 - **Skjemaet sendes bare med «Oppdater».** Det sendes ikke automatisk når et felt endres (WCAG 3.2.2), så tastatur- og skjermleserbrukere ikke får siden lastet på nytt midt i utfyllingen.
 - **Tilstand i URL:** `/?naa=2025-10-08T08:00&vis=alle&fasit=0&sorter=predikert`. Den kan bokmerkes, deles og testes med Flask-klienten.
 - **Prediktor-stripa** (FR3) er alltid synlig, også når modellen er i bruk. Da står det «MODELL v1 (6 t / 24 t)», og varselteksten forsvinner.
-- **Treffsikkerhet** er for hele testperioden, ikke for vinduet. 15 anløp er for få til et meningsfullt tall, og panelet sier det med «hele testperioden».
+- **Treffsikkerhet** er for hele testperioden, ikke for vinduet. Den viser naiv og kalibrert baseline for begge grupper og hvor mange anløp som har fasit. «Hva betyr tallene?» lenker til `/metode`. 15 anløp er for få til et meningsfullt tall, og panelet sier det med «hele testperioden».
 
 ### A2 — Samme skjerm med fasit på
 
@@ -96,11 +96,13 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 │                                                              FORSINKET              │
 │ G O SARS       Auxiliary  ons 16:00   ons 14:55   ons 10:39  −4 t 16 min       –    │
 │ (rad uten AIS) Tank       …           …           Fasit mangler (ingen AIS-data)   │
+│ (avkortet)     Last       …           …           Fasit mangler (avkortet av neste │
+│                                                   seilas, trolig stort avvik)      │
 ```
 
 - **FORSINKET** er ikon (▲) + tekst + varselfarge (`--varsel`). Fargen er aldri alene (UU3).
-- Avvik = faktisk − predikert. Positivt betyr senere enn predikert. Over 120 min gir FORSINKET (beslutning 06). Tidlig ankomst, som G O SARS, får ikke merke. Det er et bevisst valg fra beslutning 06.
-- Med fasit på blir tre av fire forsinkede anløp i vinduet synlige, mens varselkolonnen er tom. *Det* er demoens poeng i v1: dette er hullet modellen skal tette.
+- Avvik = faktisk − **kalibrert baseline**, uansett hvilken prediktor som vises. Positivt betyr senere enn forventet. Over 120 min gir FORSINKET (beslutning 06). Når modellen kommer (E2), får tabellen en egen kolonne «Prediksjonsfeil» (faktisk − predikert). Fasit-merket endres ikke når prediktoren byttes, ellers ville presisjon og recall blitt umulige å tolke. Tidlig ankomst, som G O SARS, får ikke merke. Det er et bevisst valg fra beslutning 06.
+- Med fasit på blir alle tre forsinkede anløp i vinduet synlige, mens varselkolonnen er tom. *Det* er demoens poeng i v1: dette er hullet modellen skal tette.
 - Kolonnen «Avvik» blir sorterbar. Sorteringsknappen ligger i `<th>` med `aria-sort`.
 
 ## 3. Skjerm B — Hovedskjerm, mobil (< 640 px)
@@ -198,7 +200,8 @@ Ugyldig tidspunkt:                         Tomt vindu:
 | Ingen `naa` i URL | Standard: 08.10.2025 08:00 |
 | `naa` utenfor testperioden eller ugyldig | Skjemaet med feilmelding over (UU5). Lista viser standardtidspunktet, ikke ingenting. |
 | 0 anløp i vinduet | Boksen over |
-| Anløp uten AIS (`status_in_area ≠ ok`) | «Fasit mangler (ingen AIS-data)» i fasitkolonnene |
+| Anløp uten fasit | Årsaken står i fasitkolonnene: `empty` → «Fasit mangler (ingen AIS-data)», `not_detected` → «… (ankomst ikke funnet i AIS-sporet)», `avkortet_av_neste_seilas` → «… (avkortet av neste seilas, trolig stort avvik)» |
+| [E2] Ingen AIS-tilstand ved kuttpunktet | Raden viser baselinens prediksjon, og varselkolonnen viser «– (ingen AIS-tilstand)» |
 | [E2] Modellartefakt mangler | Faller tilbake til baseline, og prediktor-stripa sier «Modell ikke funnet — viser kalibrert baseline» |
 | [E3] Ekte modus feiler (nett/nøkkel) | Viser testmodus-tekst med merket «Testmodus (ekte kall feilet)» |
 
@@ -241,3 +244,9 @@ Fokusring: 3 px `--aksent` med 2 px avstand, aldri `outline: none` uten erstatni
 ## Endringslogg
 
 - **2026-10-16** — Første versjon (E0-S02): skjerm A/A2/B/C, tilstander, UU-sjekkliste og fargetokens med utregnet kontrast.
+- **2026-10-16** — Etter PRD-validering (E0-S07):
+  - Horisonten regnes fra rapportert ETA.
+  - Avvik regnes mot kalibrert baseline, med egen kolonne for prediksjonsfeil i E2.
+  - Det er tre tekster for manglende fasit.
+  - Panelet har fått naiv Passasjer og dekning.
+  - «Tre av fire» er rettet til «alle tre».
