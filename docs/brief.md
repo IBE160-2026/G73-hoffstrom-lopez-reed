@@ -2,7 +2,7 @@
 title: "Product Brief: AIS-basert ankomstprediksjon (working title)"
 status: draft
 created: 2026-09-17
-updated: 2026-09-28
+updated: 2026-10-16
 ---
 
 # Product Brief: AIS-basert ankomstprediksjon (working title)
@@ -21,9 +21,9 @@ Reported ETAs are known industry-wide to diverge from actual arrival, because th
 
 ## The Solution
 
-A decision-support tool that predicts when a ship will actually arrive at Bergen Havn — 6 and 24 hours ahead — built on open AIS and voyage data from Kystverket's Kystdatahuset. Because the raw data only carries each vessel's self-reported ETA, the pipeline first derives actual arrival events from AIS tracks (a standard technique: a port-area polygon combined with a stopped-speed threshold) to build a labeled dataset of the deviation between reported and real arrival. A model trained on that dataset produces the 6h/24h predictions, benchmarked against the vessel's own reported ETA — the reference every prediction has to beat. A generative AI layer turns each day's predictions into a short daily brief for the havnevakt: a map plus a stated reason for each expected deviation, so the operator sees not just a number but why it is likely wrong.
+A decision-support tool that predicts when a ship will actually arrive at Bergen Havn — 6 and 24 hours ahead — built on open AIS and voyage data from Kystverket's Kystdatahuset. Because the raw data only carries each vessel's self-reported ETA, the pipeline derives actual arrival events from AIS tracks (zone entry into the port area, calibrated per vessel-traffic type — see addendum) to build a labeled dataset of the deviation between reported and real arrival. A model trained on that dataset produces the 6h/24h predictions, benchmarked against the vessel's own reported ETA — the reference every prediction has to beat. A generative AI layer turns each day's predictions into a short daily brief for the havnevakt: a map plus a stated reason for each expected deviation, so the operator sees not just a number but why it is likely wrong.
 
-v1 ships as a web dashboard, open without login (see Scope). The group's stated ambition is a live pipeline against fresh Kystdatahuset data, with a tested contingency plan if live data proves too gappy within the course timeline (full plan in the addendum).
+v1 builds entirely on the locked historical dataset (8,094 voyages, Jan 2024–Mar 2026 — see addendum), not a live feed: the dashboard lets the havnevakt "replay" a chosen day or period from that dataset and see the model's predictions against what actually happened. Open without login (see Scope).
 
 ## What Makes This Different
 
@@ -58,39 +58,39 @@ The reported-ETA baseline itself is scored the same way, calibrated per vessel-t
 
 **Product.** The havnevakt can read a daily brief and understand, without asking anyone, which of tomorrow's expected arrivals to distrust and why.
 
-## Data In / Data Ut
+## Data In / Data Out
 
-**Data inn:**
-- Seilasdata fra Kystdatahusets åpne API (rapportert ETA/ETD, skipsnavn, MMSI, skipstype/-gruppe, lengde, avgangs-/ankomststed) for anløp til Bergen Havn (NOBGO).
-- AIS-posisjonsdata (breddegrad, lengdegrad, fart, kurs, tidsstempel) per fartøy fra samme kilde, hentet per MMSI for et tidsvindu rundt hvert anløp.
-- BarentsWatch Live AIS som dokumentert reserveløsning dersom Kystdatahuset-arkivet viser seg utilstrekkelig (se addendum).
+**Data in:**
+- Voyage data from Kystdatahuset's open API (reported ETA/ETD, ship name, MMSI, ship type/group, length, departure/arrival location) for calls at Bergen Havn (NOBGO).
+- AIS position data (latitude, longitude, speed, course, timestamp) per vessel from the same source, fetched per MMSI for a time window around each call.
+- BarentsWatch Live AIS as a documented contingency source if the Kystdatahuset archive proves insufficient (see addendum).
 
-**Data ut:**
-- Predikert ankomsttid (6t og 24t horisont, når modellen er trent) per fartøy, målt mot skipets egen rapporterte ETA.
-- Et signert forsinkelsesflagg (er_forsinket) for anløp som avviker vesentlig fra kalibrert forventet ankomst.
-- En daglig AI-generert forstyrrelsesbrief til havnevakten: kart og begrunnelse per forventet avvik.
-- Dekningsgrad- og datakvalitetsmetrikker som følger med hver kjøring, ikke skjules.
+**Data out:**
+- Predicted arrival time (6h and 24h horizon, once the model is trained) per vessel, measured against that vessel's own reported ETA.
+- A signed delay flag (er_forsinket) for calls that deviate materially from the calibrated expected arrival.
+- A daily AI-generated disruption brief for the havnevakt: map and reasoning per expected deviation.
+- Coverage and data-quality metrics shipped with every run, not hidden.
 
 ## Risks
 
-- **AIS-dekning under fortøyning.** Rå AIS-data viste seg å ha reelle rapporteringshull nettopp når skip ligger stille ved kai — et sentralt funn i utviklingen av selve datagrunnlaget, ikke en teoretisk bekymring. Håndtert med en egen kontinuitetsplan (addendum), men gjenstår som en systematisk begrensning i datagrunnlaget.
-- **Ukjent dekning for utenlandskflaggede skip.** En vesentlig andel anløp fra utenlandskflaggede fartøy mangler AIS-posisjonsdata i den åpne API-tilgangen. Årsaken er uavklart (tilgangsbegrensning vs. utdatert MMSI-registrering) — se addendum. Utgjør en skjevhet i datagrunnlaget mot norskflagget trafikk inntil avklart.
-- **Halefordelt avvik gjør enkle mål misvisende.** Se Success Criteria — MAE og gjennomsnitt kan gi et misvisende bilde av modellens faktiske nytteverdi for havnevakten.
-- **Kalibreringsskjevhet.** Baseline-kalibreringen (offset mellom sonepassering og faktisk kaitid) er estimert på et utvalg som systematisk overrepresenterer større, mer rutepregede fartøy, fordi det er de skipstypene der begge etikettene lettest lar seg utlede. Dokumentert, ikke korrigert.
-- **Stram tidsramme.** 10 uker til et fungerende produkt er en bevisst ambisiøs ramme for en tre-personers gruppe, gitt at prosjektet har tre tunge delkomponenter (datapipeline, prediksjonsmodell, generativt rapporteringslag). Se Scope for hva som er bevisst utsatt.
-- **Ingen teknisk moat.** Se What Makes This Different — fortrinnet er utførelse og transparens, ikke en forsvarbar teknisk barriere.
+- **AIS coverage during mooring.** Raw AIS data turned out to have real reporting gaps precisely when ships lie still at berth — a central finding in building the ground-truth dataset itself, not a theoretical concern. Handled with its own contingency plan (addendum), but remains a systematic limitation in the dataset.
+- **Unknown coverage for foreign-flagged vessels.** A significant share of foreign-flagged vessel calls lack AIS position data in the open API access. The cause is unresolved (access restriction vs. outdated MMSI registration) — see addendum. Constitutes a bias in the dataset against Norwegian-flagged traffic until resolved.
+- **Tail-heavy deviation makes simple metrics misleading.** See Success Criteria — MAE and the mean can give a misleading picture of the model's actual usefulness to the havnevakt.
+- **Calibration bias.** The baseline calibration (offset between zone entry and actual berth time) is estimated on a sample that systematically overrepresents larger, more schedule-pattern vessels, because those are the ship types where both labels are most easily derived. Documented, not corrected.
+- **Tight timeline.** 11 weeks to a working product is a deliberately ambitious scope for a three-person group, given the project has three heavy sub-components (data pipeline, prediction model, generative reporting layer). See Scope for what is deliberately deferred.
+- **No technical moat.** See What Makes This Different — the advantage is execution and transparency, not a defensible technical barrier.
 
 ## Scope
 
-**IN — v1 (this course, ~10 weeks):**
-1. Historical AIS/voyage ingestion from Kystdatahuset for a verified data window at Bergen Havn.
-2. Derivation of actual-arrival events from AIS tracks, with a logged per-day coverage metric.
-3. A trained model predicting arrival 6h and 24h ahead, benchmarked against reported ETA.
-4. A web dashboard showing the daily brief: predicted arrivals, a map, and a stated reason per expected deviation, generated by an AI summarization layer.
+**IN — v1 (this course, ~11 weeks — matches `docs/plan.md`'s Sept 27 – Dec 15 timeline):**
+1. Historical AIS/voyage ingestion from Kystdatahuset — locked: 8,094 voyages, Bergen Havn, Jan 2024–Mar 2026 (see addendum).
+2. Derivation of actual-arrival events from AIS tracks, with a logged coverage metric (87.1% achieved).
+3. A trained model predicting arrival 6h and 24h ahead on the locked dataset, benchmarked against reported ETA.
+4. A web dashboard that replays a chosen day or period from the locked dataset: predicted arrivals, a map, and a stated reason per expected deviation, generated by an AI summarization layer.
 5. Open access, no login — source data is open (NLOD), no personal data is processed, and v1 has a single user role. If the demo must be reachable remotely, a single shared HTTP Basic Auth stands in front of it (not user accounts). Full rationale in the addendum.
 
 **OUT — deliberately deferred, not rejected:**
-1. Real-time/live data as the primary source — the group is committed to attempting it, with a tested fallback to BarentsWatch Live AIS if the Kystdatahuset archive proves too gappy (addendum: contingency plan).
+1. Real-time/live data as a source for v1 — deferred entirely; v1 runs on the locked historical dataset only, not a live feed. BarentsWatch Live AIS was kept as a documented contingency in case historical coverage proved insufficient (addendum) but was never triggered — 87.1% coverage was achieved from the Kystdatahuset archive alone.
 2. Additional ports beyond Bergen Havn.
 3. Prediction exposed as an API for other consumers.
 4. Time-in-port and departure prediction, and berth-capacity-linked reallocation suggestions.
