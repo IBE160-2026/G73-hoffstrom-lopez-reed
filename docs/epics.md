@@ -39,7 +39,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | E0-S07 | Beslutning 08 (horisont ved rapportert ETA − H) og nedstrøms dokumenter oppdatert | `docs/beslutninger/08-…`, `docs/epics.md`, `docs/arkitektur.md`, `docs/ux/dashbord.md` | ✅ |
 | E0-S08 | Halen rettet fra 24,3 % (absolutt) til 19,5 % (signert forsinket) i alle levende dokumenter | `docs/brief.md`, `docs/brief.no.md`, `docs/status.md`, `docs/addendum.md`, `docs/prd.md` | ✅ |
 | E0-S09 | Kursmateriale (`docs/kilder/`) fjernet fra arbeidstreet; beslutning 10 om hvorfor historikken ikke skrives om | `.gitignore`, `docs/beslutninger/10-…` | ✅ |
-| E0-S10 | Beslutning 09: AIS-dekning ved kuttpunktene avklart før modellfasen, PRD oppdatert | `docs/beslutninger/09-…`, `docs/prd.md` | ☐ |
+| E0-S10 | Beslutning 09: AIS-dekning ved kuttpunktene avklart før modellfasen, PRD oppdatert | `docs/beslutninger/09-…`, `pipeline/sjekk_ais_dekning_kutt.py`, `docs/prd.md` | ✅ |
 
 ---
 
@@ -195,16 +195,17 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 ### E2-S02 — Målrettet AIS-henting ved kuttpunktene ☐
 **Krav:** FR9a · **Avhenger av:** E2-S01
-- `pipeline/fetch_ais_kutt.py` henter AIS for [`t_H` − 3 t, `t_H`] per anløp og H ∈ {6, 24}, med samme caching og pausing som `fetch_ais.py`.
+- `pipeline/fetch_ais_kutt.py` henter AIS for [`t_H` − 24 t, `t_H`] per anløp og H ∈ {6, 24}, med samme caching og pausing som `fetch_ais.py` (beslutning 09).
+- Ny API-adresse (`kystdatahuset.kystverket.no`). Det bes om et vindu med minst én dags margin på hver side, og posisjonene filtreres på tidsstemplet i svaret, siden API-et forskyver vinduet +1/+2 t og kan kutte ved midnatt (beslutning 09, funn B–C).
 - Vinduet regnes bare fra rapportert ETA. Skriptet leser ikke `arrival_in_area`.
 - Dekning per horisont, gruppe og splitt logges i `pipeline/data/ais_kutt_dekning.csv`.
 
-**Test:** `tests/test_fetch_ais_kutt.py::test_vindu_fra_rapportert_eta` (vinduet endres ikke når faktisk ankomst endres) og en loggført dekningstabell.
+**Test:** `tests/test_fetch_ais_kutt.py::test_vindu_fra_rapportert_eta` (vinduet endres ikke når faktisk ankomst endres), `::test_filtrerer_bort_punkter_etter_kutt` (et svar med punkter etter `t_H` gir ingen slike i cachen) og en loggført dekningstabell.
 
 ### E2-S03 — Tilstandsutdrag og lekkasjetest ☐
 **Krav:** FR9a, NFR1 · **Avhenger av:** E2-S02
 - `scripts/lag_tilstand.py` skriver `data/utdrag/tilstand_ved_kutt.csv`: én rad per anløp og H, med posisjon, gjenstående distanse, fart, kurs, alder på posisjon og flagget `allerede_ankommet`. Fila committes, og kildens sjekksum legges i `data/baseline.json`.
-- Mangler posisjon i [`t_H` − 3 t, `t_H`], blir feltene tomme, og raden beholdes.
+- Mangler posisjon i [`t_H` − 24 t, `t_H`], blir feltene tomme, og raden beholdes.
 
 **Test:** `tests/test_tilstand.py::test_ingen_lekkasje` (punkter etter `t_H` fjernet eller flyttet, faktisk ankomst endret → identisk rad) og `::test_mangler_posisjon`
 
@@ -364,3 +365,4 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
   - E2 er skrevet om til 10 stories. Det er nye stories for AIS-henting ved kuttpunkt (S02), tilstandsutdrag med lekkasjetest (S03) og valideringssplitt (S04). E2 var ikke startet, så nummereringen er lagt om nå, før merge.
   - E1-S05/S06/S09/S10/S11/S12 og E3-S04/S05/S06 er tilpasset PRD-oppdateringen.
 - **2026-10-22** — E0-S08–S10 lagt til som oppfølging etter merge av PR #2: halen rettet til 19,5 %, kursmateriale ut av repoet, og AIS-dekning ved kuttpunktene avklares (beslutning 09) før E2-S02.
+- **2026-10-22** — E0-S10, beslutning 09: E2-S02 og E2-S03 bruker 24 t tilbakeblikk og filtrerer på tidsstemplet i svaret. Ny test i E2-S02 for at ingen punkter etter `t_H` slipper gjennom.

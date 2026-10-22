@@ -52,3 +52,5 @@ Det trengs derfor en egen, målrettet AIS-henting rundt hvert kuttpunkt (story E
 **Skip som har ankommet før `t_H`** (1,6 % ved 6 t, 0,4 % ved 24 t) beholdes. Ankomsten er da kjent informasjon ved prediksjonstidspunktet, ikke en lekkasje. De telles likevel og rapporteres separat, så de ikke stille løfter treffsikkerheten.
 
 Om passasjer og øvrige skal ha separate modeller, er fortsatt åpent og avgjøres i E2-S01.
+
+**Oppdatert 22.10.2026:** Vinduet [`t_H` − 3 t, `t_H`] over er erstattet av [`t_H` − 24 t, `t_H`]. Stikkprøven i [beslutning 09](09-ais-dekning-ved-kuttpunktene.md) viste at skip som ligger i ro, har glisne AIS-punkter, og at API-et forskyver vinduet som det blir bedt om. Valget i denne beslutningen, kutt ved rapportert ETA − H, står.

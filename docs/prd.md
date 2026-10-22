@@ -88,7 +88,8 @@ ID-ene brukes i stories (`docs/epics.md`) og i tester.
   - **Kuttet forankres i rapportert ETA og aldri i faktisk ankomst.** Et kutt ved faktisk ankomst ville latt fasiten bestemme hvilke data modellen ser.
   - Modellens input er fartøyets tilstand ved `t_H`, regnet fra siste AIS-posisjon ved eller før `t_H`: posisjon, gjenstående distanse til ankomstsonen, fart, kurs og alder på posisjonen. I tillegg kommer historiske features fra anløp med faktisk ankomst før `t_H`, og bare fra treningsdata.
   - **Test:** prediksjonen er uendret når alle AIS-punkter etter `t_H` fjernes eller flyttes, og når faktisk ankomst endres.
-  - Anløp uten AIS-posisjon i [`t_H` − 3 t, `t_H`] får baselinens prediksjon og merket «ingen AIS-tilstand ved prediksjonstidspunktet». De tas ikke ut av evalueringen.
+  - Tilstanden hentes fra siste posisjon i [`t_H` − 24 t, `t_H`] (beslutning 09). Kystdatahuset forskyver vinduet og kan kutte svar ved midnatt, så posisjonene filtreres på tidsstemplet i svaret, aldri på vinduet det ble bedt om. Filtreringen testes.
+  - Anløp uten AIS-posisjon i [`t_H` − 24 t, `t_H`] får baselinens prediksjon og merket «ingen AIS-tilstand ved prediksjonstidspunktet». De tas ikke ut av evalueringen.
   - Anløp der skipet allerede har ankommet før `t_H` beholdes, siden vakta ville sett det. De telles og rapporteres separat (1,6 % ved 6 t, 0,4 % ved 24 t).
   - `[NOTE FOR PM]` Ved 6 t bruker dashbordet et spor som kan være opptil 6 t eldre enn «nå». Å kutte ved «nå» ville gitt ferskere data, men da ville input i drift ikke ligne input i trening. Gruppa velger konsistens framfor ferskhet.
 - **FR9 — Modellprediksjon.** Modellen leverer predikert ankomst og varsel per anløp og horisont gjennom samme grensesnitt som baselinen. Dashbordet bytter kilde uten endringer i visningskoden.
@@ -165,9 +166,10 @@ Som i briefens Scope/OUT: live-data, flere havner, API for andre, innlogging og 
 | Er rapportert ETA verdien slik den var ved `t_24`, eller en senere oppdatering? Sjekk Kystdatahuset-dokumentasjonen og rådata (A1 i §9). | E2-S01 | Theodor |
 | Bekreft suksesskriteriet for varsel (F1 mot «varsle alle», A2 i §9) før første modell trenes | E2-S01 | Felipe |
 | Før opp avvikene i §7 i brief.md og brief.no.md. (Halen er rettet til 19,5 % signert 22.10.2026, E0-S08.) | før fase 3 | Theodor |
+| Skal `empty`-seilasene (935, 11,9 %) hentes på nytt? 7 av 10 i en stikkprøve har data i dag (beslutning 09). Det endrer det låste datasettet og tallene i FR8. | før E2-S02 | gruppa |
 | Hvilken språkmodell-leverandør skal brukes i ekte modus? Arkitekturen antar Anthropic, men adapteren gjør byttet billig. | E3-S03 | Thomas |
 
-**Lukket:** *Hva skiller 6 t fra 24 t?* Kuttpunktet ved rapportert ETA − H (FR9a, beslutning 08, 16.10.2026).
+**Lukket:** *Hva skiller 6 t fra 24 t?* Kuttpunktet ved rapportert ETA − H (FR9a, beslutning 08, 16.10.2026). *Er skipene utenfor AIS-rekkevidde 24 t før, så 24 t-horisonten må droppes?* Nei. ≈ 93 % har posisjon med 24 t tilbakeblikk, og de fleste ligger i en norsk havn (beslutning 09, 22.10.2026).
 
 ## 9. Antakelser
 
@@ -189,3 +191,4 @@ Som i briefens Scope/OUT: live-data, flere havner, API for andre, innlogging og 
   - FR11–FR13 er gjort testbare.
   - Nye seksjoner: ordliste (§3), avvik fra briefen (§7) og antakelser (§9).
 - **2026-10-22** — E0-S08: halen er 19,5 % (signert forsinket, `er_forsinket`) i alle levende dokumenter. Det absolutte tallet er fjernet fra FR10, og det åpne spørsmålet i §8 er snevret inn til avvikene i §7.
+- **2026-10-22** — E0-S10, beslutning 09: 24 t-horisonten beholdes. FR9a har fått tilbakeblikk på 24 t og krav om at posisjoner filtreres på tidsstemplet i svaret, siden API-et forskyver og kutter vinduer. Nytt åpent spørsmål om ny henting av `empty`-seilasene.
