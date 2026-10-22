@@ -3,7 +3,7 @@
 > **Dette er et FORSLAG, ikke en vedtatt plan.** Theodor justerer den med resten av gruppa. Milepælene er tidsestimater, ikke løfter, og arbeidsdelingen er en startpunkt-skisse basert på tre naturlige arbeidsstrømmer i prosjektet — ikke en vurdering av hvem som kan hva.
 
 **Sluttfrist:** 15. desember 2026 (oppgitt av gruppa).
-**Sist oppdatert:** 16. oktober 2026, etter gruppas gjennomgang av PR #1 (faser lagt om: dashbordet skal finnes tidlig, ikke komme sist).
+**Sist oppdatert:** 16. oktober 2026 — fase 2-dokumentene (PRD, arkitektur, UX, epics) lagt inn, arbeidsflyt endret til branch per epic. Før det samme dag: faser lagt om etter PR #1 (dashbordet skal finnes tidlig, ikke komme sist).
 **Alle datoer under regnes fra 16. oktober 2026** — forrige versjon regnet fra 6. oktober, som allerede var passert.
 
 Se `docs/vurderingskriterier.md` for hvordan Del 1 (70 % av karakteren) og refleksjonsrapporten (30 %) faktisk vurderes.
@@ -30,6 +30,7 @@ Ikke lenger et åpent spørsmål — dette er nå en fase, fordi kriterium 1 (30
 - **Epics/stories**, spesifikt nok til at hver story blir én branch og én PR (se arbeidsflyt under).
 - **UX-skisser**: skjermbeskrivelser/wireframes for dashbordets kjerneskjermbilde — listevisning over anløp, kart, begrunnelsestekst per avvik. Trenger ikke kode; penn-og-papir eller enkle mockups holder, men skal ligge i repoet (`docs/ux/` eller tilsvarende). Universell utforming tas inn fra start: kontrast, tastaturnavigasjon, alt-tekst på kart/ikoner, og at skjermbildet fungerer på minst to skjermstørrelser.
 - **Leveranse:** PRD, arkitektur, stories og UX-skisser klare — Fase 3 bygger direkte på dette, ikke designer underveis.
+- **Levert 16. okt (epic E0, til gjennomgang i gruppa):** [`docs/prd.md`](prd.md), [`docs/arkitektur.md`](arkitektur.md), [`docs/ux/dashbord.md`](ux/dashbord.md), [`docs/epics.md`](epics.md). Teknologivalg: Python/Flask med server-rendret HTML (arkitektur A1). Resten av uka er satt av til at Felipe og Thomas går gjennom dokumentene og retter dem — særlig prediktor-kontrakten (arkitektur §3), som er avtalen mellom fase 3 og 4.
 
 ### Fase 3 — Dashbord v1 på kalibrert baseline (24. okt – 6. nov, ~2 uker)
 
@@ -93,9 +94,9 @@ Fase 3 og 4 krever samarbeid uansett — modellen (Felipe) skal kobles inn i das
 
 ## Arbeidsflyt fra nå av
 
-**Branch per story, pull request inn til main.** Ikke flere commits rett på main. Sensor ser etter branches, PR-er og issues som spor på arbeidsflyt — det er en del av kriterium 1 og 7 i `docs/vurderingskriterier.md`.
+**Branch per epic, én commit per story, pull request inn til main.** Ikke flere commits rett på main. Commit-meldingen starter med story-ID (`E1-S04: …`), så `git log --grep` finner koden til hver story. Detaljene står i [`docs/epics.md`](epics.md) under «Arbeidsregler». Sensor ser etter branches, PR-er og issues som spor på arbeidsflyt — det er en del av kriterium 1 og 7 i `docs/vurderingskriterier.md`.
 
 ## Åpne spørsmål til gruppa
 
 - Er det delfrister før 15. desember (presentasjon, statusmøte) som bør inn som egne milepæler?
-- Skal rutegående og ikke-rutegående trafikk modelleres som to separate modeller, gitt hvor ulikt de oppfører seg (se `docs/beslutninger/05-andel-innenfor-30-min-fremfor-mae.md`)? Kan avgjøres i Fase 2 sammen med arkitekturvalgene, ikke nødvendigvis nå.
+- Skal rutegående og ikke-rutegående trafikk modelleres som to separate modeller, gitt hvor ulikt de oppfører seg (se `docs/beslutninger/05-andel-innenfor-30-min-fremfor-mae.md`)? **Flyttet til story E2-S01** (beslutning 08), sammen med featureliste og hva som skiller 6t- fra 24t-horisonten — se åpne spørsmål i `docs/prd.md` §7.
