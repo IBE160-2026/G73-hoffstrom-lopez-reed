@@ -11,7 +11,7 @@ To ting datasettet gir oss:
 1. **Dekning: 87,1 %.** For 87,1 % av seilasene kan vi fastslå faktisk ankomsttidspunkt (`arrival_in_area` — første AIS-posisjon innenfor en ~15 km sone rundt havna). De resterende ~13 % mangler AIS-data helt, se "Hva er åpent".
 2. **Kalibrert baseline.** Skipets egen rapporterte ETA er ikke direkte sammenlignbar med ankomsttidspunktet vi utleder (de måler litt ulike ting — se `docs/beslutninger/04-kalibrert-baseline.md`). Justert for det treffer den rapporterte ETA-en, for **ikke-rutegående trafikk** (frakt, offshore, osv. — ikke ferger):
    - **46,6 %** av ankomstene innenfor ±30 minutter
-   - **24,3 %** av ankomstene bommer med over 2 timer, selv etter justering
+   - **19,5 %** av ankomstene kommer mer enn 2 timer senere enn justert ETA (signert forsinkelse, det `er_forsinket`-flagget måler)
 
    Det siste tallet er det viktigste: **det er den halen modellen skal angripe.** Rutegående trafikk (ferger) er nesten løst allerede — 79,6 % innenfor ±30 min uten noen modell i det hele tatt — og holdes derfor utenfor hovedresultatet som kontrollgruppe, ikke som del av målet.
 
@@ -40,7 +40,7 @@ Modellarbeidet starter. To ting bør være avklart i gruppa *før* det:
 1. **Featureliste.** Hva skal modellen faktisk trene på utover historisk avvik (værdata? sesong? skipstype/-lengde? tid på døgnet?). Ikke bestemt ennå.
 2. **Arbeidsdeling.** Det ligger et forslag i [`docs/plan.md`](plan.md) — det er kun et forslag, juster det dere tre imellom.
 
-Målet modellen skal slå står i `docs/brief.md` under Success Criteria: 46,6 % innenfor ±30 min og bedre presisjon/recall på 24,3%-halen, målt på ikke-rutegående trafikk.
+Målet modellen skal slå står i `docs/brief.md` under Success Criteria: 46,6 % innenfor ±30 min og bedre presisjon/recall på 19,5 %-halen (forsinket over 2 t), målt på ikke-rutegående trafikk.
 
 ## Kjøre pipelinen fra bunn (hvis cachen mistes)
 

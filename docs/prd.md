@@ -96,7 +96,7 @@ ID-ene brukes i stories (`docs/epics.md`) og i tester.
   - Varsel = `predikert ankomst − kalibrert baseline > 120 min`, altså samme terskel og retning som fasitetiketten. `[ASSUMPTION]`
 - **FR10 — Modell mot baseline.** Panelet og `metrikker.json` viser modell og kalibrert baseline side om side, **per horisont og per gruppe**, på nøyaktig samme anløp. Det betyr at tallet for «ingen AIS-tilstand» regnes med som baseline-prediksjoner, og at et tall bare for rader med tilstand rapporteres i tillegg.
   - **±30 min:** modellen lykkes hvis den har høyere andel innenfor ±30 min enn baselinen på Øvrige, separat for hver horisont.
-  - **Varsel:** grunnraten er **19,5 %** forsinket blant Øvrige i testperioden (signert, n = 996 med fasit). Briefens «24,3 %» er andelen med *absolutt* avvik over 2 t, altså en annen hale. Baselinen kan ikke varsle, så referansen er regelen «varsle alle»: presisjon 19,5 %, recall 100 %, F1 ≈ 0,33. Modellen lykkes på varsel hvis F1 er høyere enn referansen. `[ASSUMPTION]`
+  - **Varsel:** grunnraten er **19,5 %** forsinket blant Øvrige i testperioden (signert, n = 996 med fasit). Briefen, statusnotatet og addendumet bruker det samme tallet (rettet 22.10.2026). Baselinen kan ikke varsle, så referansen er regelen «varsle alle»: presisjon 19,5 %, recall 100 %, F1 ≈ 0,33. Modellen lykkes på varsel hvis F1 er høyere enn referansen. `[ASSUMPTION]`
   - Presisjon, recall og F1 vises alltid sammen, og et tap vises like tydelig som en seier.
 
 ### Generativt AI-lag (E3)
@@ -164,7 +164,7 @@ Som i briefens Scope/OUT: live-data, flere havner, API for andre, innlogging og 
 | Én modell, eller separate for Passasjer og Øvrige? | E2-S01 | Felipe |
 | Er rapportert ETA verdien slik den var ved `t_24`, eller en senere oppdatering? Sjekk Kystdatahuset-dokumentasjonen og rådata (A1 i §9). | E2-S01 | Theodor |
 | Bekreft suksesskriteriet for varsel (F1 mot «varsle alle», A2 i §9) før første modell trenes | E2-S01 | Felipe |
-| Briefen oppgir halen som 24,3 % (absolutt). Signert forsinket er 19,5 %. Rett brief.md og brief.no.md, og før opp avvikene i §7. | før fase 3 | Theodor |
+| Før opp avvikene i §7 i brief.md og brief.no.md. (Halen er rettet til 19,5 % signert 22.10.2026, E0-S08.) | før fase 3 | Theodor |
 | Hvilken språkmodell-leverandør skal brukes i ekte modus? Arkitekturen antar Anthropic, men adapteren gjør byttet billig. | E3-S03 | Thomas |
 
 **Lukket:** *Hva skiller 6 t fra 24 t?* Kuttpunktet ved rapportert ETA − H (FR9a, beslutning 08, 16.10.2026).
@@ -188,3 +188,4 @@ Som i briefens Scope/OUT: live-data, flere havner, API for andre, innlogging og 
   - NFR3 har fått valideringssplitt, og NFR1 har fått tilstandsutdrag.
   - FR11–FR13 er gjort testbare.
   - Nye seksjoner: ordliste (§3), avvik fra briefen (§7) og antakelser (§9).
+- **2026-10-22** — E0-S08: halen er 19,5 % (signert forsinket, `er_forsinket`) i alle levende dokumenter. Det absolutte tallet er fjernet fra FR10, og det åpne spørsmålet i §8 er snevret inn til avvikene i §7.

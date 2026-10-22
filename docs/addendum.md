@@ -52,13 +52,13 @@ Pipeline work is stopped here per the group's decision (2026-09-27: "vi starter 
 - **Train/test split:** 6,260 / 1,566, chronological. Test period: 2025-09-14 to 2026-03-15 — a fall/winter window; generalization claims beyond that season aren't supported by this split alone.
 - **Calibrated baseline performance** (TEST split, n=1,427 evaluable):
 
-  | Group | n | naive ±30min | calibrated ±30min | calibrated off>2h |
+  | Group | n | naive ±30min | calibrated ±30min | calibrated late >2h (er_forsinket) |
   |---|---|---|---|---|
-  | ALL | 1,427 | 11.2% | **56.6%** | 17.5% |
-  | Passasjer | 431 | 7.4% | **79.6%** | 1.9% |
-  | Non-Passasjer | 996 | 12.9% | **46.6%** | 24.3% |
+  | ALL | 1,427 | 11.2% | **56.6%** | 13.7% |
+  | Passasjer | 431 | 7.4% | **79.6%** | 0.5% |
+  | Non-Passasjer | 996 | 12.9% | **46.6%** | 19.5% |
 
-  Calibration fixes the systematic bias (median goes from roughly -50min to near zero) but barely moves MAE for Non-Passasjer (126→102 min overall, still driven by the tail) — a constant offset corrects the typical case, not the extreme one. The off>2h rate is nearly unchanged by calibration (as it should be: shifting everything by a constant doesn't change how many cross a fixed threshold by much) — **this ~17-24% disruption rate is the real target the model needs to move**, not the ±30min headline alone.
+  Calibration fixes the systematic bias (median goes from roughly -50min to near zero) but barely moves MAE for Non-Passasjer (126→102 min overall, still driven by the tail) — a constant offset corrects the typical case, not the extreme one. The late >2h column is signed — arrival more than 2 hours after the calibrated baseline — which is the `er_forsinket` definition (decision 06) and the base rate the model's delay flag is scored against (PRD FR10). Until 2026-10-22 this column showed absolute misses over 2 hours, a different and larger tail that the flag does not measure. **This ~14-20% delay rate is the real target the model needs to move**, not the ±30min headline alone.
 - **Label agreement** (arrival_in_area calibrated vs. arrival_at_quay raw, on the >2h flag): 97.0% (n=5,010) — the two independently-derived labels agree on which voyages are genuine disruptions almost all the time, on the subset where both exist.
 - **Selection-bias check, confirmed at full scale:** vessels where both labels were derivable are substantially larger (median 119.9m vs. 74.6m) and skew toward Passenger/Ro-Ro, Passenger/Cruise, and Ro-Ro Cargo; vessels without a derivable at_quay skew toward General Cargo, Bunkering/LNG Tankers, and offshore-supply types. The calibration offset is therefore likely biased toward larger, more schedule-pattern vessels — a real limitation of the offset, not fixed here (see `docs/beslutninger/04-kalibrert-baseline.md`).
 - **Window-truncation fix in effect:** 1,492 of 7,826 voyages (19.1%) had their AIS search window capped by the next voyage for the same MMSI (the frequent-caller/ferry correction) — confirms this was a real, non-trivial problem at full scale, not a pilot-only artifact.

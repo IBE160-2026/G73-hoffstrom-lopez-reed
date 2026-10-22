@@ -26,7 +26,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 ---
 
-## E0 — Planlegging (fase 2, 16.–23. okt) · branch `epic/e0-planlegging`
+## E0 — Planlegging (fase 2, 16.–23. okt) · branch `epic/e0-planlegging` (merget i PR #2), oppfølging på `epic/e0-oppfolging`
 
 | ID | Story | Leveranse | Status |
 |---|---|---|---|
@@ -37,6 +37,9 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | E0-S05 | Plan, arbeidsflyt og promptlogg oppdatert | `docs/plan.md`, `docs/prompts/` | ✅ |
 | E0-S06 | BMAD-validering av PRD, og PRD oppdatert med funnene | `_bmad-output/planning-artifacts/prds/…/validation-report.md`, `docs/prd.md` | ✅ |
 | E0-S07 | Beslutning 08 (horisont ved rapportert ETA − H) og nedstrøms dokumenter oppdatert | `docs/beslutninger/08-…`, `docs/epics.md`, `docs/arkitektur.md`, `docs/ux/dashbord.md` | ✅ |
+| E0-S08 | Halen rettet fra 24,3 % (absolutt) til 19,5 % (signert forsinket) i alle levende dokumenter | `docs/brief.md`, `docs/brief.no.md`, `docs/status.md`, `docs/addendum.md`, `docs/prd.md` | ✅ |
+| E0-S09 | Kursmateriale (`docs/kilder/`) fjernet fra repoet | `.gitignore` | ☐ |
+| E0-S10 | Beslutning 09: AIS-dekning ved kuttpunktene avklart før modellfasen, PRD oppdatert | `docs/beslutninger/09-…`, `docs/prd.md` | ☐ |
 
 ---
 
@@ -360,3 +363,4 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 - **2026-10-16** — Etter PRD-validering og beslutning 08 (E0-S07):
   - E2 er skrevet om til 10 stories. Det er nye stories for AIS-henting ved kuttpunkt (S02), tilstandsutdrag med lekkasjetest (S03) og valideringssplitt (S04). E2 var ikke startet, så nummereringen er lagt om nå, før merge.
   - E1-S05/S06/S09/S10/S11/S12 og E3-S04/S05/S06 er tilpasset PRD-oppdateringen.
+- **2026-10-22** — E0-S08–S10 lagt til som oppfølging etter merge av PR #2: halen rettet til 19,5 %, kursmateriale ut av repoet, og AIS-dekning ved kuttpunktene avklares (beslutning 09) før E2-S02.
