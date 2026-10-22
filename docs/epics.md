@@ -40,6 +40,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | E0-S08 | Halen rettet fra 24,3 % (absolutt) til 19,5 % (signert forsinket) i alle levende dokumenter | `docs/brief.md`, `docs/brief.no.md`, `docs/status.md`, `docs/addendum.md`, `docs/prd.md` | ✅ |
 | E0-S09 | Kursmateriale (`docs/kilder/`) fjernet fra arbeidstreet; beslutning 10 om hvorfor historikken ikke skrives om | `.gitignore`, `docs/beslutninger/10-…` | ✅ |
 | E0-S10 | Beslutning 09: AIS-dekning ved kuttpunktene avklart før modellfasen, PRD oppdatert | `docs/beslutninger/09-…`, `pipeline/sjekk_ais_dekning_kutt.py`, `docs/prd.md` | ✅ |
+| E0-S11 | Promptlogg 22.10 med vurdering av BMAD-dev-flyten (beholdes for ikke-trivielle stories) | `docs/prompts/2026-10-22.md` | ✅ |
 
 ---
 
