@@ -68,7 +68,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 **Test:** `tests/test_lag_utdrag.py`, som kjører skriptet på `tests/fixtures/` og sjekker kolonner, splitt og offset.
 
-### E1-S03 — Datalag ☐
+### E1-S03 — Datalag ✅
 **Krav:** FR2, FR5 · **Avhenger av:** E1-S02
 - `last_utdrag()` gir `Anlop`-objekter med tz-aware UTC-tider. Tider uten suffiks tolkes som UTC.
 - `anlop_i_vindu(naa, timer=24, vis="alle"|"passasjer"|"ovrige")` gir anløp med rapportert ETA i [naa, naa + 24 t).

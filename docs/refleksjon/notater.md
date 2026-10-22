@@ -36,3 +36,12 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Hva:** Risikopunktet i `brief.md` og `brief.no.md` sa at hullet i AIS-dataene ga en skjevhet «mot norskflagget trafikk». Det er motsatt: utenlandskflaggede skip mangler, så de er underrepresentert. Teksten har stått slik siden september.
 - **Hvordan det ble oppdaget:** Da beslutning 07 ble skrevet om, ble det målt at 83 % av «empty»-seilasene er utenlandske, mot 33 % av dem med fasit.
 - **Rettet i:** `bc97e76` (E0-S13).
+
+## 2026-10-22 — Feil forventning i en review-rettelse (E1-S03)
+
+- **Hva:** I review av E1-S03 fant Verification Gap-revieweren at `timer` aldri var testet med en annen verdi enn 24. Både revieweren og Claude (orkestratoren) skrev forventningen for `timer=6` som «12:00 inne, 14:00 ute» og begrunnet det med «12:00 < 06:00 + 6 t». Det er feil: vinduet er halvåpent, [06:00, 12:00), så 12:00 er *ute*.
+- **Hvordan det ble oppdaget:** Implementasjons-subagenten skrev testen slik den var bedt om. Testen feilet mot koden. I stedet for å endre koden til å passe forventningen, sjekket den mot specen (halvåpent vindu), sa ifra og foreslo `timer=7` som alternativ.
+- **Resultat:** Testen sjekker nå begge deler. `timer=6` gir `[1003, 1004]` (12:00 er ute), og `timer=7` gir `[1003, 1004, 1005, 1006]`. Mutasjonssjekk med kontrollkjøring på uendret kode: grønn på originalen. Testene feiler når `timer` er hardkodet til 24 t, når sluttgrensen er lukket (`<=`), og når fasit avgjøres av ankomsttid i stedet for status. Se commiten `git log --oneline --grep E1-S03`.
+- **Lærdom (råt):**
+  - To «uavhengige» KI-er gjorde samme regnefeil på grensen, så det at to er enige, er ikke en verifikasjon.
+  - Det som fanget feilen, var at specen var tydelig på halvåpent vindu, og at en test som feiler ble behandlet som informasjon, ikke som noe som må gjøres grønt.
