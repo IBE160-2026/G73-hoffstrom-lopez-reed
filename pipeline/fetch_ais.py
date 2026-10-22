@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Fetch AIS positions per voyage from Kystdatahuset, with disk caching.
+"""**LÅST — bevart for sporbarhet, kjører ikke.** Datasettet ble låst 2026-09-28. API-et har
+siden flyttet og forskyver tidsvinduer (docs/beslutninger/09-…), så `main()` stopper med en
+forklaring. Koden under er slik den faktisk kjørte. Se README, «Pipelinen (låst)».
+
+Fetch AIS positions per voyage from Kystdatahuset, with disk caching.
 
 Endpoint: POST /api/ais/positions/for-mmsis-time
 Body: {"mmsiIds": [<mmsi>], "start": "<yyyyMMddHHmm>", "end": "<yyyyMMddHHmm>"}
@@ -65,7 +69,17 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timedelta
 
-API_URL = "https://kystdatahuset.no/ws/api/ais/positions/for-mmsis-time"
+API_URL = "https://kystdatahuset.no/ws/api/ais/positions/for-mmsis-time"  # gammel adresse, svarer nå 301 (beslutning 09)
+
+# Datasettet ble låst 2026-09-28 (beslutning 07, korrigert 2026-10-22). Skriptet er bevart for
+# sporbarhet, slik det faktisk kjørte, og stopper med denne meldingen i stedet for å hente.
+LAAST_MELDING = (
+    "fetch_ais.py er bevart for sporbarhet og kjører ikke. Datasettet ble låst 2026-09-28, og\n"
+    "46,6 % og alle tall nedstrøms bygger på det. Kystdatahuset har dessuten flyttet til\n"
+    "kystdatahuset.kystverket.no og forskyver tidsvinduer (beslutning 09), så en ny kjøring\n"
+    "ville gitt et annet datasett. Appen bruker det committede utdraget i data/.\n"
+    "Ny henting er videre arbeid: se docs/beslutninger/07-manglende-ais-utenlandske-skip.md."
+)
 WINDOW_BEFORE_FALLBACK_HOURS = 24
 WINDOW_AFTER_HOURS = 48
 ETD_SANITY_CAP_DAYS = 14
@@ -124,6 +138,7 @@ def fetch_positions(mmsi: int, start: str, end: str, retries: int = 2) -> list:
 
 
 def main() -> None:
+    sys.exit(LAAST_MELDING)  # se LAAST_MELDING øverst; resten er bevart urørt
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--voyages", required=True, help="CSV produced by fetch_voyages.py")
     parser.add_argument("--limit", type=int, default=None, help="Only process the first N voyages not already cached (for a pilot batch)")

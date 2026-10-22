@@ -8,10 +8,10 @@ Vi har hentet og prosessert et komplett datasett: **8 094 seilaser** som ankomme
 
 To ting datasettet gir oss:
 
-1. **Dekning: 87,1 %.** For 87,1 % av seilasene kan vi fastslå faktisk ankomsttidspunkt (`arrival_in_area` — første AIS-posisjon innenfor en ~15 km sone rundt havna). De resterende ~13 % mangler AIS-data helt, se "Hva er åpent".
+1. **Dekning: 87,1 %.** For 87,1 % av seilasene kan vi fastslå faktisk ankomsttidspunkt (`arrival_in_area` — første AIS-posisjon innenfor en ~15 km sone rundt havna). De resterende ~13 % mangler AIS-data i hentingen vår, se "Hva er åpent". 87,1 % er en kjent underestimering (beslutning 07).
 2. **Kalibrert baseline.** Skipets egen rapporterte ETA er ikke direkte sammenlignbar med ankomsttidspunktet vi utleder (de måler litt ulike ting — se `docs/beslutninger/04-kalibrert-baseline.md`). Justert for det treffer den rapporterte ETA-en, for **ikke-rutegående trafikk** (frakt, offshore, osv. — ikke ferger):
    - **46,6 %** av ankomstene innenfor ±30 minutter
-   - **24,3 %** av ankomstene bommer med over 2 timer, selv etter justering
+   - **19,5 %** av ankomstene kommer mer enn 2 timer senere enn justert ETA (signert forsinkelse, det `er_forsinket`-flagget måler)
 
    Det siste tallet er det viktigste: **det er den halen modellen skal angripe.** Rutegående trafikk (ferger) er nesten løst allerede — 79,6 % innenfor ±30 min uten noen modell i det hele tatt — og holdes derfor utenfor hovedresultatet som kontrollgruppe, ikke som del av målet.
 
@@ -29,7 +29,7 @@ Alle metodevalg er logget som egne beslutninger med kontekst, alternativer og be
 
 ## Hva er åpent
 
-- **De ~13 % uten AIS-data.** Rammer nesten bare utenlandskflaggede skip. To mulige forklaringer (tilgangsbegrensning vs. utdatert MMSI-registrering) — ingen er bekreftet, se beslutning 07. Ikke noe å fikse nå, bare vær klar over at ikke-rutegående trafikk systematisk er underrepresentert i datasettet av en grunn vi ikke fullt forstår.
+- **De ~13 % uten AIS-data.** 83 % av de 935 tomme seilasene er utenlandskflaggede. Forklaringen med tilgangsbegrensning eller utdatert MMSI er motbevist (22.10.2026): 7 av 10 i en stikkprøve gir data i dag. Hvorfor den opprinnelige hentingen fikk tomme svar, vet vi ikke. Vi henter ikke på nytt, fordi datasettet er låst (beslutning 07). Vær klar over at utenlandskflagget, ikke-rutegående trafikk er underrepresentert i evalueringen.
 - **Skjevhet i kalibreringen.** Offset-tallet (44,8 min rutegående / 64,2 min ikke-rutegående) er beregnet på et utvalg som overrepresenterer større, mer rutepregede skip — det er de typene der vi klarer å utlede kaitidspunkt i tillegg til soneinngang. Dokumentert, ikke korrigert.
 - **Vintervridd testsett.** Splitten som brukes til evaluering er kronologisk (riktig valg for å unngå lekkasje), men det betyr testperioden er sep. 2025–mars 2026 — i hovedsak vinterhalvår. Ikke trekk konklusjoner om sommertrafikk fra disse tallene.
 
@@ -40,11 +40,13 @@ Modellarbeidet starter. To ting bør være avklart i gruppa *før* det:
 1. **Featureliste.** Hva skal modellen faktisk trene på utover historisk avvik (værdata? sesong? skipstype/-lengde? tid på døgnet?). Ikke bestemt ennå.
 2. **Arbeidsdeling.** Det ligger et forslag i [`docs/plan.md`](plan.md) — det er kun et forslag, juster det dere tre imellom.
 
-Målet modellen skal slå står i `docs/brief.md` under Success Criteria: 46,6 % innenfor ±30 min og bedre presisjon/recall på 24,3%-halen, målt på ikke-rutegående trafikk.
+Målet modellen skal slå står i `docs/brief.md` under Success Criteria: 46,6 % innenfor ±30 min og bedre presisjon/recall på 19,5 %-halen (forsinket over 2 t), målt på ikke-rutegående trafikk.
 
 ## Kjøre pipelinen fra bunn (hvis cachen mistes)
 
-`pipeline/data/` er gitignored — hele datasettet må regenereres om noen sletter det lokalt. Kun Python standardbibliotek trengs, ingen `pip install`. Full forklaring i [`README.md`](../README.md), kort versjon:
+**Oppdatert 22.10.2026:** hentestegene kjører ikke lenger. Datasettet er låst, og API-et har flyttet (beslutning 07 og 09, README «Pipelinen (låst)»). Appen bruker det committede utdraget i `data/`. Teksten under beskriver hvordan det opprinnelig ble gjort.
+
+`pipeline/data/` er gitignored — hele datasettet måtte regenereres om noen slettet det lokalt. Kun Python standardbibliotek trengs, ingen `pip install`. Full forklaring i [`README.md`](../README.md), kort versjon:
 
 ```
 python3 pipeline/fetch_voyages.py --from-date 2024-01-01 --to-date 2026-03-15
