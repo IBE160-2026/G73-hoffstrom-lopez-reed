@@ -44,7 +44,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 **Mål:** en app sensor kan kjøre og vurdere selv om ingenting annet blir ferdig. **Ferdig når:** klone-testen i E1-S16 er under 20 min og UU-sjekklista er utfylt.
 
-### E1-S01 — Prosjektskjelett ☐
+### E1-S01 — Prosjektskjelett ✅
 **Krav:** NFR1, NFR2, A1 · **Avhenger av:** —
 - `app/__init__.py` med `create_app()`. `flask --app app run` svarer 200 på `/`.
 - `requirements.txt` (flask, tzdata, pytest), `.env.example` som i arkitektur §7, og `tests/conftest.py` med app-fixture.
