@@ -43,6 +43,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | E0-S11 | Promptlogg 22.10 med vurdering av BMAD-dev-flyten (beholdes for ikke-trivielle stories) | `docs/prompts/2026-10-22.md` | ✅ |
 | E0-S12 | Tidsstempelfilteret for AIS-svar trukket ut som funksjon, med test som er vist å feile når filteret fjernes eller svekkes | `pipeline/sjekk_ais_dekning_kutt.py`, `tests/test_ais_filter.py` | ✅ |
 | E0-S13 | Beslutning 07 korrigert (flagg/MMSI motbevist, ingen ny henting, 87,1 % som kjent underestimering), brief/status/addendum/PRD/UX fulgt opp | `docs/beslutninger/07-…`, `docs/prd.md` | ✅ |
+| E0-S14 | Hentestegene i pipelinen merket som låst: `main()` stopper med forklaring, README og status oppdatert | `pipeline/fetch_ais.py`, `pipeline/fetch_voyages.py`, `README.md` | ✅ |
 
 ---
 

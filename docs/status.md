@@ -44,7 +44,9 @@ Målet modellen skal slå står i `docs/brief.md` under Success Criteria: 46,6 %
 
 ## Kjøre pipelinen fra bunn (hvis cachen mistes)
 
-`pipeline/data/` er gitignored — hele datasettet må regenereres om noen sletter det lokalt. Kun Python standardbibliotek trengs, ingen `pip install`. Full forklaring i [`README.md`](../README.md), kort versjon:
+**Oppdatert 22.10.2026:** hentestegene kjører ikke lenger. Datasettet er låst, og API-et har flyttet (beslutning 07 og 09, README «Pipelinen (låst)»). Appen bruker det committede utdraget i `data/`. Teksten under beskriver hvordan det opprinnelig ble gjort.
+
+`pipeline/data/` er gitignored — hele datasettet måtte regenereres om noen slettet det lokalt. Kun Python standardbibliotek trengs, ingen `pip install`. Full forklaring i [`README.md`](../README.md), kort versjon:
 
 ```
 python3 pipeline/fetch_voyages.py --from-date 2024-01-01 --to-date 2026-03-15
