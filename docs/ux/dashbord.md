@@ -95,7 +95,8 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 │ SIEM PEARL     Slep       ons 16:30   ons 15:25   ons 22:02  ▲ +6 t 36 min     –    │
 │                                                              FORSINKET              │
 │ G O SARS       Auxiliary  ons 16:00   ons 14:55   ons 10:39  −4 t 16 min       –    │
-│ (rad uten AIS) Tank       …           …           Fasit mangler (ingen AIS-data)   │
+│ (rad uten AIS) Tank       …           …           Fasit mangler (ingen AIS-data    │
+│                                                   hentet)                          │
 │ (avkortet)     Last       …           …           Fasit mangler (avkortet av neste │
 │                                                   seilas, trolig stort avvik)      │
 ```
@@ -200,7 +201,7 @@ Ugyldig tidspunkt:                         Tomt vindu:
 | Ingen `naa` i URL | Standard: 08.10.2025 08:00 |
 | `naa` utenfor testperioden eller ugyldig | Skjemaet med feilmelding over (UU5). Lista viser standardtidspunktet, ikke ingenting. |
 | 0 anløp i vinduet | Boksen over |
-| Anløp uten fasit | Årsaken står i fasitkolonnene: `empty` → «Fasit mangler (ingen AIS-data)», `not_detected` → «… (ankomst ikke funnet i AIS-sporet)», `avkortet_av_neste_seilas` → «… (avkortet av neste seilas, trolig stort avvik)» |
+| Anløp uten fasit | Årsaken står i fasitkolonnene: `empty` → «Fasit mangler (ingen AIS-data hentet)», `not_detected` → «… (ankomst ikke funnet i AIS-sporet)», `avkortet_av_neste_seilas` → «… (avkortet av neste seilas, trolig stort avvik)» |
 | [E2] Ingen AIS-tilstand ved kuttpunktet | Raden viser baselinens prediksjon, og varselkolonnen viser «– (ingen AIS-tilstand)» |
 | [E2] Modellartefakt mangler | Faller tilbake til baseline, og prediktor-stripa sier «Modell ikke funnet — viser kalibrert baseline» |
 | [E3] Ekte modus feiler (nett/nøkkel) | Viser testmodus-tekst med merket «Testmodus (ekte kall feilet)» |
@@ -250,3 +251,4 @@ Fokusring: 3 px `--aksent` med 2 px avstand, aldri `outline: none` uten erstatni
   - Det er tre tekster for manglende fasit.
   - Panelet har fått naiv Passasjer og dekning.
   - «Tre av fire» er rettet til «alle tre».
+- **2026-10-22** — Teksten for `empty` er endret til «ingen AIS-data hentet» etter at beslutning 07 ble korrigert. Dataene finnes i Kystdatahuset, men ble ikke hentet.

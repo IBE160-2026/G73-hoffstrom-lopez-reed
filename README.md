@@ -24,14 +24,19 @@ Full produktbrief ligger i [`docs/brief.md`](docs/brief.md) (norsk versjon: [`do
   - Begge er åpne, uten innlogging — verifisert direkte mot det kjørende APIet i dette prosjektet.
 - **BarentsWatch Live AIS** — dokumentert reserveløsning hvis Kystdatahuset-arkivet viser seg utilstrekkelig. Se reserveplanen i [`docs/addendum.md`](docs/addendum.md).
 
-## Kjøre pipelinen
+## Pipelinen (låst)
 
-Alle skript er i `pipeline/` og bruker kun Python standardbibliotek — ingen `pip install` nødvendig.
+**Datasettet ble låst 28.09.2026, og hentestegene kjører ikke lenger.** Brief, PRD, beslutninger og tallet 46,6 % bygger på akkurat det datasettet. Appen bruker det committede utdraget i `data/`, ikke `pipeline/data/`, så sensor trenger verken nett eller pipelinen.
+
+- **Steg 1 og 2 (`fetch_voyages.py`, `fetch_ais.py`) er bevart for sporbarhet.** Koden er slik den faktisk kjørte, men `main()` stopper med en forklaring. Kystdatahuset har flyttet til `kystdatahuset.kystverket.no`, og AIS-endepunktet forskyver tidsvinduer (beslutning 09). En ny kjøring ville dessuten gitt et annet datasett. Ny henting er videre arbeid (beslutning 07).
+- **Steg 3 (`derive_arrivals.py`) virker fortsatt** for den som har den lokale AIS-cachen.
+
+Alle skript bruker kun Python standardbibliotek. Beskrivelsen under viser hvordan datasettet ble laget.
 
 **1. Hent seilaser som ankommer Bergen (NOBGO)**
 
 ```
-python3 pipeline/fetch_voyages.py --from-date 2024-01-01 --to-date 2026-03-15
+python3 pipeline/fetch_voyages.py --from-date 2024-01-01 --to-date 2026-03-15   # låst: stopper med forklaring
 ```
 
 Henter måned for måned (holder minnebruket nede over et flerårig spenn) og skriver én CSV med alle unike Bergen-ankomster i perioden til `pipeline/data/voyages_bergen_<from>_<to>.csv`.
@@ -39,7 +44,7 @@ Henter måned for måned (holder minnebruket nede over et flerårig spenn) og sk
 **2. Hent AIS-posisjoner per seilas**
 
 ```
-python3 pipeline/fetch_ais.py --voyages pipeline/data/voyages_bergen_2024-01-01_2026-03-15.csv
+python3 pipeline/fetch_ais.py --voyages pipeline/data/voyages_bergen_2024-01-01_2026-03-15.csv   # låst: stopper med forklaring
 ```
 
 Hvert fartøys posisjoner hentes i et vindu rundt egen ETA (fra seilasens etd, eller ETA−24t som reserve, til ETA+48t — trimmet av neste seilas' ETD for samme MMSI der det finnes). Ett resultat cachet per seilas i `pipeline/data/ais_cache/{voyageid}.json`, så et nytt kjør aldri henter en allerede cachet seilas på nytt. Dekning logges fortløpende til `pipeline/data/ais_coverage.csv`. Bruk `--limit N` for å kun kjøre en pilotbatch.
@@ -56,4 +61,4 @@ Leser de cachede AIS-sporene og utleder to etiketter per seilas: `arrival_in_are
 
 ## Hvor data havner
 
-Alt hentet og utledet data havner i `pipeline/data/` — **gitignored**, aldri committet. Mappen er fullt ut regenererbar ved å kjøre de tre stegene over på nytt, og kan bli flere gigabyte ved full historikk. Ikke forsøk å legge den til i git.
+Alt hentet og utledet data havner i `pipeline/data/` — **gitignored**, aldri committet. Den kan **ikke** lenger regenereres fra API-et (se «Pipelinen (låst)»). Mistes den, mister man bare muligheten til å kjøre `derive_arrivals.py` på nytt. Appen og testene trenger den ikke. Den kan bli flere gigabyte ved full historikk. Ikke forsøk å legge den til i git.

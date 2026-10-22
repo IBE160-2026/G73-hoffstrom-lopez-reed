@@ -62,3 +62,6 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Kursmateriale: ligger lokalt, ikke i repoet (E0-S09)
+docs/kilder/

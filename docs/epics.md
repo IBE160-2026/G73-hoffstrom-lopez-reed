@@ -26,7 +26,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 ---
 
-## E0 — Planlegging (fase 2, 16.–23. okt) · branch `epic/e0-planlegging`
+## E0 — Planlegging (fase 2, 16.–23. okt) · branch `epic/e0-planlegging` (merget i PR #2), oppfølging på `epic/e0-oppfolging`
 
 | ID | Story | Leveranse | Status |
 |---|---|---|---|
@@ -37,6 +37,14 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | E0-S05 | Plan, arbeidsflyt og promptlogg oppdatert | `docs/plan.md`, `docs/prompts/` | ✅ |
 | E0-S06 | BMAD-validering av PRD, og PRD oppdatert med funnene | `_bmad-output/planning-artifacts/prds/…/validation-report.md`, `docs/prd.md` | ✅ |
 | E0-S07 | Beslutning 08 (horisont ved rapportert ETA − H) og nedstrøms dokumenter oppdatert | `docs/beslutninger/08-…`, `docs/epics.md`, `docs/arkitektur.md`, `docs/ux/dashbord.md` | ✅ |
+| E0-S08 | Halen rettet fra 24,3 % (absolutt) til 19,5 % (signert forsinket) i alle levende dokumenter | `docs/brief.md`, `docs/brief.no.md`, `docs/status.md`, `docs/addendum.md`, `docs/prd.md` | ✅ |
+| E0-S09 | Kursmateriale (`docs/kilder/`) fjernet fra arbeidstreet; beslutning 10 om hvorfor historikken ikke skrives om | `.gitignore`, `docs/beslutninger/10-…` | ✅ |
+| E0-S10 | Beslutning 09: AIS-dekning ved kuttpunktene avklart før modellfasen, PRD oppdatert | `docs/beslutninger/09-…`, `pipeline/sjekk_ais_dekning_kutt.py`, `docs/prd.md` | ✅ |
+| E0-S11 | Promptlogg 22.10 med vurdering av BMAD-dev-flyten (beholdes for ikke-trivielle stories) | `docs/prompts/2026-10-22.md` | ✅ |
+| E0-S12 | Tidsstempelfilteret for AIS-svar trukket ut som funksjon, med test som er vist å feile når filteret fjernes eller svekkes | `pipeline/sjekk_ais_dekning_kutt.py`, `tests/test_ais_filter.py` | ✅ |
+| E0-S13 | Beslutning 07 korrigert (flagg/MMSI motbevist, ingen ny henting, 87,1 % som kjent underestimering), brief/status/addendum/PRD/UX fulgt opp | `docs/beslutninger/07-…`, `docs/prd.md` | ✅ |
+| E0-S14 | Hentestegene i pipelinen merket som låst: `main()` stopper med forklaring, README og status oppdatert | `pipeline/fetch_ais.py`, `pipeline/fetch_voyages.py`, `README.md` | ✅ |
+| E0-S15 | Refleksjonsnotater opprettet: KI-feil fanget logges samme dag (første oppføringer 22.10) | `docs/refleksjon/notater.md` | ✅ |
 
 ---
 
@@ -192,16 +200,17 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 ### E2-S02 — Målrettet AIS-henting ved kuttpunktene ☐
 **Krav:** FR9a · **Avhenger av:** E2-S01
-- `pipeline/fetch_ais_kutt.py` henter AIS for [`t_H` − 3 t, `t_H`] per anløp og H ∈ {6, 24}, med samme caching og pausing som `fetch_ais.py`.
+- `pipeline/fetch_ais_kutt.py` henter AIS for [`t_H` − 24 t, `t_H`] per anløp og H ∈ {6, 24}, med samme caching og pausing som `fetch_ais.py` (beslutning 09).
+- Ny API-adresse (`kystdatahuset.kystverket.no`). Det bes om et vindu med minst én dags margin på hver side, og posisjonene filtreres på tidsstemplet i svaret, siden API-et forskyver vinduet +1/+2 t og kan kutte ved midnatt (beslutning 09, funn B–C).
 - Vinduet regnes bare fra rapportert ETA. Skriptet leser ikke `arrival_in_area`.
 - Dekning per horisont, gruppe og splitt logges i `pipeline/data/ais_kutt_dekning.csv`.
 
-**Test:** `tests/test_fetch_ais_kutt.py::test_vindu_fra_rapportert_eta` (vinduet endres ikke når faktisk ankomst endres) og en loggført dekningstabell.
+**Test:** `tests/test_fetch_ais_kutt.py::test_vindu_fra_rapportert_eta` (vinduet endres ikke når faktisk ankomst endres), `::test_filtrerer_bort_punkter_etter_kutt` (et svar med punkter etter `t_H` gir ingen slike i cachen) og en loggført dekningstabell.
 
 ### E2-S03 — Tilstandsutdrag og lekkasjetest ☐
 **Krav:** FR9a, NFR1 · **Avhenger av:** E2-S02
 - `scripts/lag_tilstand.py` skriver `data/utdrag/tilstand_ved_kutt.csv`: én rad per anløp og H, med posisjon, gjenstående distanse, fart, kurs, alder på posisjon og flagget `allerede_ankommet`. Fila committes, og kildens sjekksum legges i `data/baseline.json`.
-- Mangler posisjon i [`t_H` − 3 t, `t_H`], blir feltene tomme, og raden beholdes.
+- Mangler posisjon i [`t_H` − 24 t, `t_H`], blir feltene tomme, og raden beholdes.
 
 **Test:** `tests/test_tilstand.py::test_ingen_lekkasje` (punkter etter `t_H` fjernet eller flyttet, faktisk ankomst endret → identisk rad) og `::test_mangler_posisjon`
 
@@ -360,3 +369,5 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 - **2026-10-16** — Etter PRD-validering og beslutning 08 (E0-S07):
   - E2 er skrevet om til 10 stories. Det er nye stories for AIS-henting ved kuttpunkt (S02), tilstandsutdrag med lekkasjetest (S03) og valideringssplitt (S04). E2 var ikke startet, så nummereringen er lagt om nå, før merge.
   - E1-S05/S06/S09/S10/S11/S12 og E3-S04/S05/S06 er tilpasset PRD-oppdateringen.
+- **2026-10-22** — E0-S08–S10 lagt til som oppfølging etter merge av PR #2: halen rettet til 19,5 %, kursmateriale ut av repoet, og AIS-dekning ved kuttpunktene avklares (beslutning 09) før E2-S02.
+- **2026-10-22** — E0-S10, beslutning 09: E2-S02 og E2-S03 bruker 24 t tilbakeblikk og filtrerer på tidsstemplet i svaret. Ny test i E2-S02 for at ingen punkter etter `t_H` slipper gjennom.

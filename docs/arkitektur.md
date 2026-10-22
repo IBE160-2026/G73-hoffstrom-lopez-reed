@@ -99,7 +99,7 @@ def velg_prediktor() -> Prediktor:
 }
 ```
 
-**`data/utdrag/tilstand_ved_kutt.csv`** (E2-S03) — én rad per anløp og horisont, regnet med `scripts/lag_tilstand.py` fra AIS hentet av `pipeline/fetch_ais_kutt.py` (vindu [`t_H` − 3 t, `t_H`], beslutning 08):
+**`data/utdrag/tilstand_ved_kutt.csv`** (E2-S03) — én rad per anløp og horisont, regnet med `scripts/lag_tilstand.py` fra AIS hentet av `pipeline/fetch_ais_kutt.py` (vindu [`t_H` − 24 t, `t_H`], filtrert på tidsstemplet i svaret, beslutning 09; beslutning 08):
 
 `voyageid, horisont_timer, t_kutt_utc, lat, lon, distanse_km, fart_knop, kurs_grader, posisjon_alder_min, allerede_ankommet`
 
@@ -180,3 +180,4 @@ LLM_MODELL=claude-haiku-5-5
   - Nye filer: `tilstand_ved_kutt.csv` og `fetch_ais_kutt.py`.
   - Det står nå eksplisitt at fasiten regnes utenfor prediktoren.
   - Valideringsdel er lagt til, og teststrategien har fått en egen rad for lekkasje.
+- **2026-10-22** — Etter beslutning 09: tilstandsvinduet er 24 t, og posisjoner filtreres på tidsstemplet i svaret.
