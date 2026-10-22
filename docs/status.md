@@ -8,7 +8,7 @@ Vi har hentet og prosessert et komplett datasett: **8 094 seilaser** som ankomme
 
 To ting datasettet gir oss:
 
-1. **Dekning: 87,1 %.** For 87,1 % av seilasene kan vi fastslå faktisk ankomsttidspunkt (`arrival_in_area` — første AIS-posisjon innenfor en ~15 km sone rundt havna). De resterende ~13 % mangler AIS-data helt, se "Hva er åpent".
+1. **Dekning: 87,1 %.** For 87,1 % av seilasene kan vi fastslå faktisk ankomsttidspunkt (`arrival_in_area` — første AIS-posisjon innenfor en ~15 km sone rundt havna). De resterende ~13 % mangler AIS-data i hentingen vår, se "Hva er åpent". 87,1 % er en kjent underestimering (beslutning 07).
 2. **Kalibrert baseline.** Skipets egen rapporterte ETA er ikke direkte sammenlignbar med ankomsttidspunktet vi utleder (de måler litt ulike ting — se `docs/beslutninger/04-kalibrert-baseline.md`). Justert for det treffer den rapporterte ETA-en, for **ikke-rutegående trafikk** (frakt, offshore, osv. — ikke ferger):
    - **46,6 %** av ankomstene innenfor ±30 minutter
    - **19,5 %** av ankomstene kommer mer enn 2 timer senere enn justert ETA (signert forsinkelse, det `er_forsinket`-flagget måler)
@@ -29,7 +29,7 @@ Alle metodevalg er logget som egne beslutninger med kontekst, alternativer og be
 
 ## Hva er åpent
 
-- **De ~13 % uten AIS-data.** Rammer nesten bare utenlandskflaggede skip. To mulige forklaringer (tilgangsbegrensning vs. utdatert MMSI-registrering) — ingen er bekreftet, se beslutning 07. Ikke noe å fikse nå, bare vær klar over at ikke-rutegående trafikk systematisk er underrepresentert i datasettet av en grunn vi ikke fullt forstår.
+- **De ~13 % uten AIS-data.** 83 % av de 935 tomme seilasene er utenlandskflaggede. Forklaringen med tilgangsbegrensning eller utdatert MMSI er motbevist (22.10.2026): 7 av 10 i en stikkprøve gir data i dag. Hvorfor den opprinnelige hentingen fikk tomme svar, vet vi ikke. Vi henter ikke på nytt, fordi datasettet er låst (beslutning 07). Vær klar over at utenlandskflagget, ikke-rutegående trafikk er underrepresentert i evalueringen.
 - **Skjevhet i kalibreringen.** Offset-tallet (44,8 min rutegående / 64,2 min ikke-rutegående) er beregnet på et utvalg som overrepresenterer større, mer rutepregede skip — det er de typene der vi klarer å utlede kaitidspunkt i tillegg til soneinngang. Dokumentert, ikke korrigert.
 - **Vintervridd testsett.** Splitten som brukes til evaluering er kronologisk (riktig valg for å unngå lekkasje), men det betyr testperioden er sep. 2025–mars 2026 — i hovedsak vinterhalvår. Ikke trekk konklusjoner om sommertrafikk fra disse tallene.
 

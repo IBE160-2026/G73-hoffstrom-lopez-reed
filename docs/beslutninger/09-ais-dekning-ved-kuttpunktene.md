@@ -42,11 +42,11 @@ Alt er gjort med `pipeline/sjekk_ais_dekning_kutt.py`, som er reproduserbart med
 
 7 av 10 tilfeldige `empty`-seilaser fra testperioden, altså seilaser som ga null posisjoner i den opprinnelige hentingen, har i dag posisjoner i sitt opprinnelige hentevindu. Alle 7 har punkter innenfor 15 km fra Bergen. Beslutning 07 foreslo tilgangsbegrensning eller utdatert MMSI som forklaring, men det stemmer ikke for disse. Noe ved den opprinnelige hentingen ga tomme svar. Vi vet ikke hva, men funn B eller midlertidige tomme svar fra API-et er kandidater.
 
-Vi henter **ikke** disse på nytt nå. Det ville endret det låste datasettet, regresjonstallene i FR8 og utdraget fra E1-S02. Om det skal gjøres, er et gruppevalg, og det står som åpent spørsmål i PRD §8. Opptil ~12 % av seilasene kan være mulig å berge.
+Gruppa har bestemt at vi **ikke** henter disse på nytt. Datasettet er låst, og 87,1 % føres som en kjent underestimering. Ny henting er videre arbeid. Begrunnelsen står i den korrigerte [beslutning 07](07-manglende-ais-utenlandske-skip.md).
 
 ## Konsekvens
 
 - PRD FR9a: tilbakeblikket er nå 24 t, og kravet om filtrering på tidsstemplet i svaret er lagt til.
 - Epics E2-S02 og E2-S03 og arkitektur §4 er oppdatert. E2-S02 bruker ny adresse, vindu med margin og filtrering, med test.
 - Beslutning 08 står. Bare vinduet i konsekvensavsnittet er erstattet av denne beslutningen.
-- Beslutning 07 bør revurderes når gruppa har tatt stilling til ny henting av `empty`.
+- Beslutning 07 er korrigert 22.10.2026: flagg- og MMSI-forklaringen holder ikke.

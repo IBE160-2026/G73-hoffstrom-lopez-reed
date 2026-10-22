@@ -1,25 +1,35 @@
-# De 16 % uten AIS som åpent spørsmål
+# Seilasene uten AIS skyldes hentingen, ikke flagg eller MMSI, og de hentes ikke på nytt
+
+**Korrigert 22.10.2026.** Første versjon av denne beslutningen (28.09.2026) forklarte de manglende AIS-dataene med at skipene var utenlandske. Den antok enten at den åpne API-tilgangen begrenser historikk for utenlandske fartøy, eller at registrert MMSI er utdatert. Den forklaringen holder ikke, se under. Den opprinnelige teksten finnes i git-historikken (`git log -p -- docs/beslutninger/07-manglende-ais-utenlandske-skip.md`).
 
 ## Kontekst
 
-En andel av seilasene i pilotutvalget ga null AIS-posisjoner i hele hentevinduet, til tross for korrekt MMSI og gyldig tidsvindu. Mønsteret var ikke tilfeldig: alle de berørte seilasene gjaldt utenlandskflaggede skip, mens ingen norskflaggede seilaser i utvalget manglet data.
+935 av 7 826 seilaser (11,9 %) ga null AIS-posisjoner i hentevinduet i fullbatch-hentingen (`status_in_area = empty`). De mangler derfor fasit. Det er hovedgrunnen til at dekningen er 87,1 % og ikke høyere.
+
+## Hva vi vet nå
+
+- **Skjevheten mot utenlandske skip er ekte.** Målt på MMSI-prefiks for hele datasettet er 83 % av `empty`-seilasene utenlandske, mot 33 % av seilasene med fasit. Første versjon hadde bare målt dette på pilotutvalget.
+- **Men dataene finnes, og de er tilgjengelige.** I stikkprøven fra beslutning 09 (`pipeline/sjekk_ais_dekning_kutt.py --oppfolging`, 22.10.2026) har 7 av 10 tilfeldige `empty`-seilaser fra testperioden posisjoner i sitt *opprinnelige* hentevindu i dag. Alle 7 har punkter innenfor 15 km fra Bergen, altså selve ankomsten. 5 av de 7 er utenlandske.
+  - **Tilgangsbegrensning er motbevist** for disse. Det er samme anonyme tilgang som før.
+  - **Utdatert MMSI er motbevist** for disse. Det er samme MMSI som før.
+  - De 3 som fortsatt er tomme, er alle utenlandske. For dem kan en MMSI-feil fortsatt være forklaringen.
+- **Hvorfor den opprinnelige hentingen ga tomme svar, vet vi ikke.** Kandidatene er at API-et ga midlertidig tomme svar under nattehentingen (som ble avbrutt og startet på nytt 27.–28.09), eller at arkivet er fylt på i ettertid. Ingen av dem er undersøkt. At utenlandske skip er overrepresentert, tyder på at kilden for deres posisjoner oppfører seg annerledes, men det er ikke bekreftet.
 
 ## Alternativer vurdert
 
-- **Hypotese A — tilgangsbegrensning:** den åpne/anonyme tilgangen til Kystdatahuset-APIet begrenser posisjonshistorikk for utenlandske fartøy.
-- **Hypotese B — MMSI-mismatch:** Kystdatahuset/SafeSeaNets registrerte MMSI for et utenlandsk skip kan være utdatert, slik at oppslaget feiler på nøkkelen, ikke på tilgangen.
-- **Test av hypotese B:** kryssoppslag via IMO-nummer (`/api/ship/combined/imo/{imo}`) for å se om AIS-registeret oppgir en annen MMSI enn den seilasdataene bruker.
+- **Hente `empty`-seilasene på nytt nå.** Stikkprøven tyder på at rundt to tredeler kan berges, altså opptil ~600 seilaser.
+- **Beholde det låste datasettet og føre dekningen som en kjent underestimering.** Valgt.
 
 ## Valg
 
-Dokumentere som et åpent, uavklart spørsmål. Ingen av hypotesene legges til grunn i videre arbeid.
+**Vi henter ikke på nytt.** Datasettet ble låst 28.09.2026, og dekningen på 87,1 % føres som en **kjent underestimering**: den reelle dekningen i Kystdatahuset er høyere. Ny henting av `empty`-seilasene er **videre arbeid**.
 
 ## Begrunnelse
 
-Den direkte testen (IMO-oppslag) er blokkert: endepunktet krever rollen `Kystdatahuset_ekstern_alle` i praksis, til tross for at APIets egen spesifikasjon ikke oppgir autentiseringskrav på det endepunktet. Et alternativt, åpent endepunkt (`ais_shipreg/statinfo`) ga samme tomme resultat for de testede MMSI-ene — det er antydende, men skiller ikke mellom hypotese A og B. Uten en innlogget rolle med tilstrekkelige rettigheter er det ikke mulig å avgjøre saken nå. Å likevel hevde én forklaring ville vært en påstand uten dekning.
+46,6 % og alle tall nedstrøms bygger på det låste datasettet: kalibreringen (beslutning 04), splitten, utdraget i `data/` (E1-S02), regresjonstestene (PRD FR8), brief, PRD, epics og beslutning 08–09. En ny henting midt i oktober ville ugyldiggjort hele den kjeden én uke før dashbordet skal stå på dem. Den ville også gitt et nytt datasett med en annen fordeling av skip (flere utenlandske og flere ikke-rutegående), som måtte kalibreres og dokumenteres på nytt. Et kjent, dokumentert hull er bedre enn et datasett i bevegelse.
 
 ## Konsekvens
 
-Dekningstallet for ikke-rutegående/utenlandsk trafikk vil være lavere enn det ellers ville vært, av en årsak vi ikke fullt ut forstår. Dette står som en dokumentert begrensning i briefens risikoseksjon. Dersom gruppen på et senere tidspunkt får tilgang til en konto med høyere rolle, er testen beskrevet over klar til å kjøres direkte.
-
-**Fullbatch-tall (n=7 826, låst 2026-09-28):** 935 seilaser (11,9 %) ga null AIS-posisjoner i hentevinduet. Flagg-fordelingen (norsk vs. utenlandsk) er ikke re-verifisert på fullbatchen — kun målt på pilotutvalget (n=100) — så mønsteret over er sannsynliggjort, ikke bekreftet i full skala.
+- **Dekningen på 87,1 % er en underestimering.** Det står der tallet brukes (brief, addendum, status). Hullet rammer mest utenlandske og ikke-rutegående skip. Det betyr at Øvrige er underrepresentert i evalueringen, og at baselinetallene er målt på et utvalg som heller mot norske, mer rutepregede skip.
+- **Ved ny henting senere må `fetch_ais.py` rettes først.** Det gjelder ny API-adresse og vindu som forskyves (beslutning 09, funn A–C). Resultatet skal behandles som et nytt datasett med egen låsing og egne tall, ikke som en stille oppdatering av det gamle.
+- **Beslutning 08 og 09:** AIS ved kuttpunktene (E2-S02) er en ny, separat henting av tilstanden før ankomst, ikke av fasiten. Den berøres ikke av dette valget. Skip som mangler fasit i dag, er fortsatt uten fasit og tas ikke med i evalueringen.

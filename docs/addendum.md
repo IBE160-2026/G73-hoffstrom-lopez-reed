@@ -43,7 +43,7 @@ Pipeline work is stopped here per the group's decision (2026-09-27: "vi starter 
 
 - **Period:** 2024-01-01 to 2026-03-15 (27 months), voyages arriving at Bergen (NOBGO) only.
 - **Voyages:** 8,094 total. AIS fetch attempted for all; **7,826 successfully cached**. The remaining 268 are permanent gaps confirmed by retry — specific date partitions missing from Kystdatahuset's own database (`relation ... does not exist`), not a transient or our-side issue. Note: the week-1 assumption that the archive only responds for Oct 2025–Mar 2026 (contingency plan, level 0 above) turned out to be overly pessimistic — data was retrievable across the full 27-month range, with these specific date exceptions.
-- **Coverage, arrival_in_area (PRIMARY label):** **87.1%** overall (n=7,826) — comfortably above the group's 70% threshold from the contingency plan; the BarentsWatch fallback was not needed.
+- **Coverage, arrival_in_area (PRIMARY label):** **87.1%** overall (n=7,826) — comfortably above the group's 70% threshold from the contingency plan; the BarentsWatch fallback was not needed. **A known underestimate** (decision 07, corrected 2026-10-22): most of the 935 voyages with no AIS do have data in Kystdatahuset today; the original fetch got empty answers. The dataset stays locked; re-fetching is future work.
   - Scheduled/liner (Passasjer proxy): 94.3%
   - Non-scheduled: 84.0%
 - **Coverage, arrival_at_quay (secondary label):** 64.0% overall (89.9% Passasjer / 52.9% Non-Passasjer) — lower as expected, since it needs a gap/stability pattern the AIS data doesn't always contain.

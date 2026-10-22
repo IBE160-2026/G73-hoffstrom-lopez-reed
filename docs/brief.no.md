@@ -74,7 +74,7 @@ Rapportert-ETA-baselinen selv skåres på samme måte, kalibrert per fartøystra
 ## Risiko
 
 - **AIS-dekning under fortøyning.** Rå AIS-data viste seg å ha reelle rapporteringshull nettopp når skip ligger stille ved kai — et sentralt funn i utviklingen av selve datagrunnlaget, ikke en teoretisk bekymring. Håndtert med en egen kontinuitetsplan (tillegget), men gjenstår som en systematisk begrensning i datagrunnlaget.
-- **Ukjent dekning for utenlandskflaggede skip.** En vesentlig andel anløp fra utenlandskflaggede fartøy mangler AIS-posisjonsdata i den åpne API-tilgangen. Årsaken er uavklart (tilgangsbegrensning vs. utdatert MMSI-registrering) — se tillegget. Utgjør en skjevhet i datagrunnlaget mot norskflagget trafikk inntil avklart.
+- **Manglende AIS for ~12 % av anløpene, mest utenlandskflaggede.** 935 seilaser ga ingen AIS-posisjoner i den opprinnelige hentingen, og 83 % av dem er utenlandskflaggede. Sjekket på nytt 22.10.2026: 7 av 10 i en stikkprøve gir data i sitt opprinnelige vindu i dag, med samme åpne tilgang og samme MMSI. Verken tilgangsbegrensning eller utdatert MMSI forklarer det, og hvorfor den opprinnelige hentingen fikk tomme svar, er ikke fastslått (beslutning 07). Datasettet forblir låst. Hullet gjør at utenlandskflagget, ikke-rutegående trafikk er underrepresentert i evalueringen, og ny henting er videre arbeid.
 - **Halefordelt avvik gjør enkle mål misvisende.** Se Suksesskriterier — MAE og gjennomsnitt kan gi et misvisende bilde av modellens faktiske nytteverdi for havnevakten.
 - **Kalibreringsskjevhet.** Baseline-kalibreringen (offset mellom sonepassering og faktisk kaitid) er estimert på et utvalg som systematisk overrepresenterer større, mer rutepregede fartøy, fordi det er de skipstypene der begge etikettene lettest lar seg utlede. Dokumentert, ikke korrigert.
 - **Stram tidsramme.** 11 uker til et fungerende produkt er en bevisst ambisiøs ramme for en tre-personers gruppe, gitt at prosjektet har tre tunge delkomponenter (datapipeline, prediksjonsmodell, generativt rapporteringslag). Se Scope for hva som er bevisst utsatt.
@@ -84,7 +84,7 @@ Rapportert-ETA-baselinen selv skåres på samme måte, kalibrert per fartøystra
 
 **INN — v1 (dette kurset, ~11 uker — stemmer med `docs/plan.md`s tidslinje 27. sep.–15. des.):**
 1. Historisk AIS-/seilasinnhenting fra Kystdatahuset — låst: 8 094 seilaser, Bergen Havn, jan. 2024–mars 2026 (se tillegget).
-2. Utledning av faktiske ankomsthendelser fra AIS-spor, med en logget dekningsmetrikk (87,1 % oppnådd).
+2. Utledning av faktiske ankomsthendelser fra AIS-spor, med en logget dekningsmetrikk (87,1 % oppnådd — en kjent underestimering, beslutning 07).
 3. En trent modell som predikerer ankomst 6t og 24t i forkant på det låste datasettet, målt mot rapportert ETA.
 4. Et nettbasert dashbord som spiller av en valgt dag eller periode fra det låste datasettet: predikerte ankomster, et kart, og en begrunnelse per forventet avvik, generert av et AI-oppsummeringslag.
 5. Åpen tilgang, ingen innlogging — kildedata er åpne (NLOD), ingen personopplysninger behandles, og v1 har én brukerrolle. Må demoen være tilgjengelig eksternt, står én delt HTTP Basic Auth foran (ikke brukerkontoer). Full begrunnelse i tillegget.

@@ -43,7 +43,7 @@ Kuttet lager også et reelt skille mellom horisontene: 24 t før er skipet ofte 
 
 Det trengs derfor en egen, målrettet AIS-henting rundt hvert kuttpunkt (story E2-S02). Den henter et lite vindu [`t_H` − 3 t, `t_H`] per seilas og horisont, så ingen posisjoner etter `t_H` noen gang lastes ned for dette formålet.
 
-**Noen seilaser vil fortsatt mangle posisjon ved `t_H`.** Typisk gjelder det skip utenfor norsk AIS-dekning 24 t før, og utenlandsflaggede skip (beslutning 07). De predikeres da med baselinen og merkes «ingen AIS-tilstand ved prediksjonstidspunktet». De fjernes ikke fra evalueringen. Modellen og baselinen evalueres på *nøyaktig samme* rader, og dekningen ved hvert kutt rapporteres som eget tall.
+**Noen seilaser vil fortsatt mangle posisjon ved `t_H`.** Beslutning 09 viste at det sjelden skyldes manglende rekkevidde. Det gjelder mest skip som ligger i ro med glisne AIS-punkter, og som mangler posisjon også med 24 t tilbakeblikk. De predikeres da med baselinen og merkes «ingen AIS-tilstand ved prediksjonstidspunktet». De fjernes ikke fra evalueringen. Modellen og baselinen evalueres på *nøyaktig samme* rader, og dekningen ved hvert kutt rapporteres som eget tall.
 
 **Antakelse som ikke kan verifiseres i dataene:** Kystdatahuset gir én ETA per seilas. Vi vet ikke om det er ETA-en slik den var meldt ved `t_H`, eller en senere oppdatert verdi. Er den oppdatert nærmere ankomst, får både modell og baseline litt mer informasjon enn vakta hadde ved `t_24`. Det er en kjent begrensning, ikke en lekkasje vi selv har laget. Den rapporteres i resultatnotatet (E2-S10).
 

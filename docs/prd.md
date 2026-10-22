@@ -70,7 +70,7 @@ ID-ene brukes i stories (`docs/epics.md`) og i tester.
 - **FR4 — Fasit.** En bryter («Vis faktisk ankomst») legger til faktisk ankomst, avvik og FORSINKET-merket (ordliste). Med en modell aktiv kommer også prediksjonsfeil. Bryteren er av som standard, slik vakta ville sett det.
   - Avvik og FORSINKET endrer seg ikke når prediktoren byttes. Det testes.
   - Anløp uten fasit viser årsaken, ikke blankt:
-    - `empty` → «Fasit mangler (ingen AIS-data)»
+    - `empty` → «Fasit mangler (ingen AIS-data hentet)»
     - `not_detected` → «Fasit mangler (ankomst ikke funnet i AIS-sporet)»
     - `avkortet_av_neste_seilas` → «Fasit mangler (avkortet av neste seilas, trolig stort avvik)» (beslutning 02)
 - **FR5 — Filter.** Vis alle, kun Øvrige eller kun Passasjer. Standard: alle.
@@ -148,7 +148,7 @@ Kriterienumrene viser til [`docs/vurderingskriterier.md`](vurderingskriterier.md
 
 ## 7. Utenfor v1, og avvik fra briefen
 
-Som i briefens Scope/OUT: live-data, flere havner, API for andre, innlogging og roller. I tillegg: redigering av data, eksport, varsler (e-post/push) og historikk over valgte «nå»-tidspunkt.
+Som i briefens Scope/OUT: live-data, flere havner, API for andre, innlogging og roller. Ny henting av seilasene uten AIS i det låste datasettet er også utenfor v1 (beslutning 07). I tillegg: redigering av data, eksport, varsler (e-post/push) og historikk over valgte «nå»-tidspunkt.
 
 **Bevisste avvik fra briefen** (briefen oppdateres så kjeden stemmer, se §8):
 
@@ -166,10 +166,9 @@ Som i briefens Scope/OUT: live-data, flere havner, API for andre, innlogging og 
 | Er rapportert ETA verdien slik den var ved `t_24`, eller en senere oppdatering? Sjekk Kystdatahuset-dokumentasjonen og rådata (A1 i §9). | E2-S01 | Theodor |
 | Bekreft suksesskriteriet for varsel (F1 mot «varsle alle», A2 i §9) før første modell trenes | E2-S01 | Felipe |
 | Før opp avvikene i §7 i brief.md og brief.no.md. (Halen er rettet til 19,5 % signert 22.10.2026, E0-S08.) | før fase 3 | Theodor |
-| Skal `empty`-seilasene (935, 11,9 %) hentes på nytt? 7 av 10 i en stikkprøve har data i dag (beslutning 09). Det endrer det låste datasettet og tallene i FR8. | før E2-S02 | gruppa |
 | Hvilken språkmodell-leverandør skal brukes i ekte modus? Arkitekturen antar Anthropic, men adapteren gjør byttet billig. | E3-S03 | Thomas |
 
-**Lukket:** *Hva skiller 6 t fra 24 t?* Kuttpunktet ved rapportert ETA − H (FR9a, beslutning 08, 16.10.2026). *Er skipene utenfor AIS-rekkevidde 24 t før, så 24 t-horisonten må droppes?* Nei. ≈ 93 % har posisjon med 24 t tilbakeblikk, og de fleste ligger i en norsk havn (beslutning 09, 22.10.2026).
+**Lukket:** *Hva skiller 6 t fra 24 t?* Kuttpunktet ved rapportert ETA − H (FR9a, beslutning 08, 16.10.2026). *Er skipene utenfor AIS-rekkevidde 24 t før, så 24 t-horisonten må droppes?* Nei. ≈ 93 % har posisjon med 24 t tilbakeblikk, og de fleste ligger i en norsk havn (beslutning 09, 22.10.2026). *Skal `empty`-seilasene hentes på nytt?* Nei. Datasettet er låst, og 46,6 % og alle tall nedstrøms bygger på det. 87,1 % dekning føres som en kjent underestimering, og ny henting er videre arbeid (beslutning 07, korrigert 22.10.2026).
 
 ## 9. Antakelser
 
@@ -192,3 +191,4 @@ Som i briefens Scope/OUT: live-data, flere havner, API for andre, innlogging og 
   - Nye seksjoner: ordliste (§3), avvik fra briefen (§7) og antakelser (§9).
 - **2026-10-22** — E0-S08: halen er 19,5 % (signert forsinket, `er_forsinket`) i alle levende dokumenter. Det absolutte tallet er fjernet fra FR10, og det åpne spørsmålet i §8 er snevret inn til avvikene i §7.
 - **2026-10-22** — E0-S10, beslutning 09: 24 t-horisonten beholdes. FR9a har fått tilbakeblikk på 24 t og krav om at posisjoner filtreres på tidsstemplet i svaret, siden API-et forskyver og kutter vinduer. Nytt åpent spørsmål om ny henting av `empty`-seilasene.
+- **2026-10-22** — E0-S13, beslutning 07 korrigert: gruppespørsmålet om ny henting er besvart med nei, og ny henting er ført under §7. Teksten for `empty` i FR4 er endret til «ingen AIS-data hentet», siden dataene finnes i Kystdatahuset.
