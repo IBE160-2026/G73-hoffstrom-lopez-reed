@@ -56,11 +56,21 @@ def km(lat1, lon1, lat2, lon2):
     return 2 * r * math.asin(math.sqrt(a))
 
 
+def filtrer_til_vindu(svar, fra, til):
+    """Behold bare posisjoner med tidsstempel i [fra, til] (UTC, naive).
+
+    Kystdatahuset returnerer et vindu forskjøvet +1/+2 t i forhold til forespørselen
+    (beslutning 09, funn B), så svaret kan inneholde punkter etter kuttpunktet. Dette
+    filteret er det eneste som hindrer at de brukes (PRD FR9a).
+    """
+    return [p for p in svar if fra <= datetime.fromisoformat(p[1]) <= til]
+
+
 def hent_filtrert(mmsi, fra, til):
     """[fra, til] i UTC, korrigert for forskyvningen: be om 2 t ekstra før, filtrer selv."""
     svar = fetch_positions(mmsi, to_kdh_time(fra - timedelta(hours=2)), to_kdh_time(til))
     time.sleep(PAUSE_SEK)
-    return [p for p in svar if fra <= datetime.fromisoformat(p[1]) <= til]
+    return filtrer_til_vindu(svar, fra, til)
 
 
 def oppfolging():
@@ -122,7 +132,7 @@ def main():
                 svar = fetch_positions(int(r["mmsino"]), to_kdh_time(kutt - timedelta(hours=VINDU_TIMER + 2)),
                                        to_kdh_time(kutt))
                 fra = kutt - timedelta(hours=VINDU_TIMER)
-                pos = [p for p in svar if fra <= datetime.fromisoformat(p[1]) <= kutt]
+                pos = filtrer_til_vindu(svar, fra, kutt)
                 time.sleep(PAUSE_SEK)
                 rad = {"voyageid": r["voyageid"], "gruppe": gruppe, "horisont": h,
                        "ship_group": r["ship_group"], "dep_locname": seilas[r["voyageid"]]["dep_locname"],

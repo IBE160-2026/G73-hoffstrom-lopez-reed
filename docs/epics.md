@@ -41,6 +41,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | E0-S09 | Kursmateriale (`docs/kilder/`) fjernet fra arbeidstreet; beslutning 10 om hvorfor historikken ikke skrives om | `.gitignore`, `docs/beslutninger/10-…` | ✅ |
 | E0-S10 | Beslutning 09: AIS-dekning ved kuttpunktene avklart før modellfasen, PRD oppdatert | `docs/beslutninger/09-…`, `pipeline/sjekk_ais_dekning_kutt.py`, `docs/prd.md` | ✅ |
 | E0-S11 | Promptlogg 22.10 med vurdering av BMAD-dev-flyten (beholdes for ikke-trivielle stories) | `docs/prompts/2026-10-22.md` | ✅ |
+| E0-S12 | Tidsstempelfilteret for AIS-svar trukket ut som funksjon, med test som er vist å feile når filteret fjernes eller svekkes | `pipeline/sjekk_ais_dekning_kutt.py`, `tests/test_ais_filter.py` | ✅ |
 
 ---
 
