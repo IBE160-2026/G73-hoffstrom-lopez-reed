@@ -1,0 +1,11 @@
+voyageid,mmsino,shipname,ship_group,eta_reported,window_start,window_end_used,truncated_by_next_voyage,arrival_in_area_utc,deviation_in_area_minutes,status_in_area,arrival_at_quay_utc,gap_at_quay_minutes,deviation_at_quay_minutes,method_at_quay,status_at_quay,dwell_area_to_quay_minutes,near_window_edge,deviation_calibrated_minutes,er_forsinket
+1009,900000009,TEST TI,Last,2025-01-01T09:00:00+00:00,,,False,2025-01-01T08:00:00,-60.0,ok,,,,gap,ok,1000.0,False,,False
+1001,900000001,TEST EN,Passasjer,2025-01-01T01:00:00+00:00,,,False,2025-01-01T00:50:00,-10.0,ok,,,,gap,ok,10.0,False,,False
+1003,900000003,TEST TRE,Passasjer,2025-01-01T03:00:00+00:00,,,False,2025-01-01T02:30:00,-30.0,ok,,,,gap,ok,40.0,False,,False
+1002,900000002,TEST TO,Passasjer,2025-01-01T02:00:00+00:00,,,False,2025-01-01T01:45:00,-15.0,ok,,,,gap,ok,20.0,False,,False
+1004,900000004,TEST FIRE,Passasjer,2025-01-01T04:00:00+00:00,,,False,,,not_detected,,,,,not_detected,,False,,False
+1005,900000005,TEST FEM,Last,2025-01-01T05:00:00+00:00,,,False,2025-01-01T04:00:00,-60.0,ok,,,,gap,ok,30.0,False,,False
+1006,900000006,TEST SEKS,Tank,2025-01-01T06:00:00+00:00,,,False,2025-01-01T05:00:00,-60.0,ok,,,,gap,ok,50.0,False,,False
+1007,900000007,TEST SJU,Fisk,2025-01-01T07:00:00+00:00,,,False,2025-01-01T06:00:00,-60.0,ok,,,,gap,ok,60.0,False,,False
+1008,900000008,TEST ÅTTE,Slep,2025-01-01T08:00:00+00:00,,,False,2025-01-01T07:00:00,-60.0,ok,,,,none,not_detected,999.0,False,,False
+1010,900000010,TEST ELLEVE,Passasjer,2025-01-01T10:00:00+00:00,,,False,2025-01-01T09:00:00,-60.0,ok,,,,gap,ok,1000.0,False,,False

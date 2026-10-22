@@ -52,7 +52,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 **Test:** `tests/test_app.py::test_forside_svarer_200`
 
-### E1-S02 — Datautdrag og lagret baseline ☐
+### E1-S02 — Datautdrag og lagret baseline ✅
 **Krav:** NFR1, A4 · **Avhenger av:** E1-S01
 - `scripts/lag_utdrag.py` leser `pipeline/data/bergen_eta_avvik.csv` og skriver `data/utdrag/anlop.csv` (kolonnene i arkitektur §4) og `data/baseline.json`.
 - Splitt og offset regnes på samme måte som i `derive_arrivals.py`: 6 260/1 566 rader og 44,8/64,2 min.
