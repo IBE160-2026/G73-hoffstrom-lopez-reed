@@ -47,6 +47,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | E0-S15 | Refleksjonsnotater opprettet: KI-feil fanget logges samme dag (første oppføringer 22.10) | `docs/refleksjon/notater.md` | ✅ |
 | E0-S16 | Løpende sesjonslogg: fast ID for alle loggcommits. `docs/prompts/` til og med 27.10, deretter faglærers format i `.logs/<bruker>/` (CLAUDE.md) | `docs/prompts/`, `.logs/` | ◐ løpende |
 | E0-S17 | Omfangssjekk for E1: MÅ/KAN, UU-minimum lagt inn i MÅ, avhengigheter koblet om | `docs/epics.md` | ✅ |
+| E0-S18 | To avgjørelser før E1-S06: vinduet velger på rapportert ETA i v1, og tider vises avrundet til nærmeste minutt (bare visning) | `docs/epics.md`, `docs/ux/dashbord.md` | ✅ |
 
 ---
 
@@ -111,7 +112,9 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 **Krav:** FR2, FR3, UX skjerm A, UU1/UU2/UU4/UU6/UU7 (minimum) · **Avhenger av:** E1-S04
 - `GET /` uten parametre viser vinduet fra 08.10.2025 08:00 norsk tid: 15 anløp, sortert etter predikert ankomst, med kolonnene fra skjerm A.
 - Prediktor-stripa viser «Kalibrert baseline» og teksten om at baselinen ikke varsler. Varselkolonnen viser «–».
-- Tider vises i norsk tid som «ons 09:55». Horisonten regnes fra **rapportert ETA − nå**: ≤ 6 t eller 6–24 t (PRD FR2). Predikert ankomst før «nå» får hjelpeteksten «predikert før valgt tidspunkt».
+- **Vinduet velger på rapportert ETA i [nå, nå + 24 t)** (alternativ A i S04-specen, avgjort 27.10). Om predikert ankomst skal brukes, vurderes når modellen byttes inn (E2-S08).
+- Tider vises i norsk tid, **avrundet til nærmeste minutt** (avgjort 27.10). BERGEN ENERGY (09:55:48) vises som «ons 09:56». Avrundingen gjelder bare visningen: ±30 min, avvik og alle beregninger bruker uavrundede tider. Testen dekker et tidspunkt med sekunder ≥ 30 og et med < 30.
+- Horisonten regnes fra **rapportert ETA − nå**: ≤ 6 t eller 6–24 t (PRD FR2). Predikert ankomst før «nå» får hjelpeteksten «predikert før valgt tidspunkt».
 - Tomt vindu gir meldingen fra UX §5.
 - **UU-minimum (E0-S17):**
   - **UU1 kontrast:** `static/style.css` har tokenene for lyst tema fra UX §7 (`--bakgrunn`, `--flate`, `--tekst`, `--dempet`, `--aksent`, `--kant`). Alle par som brukes, har ≥ 4,5:1 for tekst og ≥ 3:1 for kant.
@@ -404,3 +407,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
   - UU-minimum (UU1, UU2, UU4, UU6, UU7) er flyttet inn i S06, og sjekklista inn i S16, så «Ferdig når» står uendret. Restene av S13, S14 og S15 er KAN.
   - S06 avhenger nå av S04, og S16 av S05 og S06.
   - E0-S16 er en fast ID for løpende sesjonslogg.
+- **2026-10-27** — E0-S18: E1-S06 har fått to avgjørelser. Vinduet velger på rapportert ETA (A), og predikert ankomst vurderes i E2-S08. Tider vises avrundet til nærmeste minutt, men beregningene er uavrundet.

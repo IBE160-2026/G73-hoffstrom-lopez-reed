@@ -2,7 +2,7 @@
 title: "UX-skisser: dashbordet"
 status: aktiv
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-27
 bygger_på: docs/prd.md
 ---
 
@@ -57,7 +57,7 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 │ ROTTERDAM      Passasjer  ons 08:00   ons 07:15*  ≤ 6 t   –     │ Innenfor ±30 min    │
 │ EINARSON       Fisk       ons 09:00   ons 07:55*  ≤ 6 t   –     │ ██████████░░ 46,6 % │
 │ TROLLFJORD     Passasjer  ons 10:00   ons 09:15   ≤ 6 t   –     │ Naiv ETA: 12,9 %    │
-│ BERGEN ENERGY  Tank       ons 11:00   ons 09:55   ≤ 6 t   –     │ Passasjer (kontroll)│
+│ BERGEN ENERGY  Tank       ons 11:00   ons 09:56   ≤ 6 t   –     │ Passasjer (kontroll)│
 │ VASCO DA GAMA  Passasjer  ons 11:00   ons 10:15   ≤ 6 t   –     │ ███████████░ 79,6 % │
 │ ELEKTRON       Last       ons 11:30   ons 10:25   ≤ 6 t   –     │ Naiv ETA: 7,4 %     │
 │ STAVANGERFJORD Passasjer  ons 13:06   ons 12:21   ≤ 6 t   –     │ Fasit: 1 427/1 566  │
@@ -88,7 +88,7 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 │ Skip ▲▼        Gruppe     Rapportert  Predikert   Faktisk    Avvik ▲▼        Varsel │
 │ ───────────── ────────── ─────────── ─────────── ────────── ─────────────── ────── │
 │ ROTTERDAM      Passasjer  ons 08:00   ons 07:15   ons 06:28  −47 min           –    │
-│ BERGEN ENERGY  Tank       ons 11:00   ons 09:55   ons 13:18  ▲ +3 t 22 min     –    │
+│ BERGEN ENERGY  Tank       ons 11:00   ons 09:56   ons 13:18  ▲ +3 t 22 min     –    │
 │                                                              FORSINKET              │
 │ OCEAN RESPONSE Last       ons 13:45   ons 12:40   ons 20:06  ▲ +7 t 25 min     –    │
 │                                                              FORSINKET              │
@@ -128,7 +128,7 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 │ └──────────────────────────────┘ │
 │ ┌──────────────────────────────┐ │
 │ │ BERGEN ENERGY           Tank │ │
-│ │ Predikert   ons 09:55        │ │
+│ │ Predikert   ons 09:56        │ │
 │ │ Rapportert  ons 11:00        │ │
 │ │ Faktisk     ons 13:18        │ │  ← bare med fasit på
 │ │ ▲ +3 t 22 min  FORSINKET     │ │
@@ -159,7 +159,7 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 ├───────────────────────────────────────────────────────────┤
 │ Tidspunkt (norsk tid)                                     │
 │   Rapportert ETA ........ ons 08.10 11:00                 │
-│   Predikert ankomst ..... ons 08.10 09:55                 │
+│   Predikert ankomst ..... ons 08.10 09:56                 │
 │   Faktisk ankomst ....... ons 08.10 13:18  (fasit)        │
 │   Avvik ................. ▲ +3 t 22 min  FORSINKET        │
 ├───────────────────────────────────────────────────────────┤
@@ -252,3 +252,4 @@ Fokusring: 3 px `--aksent` med 2 px avstand, aldri `outline: none` uten erstatni
   - Panelet har fått naiv Passasjer og dekning.
   - «Tre av fire» er rettet til «alle tre».
 - **2026-10-22** — Teksten for `empty` er endret til «ingen AIS-data hentet» etter at beslutning 07 ble korrigert. Dataene finnes i Kystdatahuset, men ble ikke hentet.
+- **2026-10-27** — E0-S18: tider vises avrundet til nærmeste minutt, så BERGEN ENERGY (09:55:48) blir 09:56 i skissene. Bare visningen avrundes, og avvik og ±30 min regnes uavrundet. Vinduet velger på rapportert ETA i v1.
