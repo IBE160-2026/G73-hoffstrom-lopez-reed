@@ -2,7 +2,7 @@
 title: "Epics og stories"
 status: aktiv
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-27
 bygger_på: docs/prd.md, docs/arkitektur.md, docs/ux/dashbord.md
 ---
 
@@ -45,6 +45,8 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | E0-S13 | Beslutning 07 korrigert (flagg/MMSI motbevist, ingen ny henting, 87,1 % som kjent underestimering), brief/status/addendum/PRD/UX fulgt opp | `docs/beslutninger/07-…`, `docs/prd.md` | ✅ |
 | E0-S14 | Hentestegene i pipelinen merket som låst: `main()` stopper med forklaring, README og status oppdatert | `pipeline/fetch_ais.py`, `pipeline/fetch_voyages.py`, `README.md` | ✅ |
 | E0-S15 | Refleksjonsnotater opprettet: KI-feil fanget logges samme dag (første oppføringer 22.10) | `docs/refleksjon/notater.md` | ✅ |
+| E0-S16 | Løpende sesjonslogg: fast ID for alle loggcommits. `docs/prompts/` til og med 27.10, deretter faglærers format i `.logs/<bruker>/` (CLAUDE.md) | `docs/prompts/`, `.logs/` | ◐ løpende |
+| E0-S17 | Omfangssjekk for E1: MÅ/KAN, UU-minimum lagt inn i MÅ, avhengigheter koblet om | `docs/epics.md` | ✅ |
 
 ---
 
@@ -52,7 +54,18 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 **Mål:** en app sensor kan kjøre og vurdere selv om ingenting annet blir ferdig. **Ferdig når:** klone-testen i E1-S16 er under 20 min og UU-sjekklista er utfylt.
 
-### E1-S01 — Prosjektskjelett ✅
+**Omfang (E0-S17, 27.10):** fase 3 slutter 6. nov.
+- **MÅ** er det som trengs for at sensor kan klone repoet, følge README og se et fungerende dashbord med baseline-prediksjoner på under 20 min, med universell utforming på det som vises.
+- **KAN** tas i rekkefølgen under hvis tiden strekker til. KAN-storyene er ikke flyttet ut av E1.
+
+| | Stories, i rekkefølge |
+|---|---|
+| **MÅ** | E1-S04 ✅ → E1-S05 → E1-S06 → E1-S16. Første klone-test kjøres rett etter S06, og den gjentas til slutt. |
+| **KAN** | E1-S07 → E1-S13 → E1-S08 → E1-S09 → E1-S11 → E1-S12 → E1-S10 → E1-S15 → E1-S14 → E1-S17 |
+
+UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (det MÅ viser), og UU-sjekklista fylles ut i E1-S16. Det som gjenstår av E1-S13, E1-S14 og E1-S15, gjelder skjermer og temaer som bygges i KAN-storyene.
+
+### E1-S01 — Prosjektskjelett ✅ · MÅ
 **Krav:** NFR1, NFR2, A1 · **Avhenger av:** —
 - `app/__init__.py` med `create_app()`. `flask --app app run` svarer 200 på `/`.
 - `requirements.txt` (flask, tzdata, pytest), `.env.example` som i arkitektur §7, og `tests/conftest.py` med app-fixture.
@@ -60,7 +73,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 **Test:** `tests/test_app.py::test_forside_svarer_200`
 
-### E1-S02 — Datautdrag og lagret baseline ✅
+### E1-S02 — Datautdrag og lagret baseline ✅ · MÅ
 **Krav:** NFR1, A4 · **Avhenger av:** E1-S01
 - `scripts/lag_utdrag.py` leser `pipeline/data/bergen_eta_avvik.csv` og skriver `data/utdrag/anlop.csv` (kolonnene i arkitektur §4) og `data/baseline.json`.
 - Splitt og offset regnes på samme måte som i `derive_arrivals.py`: 6 260/1 566 rader og 44,8/64,2 min.
@@ -68,7 +81,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 **Test:** `tests/test_lag_utdrag.py`, som kjører skriptet på `tests/fixtures/` og sjekker kolonner, splitt og offset.
 
-### E1-S03 — Datalag ✅
+### E1-S03 — Datalag ✅ · MÅ
 **Krav:** FR2, FR5 · **Avhenger av:** E1-S02
 - `last_utdrag()` gir `Anlop`-objekter med tz-aware UTC-tider. Tider uten suffiks tolkes som UTC.
 - `anlop_i_vindu(naa, timer=24, vis="alle"|"passasjer"|"ovrige")` gir anløp med rapportert ETA i [naa, naa + 24 t).
@@ -76,7 +89,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 **Test:** `tests/test_data.py`, med vindusgrenser (inkludert start, ekskludert slutt), filter og manglende fasit.
 
-### E1-S04 — Prediktor-grensesnitt og kalibrert baseline ✅
+### E1-S04 — Prediktor-grensesnitt og kalibrert baseline ✅ · MÅ
 **Krav:** FR3, A5 · **Avhenger av:** E1-S03
 - `Prediksjon`, `Prediktor` og `velg_prediktor()` som i arkitektur §3.
 - `BaselinePrediktor`: `predikert = eta − offset[gruppe]`, `forventet_forsinket = None`, `kan_varsle = False`. `forklaring` inneholder gruppe og offset.
@@ -86,7 +99,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 **Test:** `tests/test_prediktor_kontrakt.py`, `tests/test_baseline.py` (BERGEN ENERGY: 11:00 → 09:55 norsk tid)
 
-### E1-S05 — Metrikkmodul og dataregresjon ☐
+### E1-S05 — Metrikkmodul og dataregresjon ☐ · MÅ
 **Krav:** FR8, NFR3, A6 · **Avhenger av:** E1-S04
 - `andel_innenfor(prediksjoner, anlop, minutter=30)` regner bare på anløp med fasit.
 - På testsplitten av det ekte utdraget gir baselinen **46,6 %** (Øvrige) og **79,6 %** (Passasjer). Naiv ETA gir **12,9 %** (Øvrige) og **7,4 %** (Passasjer). Alt avrundes til én desimal.
@@ -94,30 +107,37 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 **Test:** `tests/test_metrikker.py` (fixture), `tests/test_dataregresjon.py` (ekte utdrag)
 
-### E1-S06 — Hovedskjerm med anløpsliste ☐
-**Krav:** FR2, FR3, UX skjerm A · **Avhenger av:** E1-S05
+### E1-S06 — Hovedskjerm med anløpsliste ☐ · MÅ
+**Krav:** FR2, FR3, UX skjerm A, UU1/UU2/UU4/UU6/UU7 (minimum) · **Avhenger av:** E1-S04
 - `GET /` uten parametre viser vinduet fra 08.10.2025 08:00 norsk tid: 15 anløp, sortert etter predikert ankomst, med kolonnene fra skjerm A.
 - Prediktor-stripa viser «Kalibrert baseline» og teksten om at baselinen ikke varsler. Varselkolonnen viser «–».
 - Tider vises i norsk tid som «ons 09:55». Horisonten regnes fra **rapportert ETA − nå**: ≤ 6 t eller 6–24 t (PRD FR2). Predikert ankomst før «nå» får hjelpeteksten «predikert før valgt tidspunkt».
 - Tomt vindu gir meldingen fra UX §5.
+- **UU-minimum (E0-S17):**
+  - **UU1 kontrast:** `static/style.css` har tokenene for lyst tema fra UX §7 (`--bakgrunn`, `--flate`, `--tekst`, `--dempet`, `--aksent`, `--kant`). Alle par som brukes, har ≥ 4,5:1 for tekst og ≥ 3:1 for kant.
+  - **UU2 tastatur:** «Hopp til innhold» er første element. Alle lenker og knapper kan nås med Tab i logisk rekkefølge, og fokusringen er 3 px `--aksent` (aldri `outline: none` uten erstatning).
+  - **UU4 alt-tekst:** ikoner med mening har tekstalternativ, og pynteikoner har `aria-hidden`. Varselkolonnens «–» har en forklaring som kan leses (FR3).
+  - **UU6 skjermstørrelser:** `<meta name="viewport">`. Under 640 px vises radene som kort med `data-label`. Ingen horisontal rulling på 360 px, 1280 px eller ved 200 % zoom.
+  - **UU7 semantikk:** `lang="nb"`, én `h1`, ekte `<table>` med `<th scope="col">`, og landemerkene `header` og `main`.
+  - **UU5 skjemaetiketter** gjelder ikke S06, siden MÅ ikke har noe skjema. Kravet står allerede i E1-S07 og E1-S08 for når de bygges.
 
-**Test:** `tests/test_ruter.py::test_standardvindu`, `::test_tomt_vindu`, `tests/test_visning.py`
+**Test:** `tests/test_ruter.py::test_standardvindu`, `::test_tomt_vindu`, `tests/test_visning.py`, `tests/test_kontrast.py` (tokenene fra `style.css`), `tests/test_uu_struktur.py` (hopp-lenke, `lang`, én `h1`, `th scope`, landemerker, viewport, `data-label`), og manuell sjekk av 360 px / 200 % zoom og tastaturrekkefølge
 
-### E1-S07 — Tidsvelger for «nå» med validering ☐
+### E1-S07 — Tidsvelger for «nå» med validering ☐ · KAN
 **Krav:** FR1, UU5 · **Avhenger av:** E1-S06
 - Skjemaet har dato og klokkeslett med synlige `<label>`, og knappen «Oppdater». Skjemaet sendes ikke automatisk.
 - Gyldig `naa` i testperioden gir det vinduet. Ugyldig eller utenforliggende verdi gir status 200, feilmelding med `aria-describedby` og `aria-invalid`, og standardvinduet i lista.
 
 **Test:** `tests/test_ruter.py::test_naa_gyldig`, `::test_naa_utenfor_testperiode`, `::test_naa_ugyldig_format`
 
-### E1-S08 — Filter: alle / passasjer / øvrige ☐
+### E1-S08 — Filter: alle / passasjer / øvrige ☐ · KAN
 **Krav:** FR5 · **Avhenger av:** E1-S07
 - Radiogruppe i `<fieldset>` med `<legend>`. `vis=ovrige` på standardvinduet gir 9 rader.
 - Filteret beholdes i URL-en og på tvers av andre valg.
 
 **Test:** `tests/test_ruter.py::test_filter_ovrige`
 
-### E1-S09 — Fasit-bryter ☐
+### E1-S09 — Fasit-bryter ☐ · KAN
 **Krav:** FR4, UU3, UX skjerm A2 · **Avhenger av:** E1-S08
 - `fasit=1` legger til kolonnene Faktisk og Avvik. Avvik = faktisk − **kalibrert baseline** (ordliste, PRD §3), aldri mot den aktive prediktoren. Avvik over 120 min viser ▲ + «FORSINKET» + varselfarge.
 - I standardvinduet er BERGEN ENERGY, OCEAN RESPONSE og SIEM PEARL merket FORSINKET.
@@ -126,14 +146,14 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 **Test:** `tests/test_ruter.py::test_fasit_av_skjuler`, `::test_fasit_merker_forsinket`, `::test_fasit_mangler_tre_aarsaker`
 
-### E1-S10 — Sortering ☐
+### E1-S10 — Sortering ☐ · KAN
 **Krav:** FR6, UU7 · **Avhenger av:** E1-S09
 - Sorteringsknappene ligger i `<th>`, og aktiv kolonne har `aria-sort`.
 - `sorter=avvik` sorterer synkende (mest forsinket først) og virker bare når `fasit=1`. Ellers faller den tilbake til predikert ankomst uten feil.
 
 **Test:** `tests/test_ruter.py::test_sorter_avvik`, `::test_sorter_avvik_uten_fasit`
 
-### E1-S11 — Detaljside for anløp ☐
+### E1-S11 — Detaljside for anløp ☐ · KAN
 **Krav:** FR7, UX skjerm C · **Avhenger av:** E1-S10
 - `/anlop/<id>` viser skipsdata, tidspunkter i `<dl>` og forklaringen fra `Prediksjon.forklaring`, med malen per gruppe fra PRD FR7 (44,8 eller 64,2 min).
 - «Tilbake» beholder `naa`, `vis`, `fasit` og `sorter`. Fasit vises bare hvis `fasit=1`.
@@ -141,41 +161,46 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 **Test:** `tests/test_ruter.py::test_detalj`, `::test_detalj_404`, `::test_detalj_tilbakelenke`
 
-### E1-S12 — Treffsikkerhetspanel og metodeside ☐
+### E1-S12 — Treffsikkerhetspanel og metodeside ☐ · KAN
 **Krav:** FR8 · **Avhenger av:** E1-S11
 - Panelet viser de fire tallene og dekningen fra E1-S05, regnet med `metrikker.py` (ikke hardkodet) og merket «hele testperioden».
 - Søylene har tekstverdi, så de ikke bare er grafikk. `/metode` forklarer baseline, ±30 min og testperioden, viser dekning per status og MAE/median som støttetall, har forklaringssetningen fra beslutning 04 og lenker til beslutning 04/05.
 
 **Test:** `tests/test_ruter.py::test_panel_tall`, `::test_metode`
 
-### E1-S13 — Visuelt design og kontrast ☐
+### E1-S13 — Visuelt design og kontrast ☐ · KAN
 **Krav:** UU1, UX §7 · **Avhenger av:** E1-S06
+- Lyst tema, fokusring og kontrasttest for tekst/kant er flyttet til E1-S06 (MÅ). Her gjenstår mørkt tema, `--varsel`/`--ok` og `tabular-nums`.
 - `static/style.css` har tokenene fra UX §7, lyst og mørkt tema (`prefers-color-scheme`), fokusring og `tabular-nums`.
 - Alle tokenpar i UX §7 har kontrast ≥ 4,5:1 (tekst) og ≥ 3:1 (`--kant`).
 
 **Test:** `tests/test_kontrast.py`, som leser tokenene fra CSS-fila.
 
-### E1-S14 — Responsiv layout ☐
+### E1-S14 — Responsiv layout ☐ · KAN
 **Krav:** UU6, UX skjerm B · **Avhenger av:** E1-S13
+- Kortvisning under 640 px for hovedlista er flyttet til E1-S06 (MÅ). Her gjenstår skjemaet i `<details>` og responsivitet for skjermene fra KAN-storyene.
 - Under 640 px vises tabellradene som kort med `data-label`, og skjemaet ligger i `<details>`. Ingen horisontal rulling på 360 px eller ved 200 % zoom.
 
 **Test:** manuell, med punkt UU6 i UX §6. `tests/test_uu_struktur.py::test_viewport_og_data_label`
 
-### E1-S15 — UU-gjennomgang ☐
+### E1-S15 — UU-gjennomgang ☐ · KAN
 **Krav:** UU2–UU7 · **Avhenger av:** E1-S14
+- Minimumskravene for det MÅ viser, ligger i E1-S06, og sjekklista fylles ut i E1-S16. Her gjenstår gjennomgangen av skjermene fra KAN-storyene og skjermleser-sjekken (VoiceOver).
 - Hopp-lenke, landemerker, `lang="nb"`, én `h1`, `th scope` og alt-tekst er på plass.
 - Den manuelle sjekklista i UX §6 er gjennomført og utfylt med dato og resultat. Funn rettes i denne storyen eller føres opp som nye stories.
 
 **Test:** `tests/test_uu_struktur.py` + utfylt sjekkliste
 
-### E1-S16 — README og klone-test ☐
-**Krav:** NFR1 · **Avhenger av:** E1-S15
-- README har en «Kom i gang»-seksjon: krav (Python ≥ 3.9), venv, `pip install -r requirements.txt`, `flask --app app run`, `pytest`, og hva man bør se (standardvinduet, 46,6 %).
+### E1-S16 — README og klone-test ☐ · MÅ
+**Krav:** NFR1, UX §6 · **Avhenger av:** E1-S05, E1-S06
+- README har en «Kom i gang»-seksjon: krav (Python ≥ 3.9), venv, `pip install -r requirements.txt`, `flask --app app run`, `pytest`, og hva man bør se: standardvinduet med 15 anløp, og 46,6 % fra dataregresjonen i E1-S05 (i panelet hvis E1-S12 er bygd).
 - Et gruppemedlem som ikke bygde E1 kloner repoet på nytt og følger bare README. Tiden logges i README (mål: < 20 min), og alt som var uklart rettes.
 
-**Test:** klone-test med loggført tid
+- UU-sjekklista i UX §6 fylles ut med dato og resultat for alt som er bygd. Rader for skjermer som ikke er bygd, merkes «ikke bygd (KAN)». Med dette står «Ferdig når» for E1 uendret.
 
-### E1-S17 — Skjermbilder mot skisse ☐
+**Test:** klone-test med loggført tid, og utfylt sjekkliste
+
+### E1-S17 — Skjermbilder mot skisse ☐ · KAN
 **Krav:** kriterium 4 · **Avhenger av:** E1-S16
 - `docs/ux/skjermbilder/` har skjerm A, A2, B og C fra den kjørende appen (1280 px og 360 px). UX-dokumentet får en seksjon om hva som ble annerledes enn skissen, og hvorfor.
 
@@ -356,8 +381,8 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | FR12 | E3-S05 |
 | FR13 | E3-S01, E3-S06 |
 | FR14 | E3-S08 |
-| UU1 | E1-S13 |
-| UU2–UU7 | E1-S07, E1-S08, E1-S10, E1-S14, E1-S15 |
+| UU1 | E1-S06, E1-S13 |
+| UU2–UU7 | E1-S06, E1-S07, E1-S08, E1-S10, E1-S14, E1-S15, E1-S16 |
 | NFR1 | E1-S01, E1-S02, E1-S16, E2-S03, E3-S07 |
 | NFR2 | alle (test per story) |
 | NFR3 | E1-S05, E2-S04, E2-S06, E2-S10 |
@@ -374,3 +399,8 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 - **2026-10-22** — E0-S08–S10 lagt til som oppfølging etter merge av PR #2: halen rettet til 19,5 %, kursmateriale ut av repoet, og AIS-dekning ved kuttpunktene avklares (beslutning 09) før E2-S02.
 - **2026-10-22** — E0-S10, beslutning 09: E2-S02 og E2-S03 bruker 24 t tilbakeblikk og filtrerer på tidsstemplet i svaret. Ny test i E2-S02 for at ingen punkter etter `t_H` slipper gjennom.
 - **2026-10-27** — E1-S04: prediktorene får `PrediksjonsInput` i stedet for `Anlop` (arkitektur §3). `test_kutt_ikke_etter_naa` er flyttet fra E2-S07 til E1-S04.
+- **2026-10-27** — E0-S17, omfangssjekk for E1 med 10 dager igjen av fase 3:
+  - MÅ er S04–S06 og S16, og resten er KAN. KAN-storyene står fortsatt i E1.
+  - UU-minimum (UU1, UU2, UU4, UU6, UU7) er flyttet inn i S06, og sjekklista inn i S16, så «Ferdig når» står uendret. Restene av S13, S14 og S15 er KAN.
+  - S06 avhenger nå av S04, og S16 av S05 og S06.
+  - E0-S16 er en fast ID for løpende sesjonslogg.

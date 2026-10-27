@@ -58,3 +58,10 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Hva:** I mutasjonssjekken la Claude til `faktisk_ankomst` med standardverdi *foran* `t_kutt` i `PrediksjonsInput`. Det gjør dataklassen ugyldig, så pytest stoppet med «2 errors» allerede ved innsamlingen. Det ser rødt ut, men ingen test hadde faktisk fanget lekkasjen.
 - **Hvordan det ble oppdaget:** Claude la merke til at resultatet var «errors», ikke «failed», og kjørte mutanten på nytt med feltet sist og fylt fra `Anlop`. Da feilet fire lekkasjetester, slik de skal.
 - **Lærdom (råt):** En mutant teller bare som fanget når en *test* feiler (failed). En importfeil eller syntaksfeil beviser ingenting om testene.
+
+## 2026-10-27 — Story-ID brukt to ganger (E0-S05)
+
+- **Hva:** Claude committet dagens promptlogg som `E0-S05` og skrev i sluttoppsummeringen at ingen story dekket loggen. E0-S05 var allerede brukt på planoppdateringen 16.10 (`2e7183d`). Da ville `git log --grep E0-S05` gitt to ulike arbeider, og det bryter regelen om at nummer aldri gjenbrukes.
+- **Hvordan det ble oppdaget:** Gruppa så det i oppsummeringen. Claude hadde ikke sjekket `git log --all --grep` før den valgte ID-en, selv om tabellen i `docs/epics.md` viste at S05 var i bruk.
+- **Resultat:** Commiten ble omdøpt til `E0-S16` før push (`68655d4`). E0-S16 er nå den faste ID-en for løpende logging, og E0-S17 brukes for omfangssjekken. Begge står i E0-tabellen.
+- **Lærdom (råt):** Før en ID tas i bruk, sjekkes både tabellen og `git log --all --grep <ID>`. Det er billig.
