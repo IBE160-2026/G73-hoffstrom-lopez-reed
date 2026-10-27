@@ -84,3 +84,17 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Lærdom (råt):**
   - Det at en regel holder i dag fordi et annet lag sørger for det, er ikke det samme som at testen låser regelen.
   - Lærdommen fra S03 ble ikke overført til S05 av seg selv. Mutasjonssjekken fanget det, ikke hukommelsen.
+
+## 2026-10-27 — Avrundingsregelen ble bare brukt på ett skip i skissen (E0-S18)
+
+- **Hva:** Gruppa bestemte at tider vises avrundet til nærmeste minutt. Claude rettet da UX-skissene, men bare BERGEN ENERGY (09:55 → 09:56), fordi det var eksempelet i spørsmålet. Alle Øvrige-anløp har offset 64,2 min, som gir :48 sekunder, så de rundes opp. Fem andre tider i skissen ble derfor stående feil: EINARSON, ELEKTRON, OCEAN RESPONSE, ELDJARN og SIEM PEARL. Commit-meldingen (`debbbf8`) sa at «UX-skissene er oppdatert».
+- **Hvordan det ble oppdaget:** Da E1-S06 ble spesifisert, regnet Claude ut standardvinduet fra de ekte dataene og sammenlignet med skissen rad for rad.
+- **Resultat:** De fem tidene rettes i E1-S06, med en linje i UX-endringsloggen. Se `git log --oneline --grep E1-S06`.
+- **Lærdom (råt):** En regel ble brukt på eksempelet, ikke på mønsteret. Å regne ut alle radene fra data var billig, og det burde vært gjort da regelen ble innført.
+
+## 2026-10-27 — Eksempelet på «tomt vindu» i UX-skissen hadde 7 anløp (E0-S02)
+
+- **Hva:** UX §5 viste et tomt vindu som eksempel: «0 anløp · lør 01.11 03:00 – søn 02.11 03:00». Skissen ble skrevet av Claude i UI/UX-rollen 16.10 (`a1f0c5c`). Det vinduet har 7 anløp i dataene. Tidspunktet ble valgt fordi det så sannsynlig ut, men det ble aldri sjekket.
+- **Hvordan det ble oppdaget:** Implementasjons-subagenten i E1-S06 trengte et vindu uten anløp for `test_tomt_vindu`, og prøvde eksempelet. Claude bekreftet det ved å telle på nytt (7 anløp 01.11 kl. 03:00, 0 anløp 03.02.2026 kl. 08:00).
+- **Resultat:** UX §5 bruker nå tir 03.02.2026 08:00, som også er vinduet testen bruker. Endringen står i UX-endringsloggen. Se `git log --oneline --grep E1-S06`.
+- **Lærdom (råt):** Et eksempel i en skisse er også en påstand om dataene. Det samme mønsteret ga feil skissetider i E0-S18.

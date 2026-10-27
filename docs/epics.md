@@ -61,7 +61,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 | | Stories, i rekkefølge |
 |---|---|
-| **MÅ** | E1-S04 ✅ → E1-S05 ✅ → E1-S06 → E1-S16. Første klone-test kjøres rett etter S06, og den gjentas til slutt. |
+| **MÅ** | E1-S04 ✅ → E1-S05 ✅ → E1-S06 ✅ → E1-S16. Første klone-test kjøres rett etter S06, og den gjentas til slutt. |
 | **KAN** | E1-S07 → E1-S13 → E1-S08 → E1-S09 → E1-S11 → E1-S12 → E1-S10 → E1-S15 → E1-S14 → E1-S17 |
 
 UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (det MÅ viser), og UU-sjekklista fylles ut i E1-S16. Det som gjenstår av E1-S13, E1-S14 og E1-S15, gjelder skjermer og temaer som bygges i KAN-storyene.
@@ -110,7 +110,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_metrikker.py` (fixture), `tests/test_dataregresjon.py` (ekte utdrag)
 
-### E1-S06 — Hovedskjerm med anløpsliste ☐ · MÅ
+### E1-S06 — Hovedskjerm med anløpsliste ✅ · MÅ
 **Krav:** FR2, FR3, UX skjerm A, UU1/UU2/UU4/UU6/UU7 (minimum) · **Avhenger av:** E1-S04
 - `GET /` uten parametre viser vinduet fra 08.10.2025 08:00 norsk tid: 15 anløp, sortert etter predikert ankomst, med kolonnene fra skjerm A.
 - Prediktor-stripa viser «Kalibrert baseline» og teksten om at baselinen ikke varsler. Varselkolonnen viser «–».
@@ -411,3 +411,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
   - E0-S16 er en fast ID for løpende sesjonslogg.
 - **2026-10-27** — E0-S18: E1-S06 har fått to avgjørelser. Vinduet velger på rapportert ETA (A), og predikert ankomst vurderes i E2-S08. Tider vises avrundet til nærmeste minutt, men beregningene er uavrundet.
 - **2026-10-27** — E1-S05: naiv ETA for Øvrige er 12,8 % (127/996), ikke 12,9 %. Pipelinen avrundet avviket til 0,1 min før ±30-sammenligningen, så seilas 3542899 (+30 min 1 s) ble telt som treff. `NaivPrediktor` er lagt til som referanseprediktor i kontrakttesten.
+- **2026-10-27** — E1-S06: hovedskjermen viser standardvinduet (15 anløp) med UU-minimum og kort under 640 px. Testene er `test_ruter.py`, `test_visning.py`, `test_uu_struktur.py` og `test_kontrast.py`. Skjermbilder ligger i `docs/ux/skjermbilder/` og lages med `scripts/ta_skjermbilder.py` utenfor `pytest`. Avvikene fra skissene står i UX-endringsloggen.

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block tittel %}Ankomstprediksjon · Bergen Havn{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <a class="hopp" href="#{% block hoppmaal %}innhold{% endblock %}">{% block hopptekst %}Hopp til innhold{% endblock %}</a>
+  <header class="topp">
+    <div class="topp-innhold">
+      <div>
+        <p class="overtittel">Ankomstprediksjon · Bergen Havn</p>
+        <h1>{% block h1 %}{% endblock %}</h1>
+      </div>
+      <p class="modus">Avspilling av historiske data</p>
+    </div>
+  </header>
+  <main id="innhold">
+    {% block innhold %}{% endblock %}
+  </main>
+</body>
+</html>
