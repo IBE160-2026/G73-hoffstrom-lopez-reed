@@ -18,7 +18,7 @@ Skrive «Kom i gang» i README og deretter gjøre en tørrkjøring: klone repoet
 | 1 | `git clone …` | **Blokkerer.** Klonen gir `main`, der verken `app/`, `requirements.txt` eller «Kom i gang» finnes. Hele E1 ligger bare på `epic/e1-dashbord-v1`. | Ikke rettet. Krever at E1 merges til main (delvis PR, som arbeidsreglene åpner for). Tørrkjøringen fortsatte med `-b epic/e1-dashbord-v1` som eneste avvik fra README. |
 | 2 | `pip install` | Advarsel om gammel pip (21.2.4). Ufarlig, men kan se ut som en feil. | README sier at advarselen er ufarlig. |
 | 3 | `pytest` | 179 grønne. | — |
-| 4 | `pytest tests/test_dataregresjon.py -v` | Testnavnene viste «Øvrige» som `\\xd8vrige`, så tallene var vanskelige å lese. | Lesbare id-er (`baseline-ovrige-464-996-46,6-6t`). |
+| 4 | `pytest tests/test_dataregresjon.py -v` | Testnavnene viste «Øvrige» som `\xd8vrige`, så tallene var vanskelige å lese. | Lesbare id-er (`baseline-ovrige-464-996-46,6-6t`). |
 | 5 | `flask --app app run` | Appen svarer på 127.0.0.1:5000. **`localhost:5000` gir 403 fra AirPlay** (`Server: AirTunes`), fordi `localhost` blir `::1`. Rådet i README («port opptatt») var feil. | README forklarer det som faktisk skjer. Logget i refleksjonsnotatene. |
 | 6 | Hva du skal se | Overskrift «15 anløp · ons 08.10 08:00 – tor 09.10 08:00 (norsk tid)», 15 rader, «Kalibrert baseline» og forklaringen. Stemmer med README. | — |
 
