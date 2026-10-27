@@ -66,10 +66,10 @@ Kalibrert baseline treffer innenfor ±30 min for **46,6 %** av ikke-rutegående 
 **4. Start appen**
 
 ```
-flask --app app run
+flask --app app run --port 8000
 ```
 
-Åpne <http://127.0.0.1:5000> i nettleseren. Stopp appen med Ctrl+C.
+Åpne <http://127.0.0.1:8000> i nettleseren (`http://localhost:8000` virker også). Stopp appen med Ctrl+C.
 
 **Hva du skal se:** anløpene de neste 24 timene fra «nå» = onsdag 08.10.2025 kl. 08:00 (norsk tid).
 
@@ -85,7 +85,7 @@ Skjermbildet lages med et eget skript som ikke er en del av testene. Se [`docs/u
 **Hvis noe går galt**
 
 - *`flask: command not found` eller `pytest: command not found`:* det virtuelle miljøet er ikke aktivert. Kjør `source .venv/bin/activate` (Windows: `.venv\Scripts\Activate.ps1`) i samme terminal.
-- *`403 Forbidden` på `http://localhost:5000`:* på macOS lytter AirPlay-mottakeren også på port 5000, og `localhost` kan havne der i stedet for i appen. Bruk nøyaktig <http://127.0.0.1:5000>, eller start med `flask --app app run --port 5001` og åpne <http://127.0.0.1:5001>.
+- *`Address already in use`:* et annet program bruker port 8000. Start med `flask --app app run --port 8001` og åpne <http://127.0.0.1:8001>.
 - *`WARNING: You are using pip version …`:* advarselen er ufarlig. Installasjonen er ferdig når det står `Successfully installed`.
 
 ## Datakilder
