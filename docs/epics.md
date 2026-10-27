@@ -76,11 +76,13 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 **Test:** `tests/test_data.py`, med vindusgrenser (inkludert start, ekskludert slutt), filter og manglende fasit.
 
-### E1-S04 — Prediktor-grensesnitt og kalibrert baseline ☐
+### E1-S04 — Prediktor-grensesnitt og kalibrert baseline ✅
 **Krav:** FR3, A5 · **Avhenger av:** E1-S03
 - `Prediksjon`, `Prediktor` og `velg_prediktor()` som i arkitektur §3.
 - `BaselinePrediktor`: `predikert = eta − offset[gruppe]`, `forventet_forsinket = None`, `kan_varsle = False`. `forklaring` inneholder gruppe og offset.
 - Kontrakttesten er parametrisert, så E2 kan legge til sin prediktor.
+- Prediktorer får `PrediksjonsInput` fra `lag_input(anlop, naa)`, aldri `Anlop`, så de ikke kan lese fasiten. `t_kutt = min(eta − H, naa)`.
+- `test_kutt_ikke_etter_naa` er flyttet hit fra E2-S07.
 
 **Test:** `tests/test_prediktor_kontrakt.py`, `tests/test_baseline.py` (BERGEN ENERGY: 11:00 → 09:55 norsk tid)
 
@@ -245,7 +247,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 - Implementerer kontrakten, med `kan_varsle = True`. Horisonten velges fra `rapportert ETA − nå` (PRD FR2).
 - Varselet er `predikert − kalibrert baseline > 120 min`. Uten tilstand brukes baselinen, merket.
 
-**Test:** legges til i `tests/test_prediktor_kontrakt.py`, pluss `::test_kutt_ikke_etter_naa`. For alle rader i en avspilling er `t_H ≤ nå`.
+**Test:** legges til i `PREDIKTORER` i `tests/test_prediktor_kontrakt.py` og må bestå alle kontrakt- og lekkasjetestene der. `::test_kutt_ikke_etter_naa` (`t_H ≤ nå` for alle rader i en avspilling) ble flyttet til E1-S04 og gjelder allerede.
 
 ### E2-S08 — Bytt inn i dashbordet ☐
 **Krav:** FR3, FR4, FR9, UX §5 · **Avhenger av:** E2-S07
@@ -371,3 +373,4 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
   - E1-S05/S06/S09/S10/S11/S12 og E3-S04/S05/S06 er tilpasset PRD-oppdateringen.
 - **2026-10-22** — E0-S08–S10 lagt til som oppfølging etter merge av PR #2: halen rettet til 19,5 %, kursmateriale ut av repoet, og AIS-dekning ved kuttpunktene avklares (beslutning 09) før E2-S02.
 - **2026-10-22** — E0-S10, beslutning 09: E2-S02 og E2-S03 bruker 24 t tilbakeblikk og filtrerer på tidsstemplet i svaret. Ny test i E2-S02 for at ingen punkter etter `t_H` slipper gjennom.
+- **2026-10-27** — E1-S04: prediktorene får `PrediksjonsInput` i stedet for `Anlop` (arkitektur §3). `test_kutt_ikke_etter_naa` er flyttet fra E2-S07 til E1-S04.

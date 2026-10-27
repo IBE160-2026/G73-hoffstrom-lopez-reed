@@ -2,7 +2,7 @@
 title: "Arkitektur: AIS-basert ankomstprediksjon"
 status: aktiv
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-27
 bygger_på: docs/prd.md
 ---
 
@@ -56,25 +56,43 @@ from datetime import datetime
 from typing import Optional, Protocol, Sequence
 
 @dataclass(frozen=True)
+class PrediksjonsInput:                  # det eneste en prediktor får se
+    voyageid: int
+    mmsino: int
+    shipname: str
+    ship_group: str                      # rå gruppe fra kilden
+    gruppe: str                          # «Passasjer» eller «Øvrige»
+    eta_reported: datetime               # UTC
+    horisont_timer: int                  # 6 eller 24
+    t_kutt: datetime                     # min(eta_reported − H, naa), UTC
+
+@dataclass(frozen=True)
 class Prediksjon:
     voyageid: int
     horisont_timer: int                  # 6 eller 24, valgt fra rapportert ETA − naa (PRD FR2)
-    predikert_ankomst: datetime          # UTC, tz-aware
+    predikert_ankomst: datetime          # UTC, tz-aware, full presisjon (avrunding er visning)
     forventet_forsinket: Optional[bool]  # None = prediktoren kan ikke varsle (baseline)
-    forklaring: dict                     # input som ble brukt; vises på detaljsiden og mates til AI-laget (E3)
+    forklaring: dict                     # minst metode og gruppe (baselinen har også offset_minutter); vises på detaljsiden og mates til AI-laget (E3)
 
 class Prediktor(Protocol):
     navn: str                            # vises i prediktor-stripa, f.eks. "Kalibrert baseline"
     kan_varsle: bool
-    def prediker(self, anlop: Sequence["Anlop"], naa: datetime) -> list[Prediksjon]: ...
+    def prediker(self, inputs: Sequence[PrediksjonsInput], naa: datetime) -> list[Prediksjon]: ...
 
-def velg_prediktor() -> Prediktor:
-    """PREDIKTOR=baseline|modell|auto (standard auto: modell hvis artefakt finnes, ellers baseline)."""
+def lag_input(anlop: "Anlop", naa: datetime) -> PrediksjonsInput:
+    """Eneste grense mellom datalaget og prediktorene."""
+
+def velg_prediktor(verdi: Optional[str] = None) -> Prediktor:
+    """PREDIKTOR=baseline|modell|auto (standard auto: modell hvis artefakt finnes, ellers baseline).
+    verdi=None leser miljøvariabelen PREDIKTOR. Ukjent verdi gir ValueError. I E1 finnes ingen modellartefakt, så alle tre gir baselinen."""
 ```
 
-- `naa` sendes med, slik at horisonten kan velges: ≤ 6 t hvis `eta_reported − naa ≤ 6 t`, ellers 24 t. Kuttpunktet `t_H = eta_reported − H` er da alltid ≤ `naa` (PRD FR9a). Modellen leser tilstanden ved `t_H` fra `tilstand_ved_kutt.csv` og aldri noe nyere. Baselinen bruker bare horisonten til visning.
+- **Lekkasje er umulig per konstruksjon, ikke bare forbudt.** Prediktorer får aldri et `Anlop`. `PrediksjonsInput` har ingen felt, egenskap eller referanse som fører til `faktisk_ankomst`, `status_in_area` eller `split`, så en prediktor som prøver å lese dem, får `AttributeError`. `lag_input()` er den eneste koden i `app/prediksjon/` som rører `app.data`. Ingen prediktormodul (alt unntatt `__init__.py`) får importere `app.data` eller lese `data/utdrag/`. Det sjekkes med en AST-test. Garantien gjelder feil som skjer ved et uhell, ikke bevisst kode (for eksempel dynamisk `importlib`): grensesnittet gir ingen vei til fasiten, og en utilsiktet import eller fillesing får testen til å feile. Ruten (E1-S06) når en prediktor bare via `lag_input`, og det finnes ingen variant av `prediker` som tar `Anlop`.
+- Horisonten velges i `lag_input`: 6 t hvis `eta_reported − naa ≤ 6 t`, ellers 24 t. Kuttpunktet er `t_kutt = min(eta_reported − H, naa)`. Med dagens utvalg (rapportert ETA i [nå, nå + 24 t)) er det det samme som `eta_reported − H` (PRD FR9a). Klemmen mot `naa` gjør at kontrakten også holder hvis E1-S06 ber om prediksjoner for anløp mer enn 24 t fram: kuttet ligger da aldri etter «nå». Tilstanden ved `t_kutt` (fra `data/utdrag/tilstand_ved_kutt.csv`) skal nå modellen gjennom grensen, altså `lag_input` eller en søsterfunksjon i `__init__.py`, og aldri leses av prediktormodulen selv. Aldri noe nyere enn `t_kutt` leses. Nøyaktig hvordan avgjøres i E2-S07. Baselinen bruker bare horisonten til visning.
+- `prediker` skal gi `TypeError` for alt som ikke er `PrediksjonsInput`. Kontrakttesten krever det.
+- Om 24 t-vinduet velger på rapportert eller predikert ankomst, er et åpent valg for E1-S06. Kontrakten støtter begge.
 - *Avvik* og *forsinket* (fasit) regnes i `metrikker.py` mot kalibrert baseline og er aldri en del av `Prediksjon`. Bytter man prediktor, endres derfor ikke fasiten (PRD §3).
-- Den samme kontrakttesten (`tests/test_prediktor_kontrakt.py`) kjøres parametrisert mot alle prediktorer. En ny prediktor er ikke ferdig før den består.
+- Den samme kontrakttesten (`tests/test_prediktor_kontrakt.py`) kjøres parametrisert mot alle prediktorer i `PREDIKTORER`. Den sjekker at input ikke har fasit, at endret fasit gir identiske prediksjoner, at `t_kutt ≤ naa` (`test_kutt_ikke_etter_naa`), og at prediktormodulene ikke leser datalaget. En ny prediktor er ikke ferdig før den består.
 
 ## 4. Data
 
@@ -118,7 +136,7 @@ app/
   metrikker.py         andel_innenfor(…, min=30), presisjon_recall(…)        (A6)
   visning.py           formatering: norsk tid, «+3 t 22 min», horisont-bøtte
   prediksjon/
-    __init__.py        Prediksjon, Prediktor, velg_prediktor()                (A5)
+    __init__.py        PrediksjonsInput, Prediksjon, Prediktor, lag_input(), velg_prediktor()  (A5)
     baseline.py        BaselinePrediktor                                      (E1)
     modell.py          ModellPrediktor                                        (E2)
   begrunnelse/                                                                (E3)
@@ -181,3 +199,4 @@ LLM_MODELL=claude-haiku-5-5
   - Det står nå eksplisitt at fasiten regnes utenfor prediktoren.
   - Valideringsdel er lagt til, og teststrategien har fått en egen rad for lekkasje.
 - **2026-10-22** — Etter beslutning 09: tilstandsvinduet er 24 t, og posisjoner filtreres på tidsstemplet i svaret.
+- **2026-10-27** — E1-S04: prediktor-kontrakten er input-basert. `prediker` tar `PrediksjonsInput` (bygd av `lag_input`) i stedet for `Anlop`, så prediktorer ikke kan nå fasiten. `t_kutt = min(eta − H, naa)`. Kontrakttesten dekker lekkasje, og `test_kutt_ikke_etter_naa` er flyttet hit fra E2-S07. Krever godkjenning fra begge eiere i PR-en.

@@ -45,3 +45,16 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Lærdom (råt):**
   - To «uavhengige» KI-er gjorde samme regnefeil på grensen, så det at to er enige, er ikke en verifikasjon.
   - Det som fanget feilen, var at specen var tydelig på halvåpent vindu, og at en test som feiler ble behandlet som informasjon, ikke som noe som må gjøres grønt.
+
+## 2026-10-27 — Arkitekturen motsa sin egen nye regel (E1-S04)
+
+- **Hva:** Implementasjons-subagenten skrev den nye lekkasjeregelen i arkitektur §3: ingen prediktormodul får lese `data/utdrag/`. I samme seksjon lot den stå at «modellen leser tilstanden ved `t_H` fra `tilstand_ved_kutt.csv`», men den fila ligger i `data/utdrag/`. Dokumentet sa dermed to ting som ikke kan være sanne samtidig. E2-S07 ville ha bygd modellen slik teksten sa, og så feilet på AST-testen.
+- **Hvordan det ble oppdaget:** Ingen av de tre reviewerne fant det. Claude (orkestratoren) så det under triagen, da den sjekket hvor `tilstand_ved_kutt.csv` ligger (`grep` i `docs/`) for å vurdere et funn om AIS etter kuttet.
+- **Resultat:** §3 sier nå at tilstanden skal nå modellen gjennom grensen (`lag_input` eller en søsterfunksjon), og at nøyaktig hvordan avgjøres i E2-S07. Det er også ført i `deferred-work.md`. Se `git log --oneline --grep E1-S04`.
+- **Lærdom (råt):** Tre reviewere leste diffen, men ingen sjekket påstandene i diffen mot resten av repoet. Selvmotsigelser mellom en ny regel og gammel tekst står ofte utenfor de endrede linjene.
+
+## 2026-10-27 — En mutant som ikke kompilerte, så ut som en fanget mutant (E1-S04)
+
+- **Hva:** I mutasjonssjekken la Claude til `faktisk_ankomst` med standardverdi *foran* `t_kutt` i `PrediksjonsInput`. Det gjør dataklassen ugyldig, så pytest stoppet med «2 errors» allerede ved innsamlingen. Det ser rødt ut, men ingen test hadde faktisk fanget lekkasjen.
+- **Hvordan det ble oppdaget:** Claude la merke til at resultatet var «errors», ikke «failed», og kjørte mutanten på nytt med feltet sist og fylt fra `Anlop`. Da feilet fire lekkasjetester, slik de skal.
+- **Lærdom (råt):** En mutant teller bare som fanget når en *test* feiler (failed). En importfeil eller syntaksfeil beviser ingenting om testene.
