@@ -196,7 +196,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_uu_struktur.py` + utfylt sjekkliste
 
-### E1-S16 — README og klone-test ☐ · MÅ
+### E1-S16 — README og klone-test ◐ · MÅ
 **Krav:** NFR1, UX §6 · **Avhenger av:** E1-S05, E1-S06
 - README har en «Kom i gang»-seksjon: krav (Python ≥ 3.9), venv, `pip install -r requirements.txt`, `flask --app app run`, `pytest`, og hva man bør se: standardvinduet med 15 anløp, og 46,6 % fra dataregresjonen i E1-S05 (i panelet hvis E1-S12 er bygd).
 - Et gruppemedlem som ikke bygde E1 kloner repoet på nytt og følger bare README. Tiden logges i README (mål: < 20 min), og alt som var uklart rettes.
