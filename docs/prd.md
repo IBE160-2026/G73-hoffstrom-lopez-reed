@@ -77,7 +77,7 @@ ID-ene brukes i stories (`docs/epics.md`) og i tester.
 - **FR6 — Sortering.** Bytt mellom predikert ankomst (standard) og avvik, synkende, så de mest forsinkede kommer først. Avvik er bare tilgjengelig når fasit vises.
 - **FR7 — Detaljvisning.** Hvert anløp har en egen side: skipsdata, alle tidspunkt, og en forklaring av hvordan prediksjonen ble laget. For baselinen er forklaringen en mal per gruppe: «rapportert ETA − {offset} min (median tid fra ankomstsonen til kai for {gruppe} i treningsdata)».
 - **FR8 — Treffsikkerhet og datakvalitet.** Et panel og en metodeside (`/metode`) viser tall for hele testperioden, regnet med samme metrikkfunksjon som evalueringen (NFR3):
-  - **Andel innenfor ±30 min** (hovedmetrikken), med både naiv ETA og kalibrert baseline per gruppe. For baseline skal tallene være **Øvrige 46,6 %** (naiv 12,9 %) og **Passasjer 79,6 %** (naiv 7,4 %) (`docs/beslutninger/04-kalibrert-baseline.md`).
+  - **Andel innenfor ±30 min** (hovedmetrikken), med både naiv ETA og kalibrert baseline per gruppe. For baseline skal tallene være **Øvrige 46,6 %** (naiv 12,8 %) og **Passasjer 79,6 %** (naiv 7,4 %) (`docs/beslutninger/04-kalibrert-baseline.md`).
   - **Dekning:** antall anløp med fasit av totalt per gruppe og antall per status (`ok`, `empty`, `not_detected`, `avkortet_av_neste_seilas`). Testperioden: 1 427 av 1 566 (91,1 %).
   - **Støttetall** (bare på `/metode`, aldri som hovedtall): MAE og median absolutt avvik.
   - `/metode` har setningen som beslutning 04 krever: forskjellen mellom naiv og kalibrert baseline skyldes at de måler to ulike fysiske hendelser, ikke at kalibrert er en bedre modell.
@@ -192,3 +192,4 @@ Som i briefens Scope/OUT: live-data, flere havner, API for andre, innlogging og 
 - **2026-10-22** — E0-S08: halen er 19,5 % (signert forsinket, `er_forsinket`) i alle levende dokumenter. Det absolutte tallet er fjernet fra FR10, og det åpne spørsmålet i §8 er snevret inn til avvikene i §7.
 - **2026-10-22** — E0-S10, beslutning 09: 24 t-horisonten beholdes. FR9a har fått tilbakeblikk på 24 t og krav om at posisjoner filtreres på tidsstemplet i svaret, siden API-et forskyver og kutter vinduer. Nytt åpent spørsmål om ny henting av `empty`-seilasene.
 - **2026-10-22** — E0-S13, beslutning 07 korrigert: gruppespørsmålet om ny henting er besvart med nei, og ny henting er ført under §7. Teksten for `empty` i FR4 er endret til «ingen AIS-data hentet», siden dataene finnes i Kystdatahuset.
+- **2026-10-27** — E1-S05: naiv ETA for Øvrige er rettet fra 12,9 % til 12,8 % (127/996) i FR8. Pipelinen avrundet avviket før ±30-sammenligningen. Uavrundet regnes alle tall, som besluttet i E0-S18.

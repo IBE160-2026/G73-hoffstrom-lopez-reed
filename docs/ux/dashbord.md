@@ -2,7 +2,7 @@
 title: "UX-skisser: dashbordet"
 status: aktiv
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-27
 bygger_på: docs/prd.md
 ---
 
@@ -10,7 +10,7 @@ bygger_på: docs/prd.md
 
 **Bygger på:** [`docs/prd.md`](../prd.md) (FR1–FR14, UU1–UU7). **Brukes av:** stories i [`docs/epics.md`](../epics.md). Hver skjerm under er merket med kravene og storyene den dekker.
 
-Skissene er ASCII-wireframes med vilje. De kan ligge i git, de kan diffes, og de oppdateres i samme PR som koden når noe endres underveis. Når dashbordet finnes, legges skjermbilder av den faktiske appen i `docs/ux/skjermbilder/` ved siden av skissene (E1-S17). Avvikene mellom skisse og resultat er i seg selv designspor.
+Skissene er ASCII-wireframes med vilje. De kan ligge i git, de kan diffes, og de oppdateres i samme PR som koden når noe endres underveis. Når dashbordet finnes, legges skjermbilder av den faktiske appen i `docs/ux/skjermbilder/` ved siden av skissene (standardvinduet i E1-S06, resten i E1-S17). Avvikene mellom skisse og resultat er i seg selv designspor.
 
 ## 1. Designspørsmål og svar (16.10.2026)
 
@@ -55,16 +55,16 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 │ Skip ▲▼        Gruppe     Rapportert  Predikert▼  Horis.  Varsel│                     │
 │ ───────────── ────────── ─────────── ─────────── ─────── ────── │ Øvrige (hovedtall)  │
 │ ROTTERDAM      Passasjer  ons 08:00   ons 07:15*  ≤ 6 t   –     │ Innenfor ±30 min    │
-│ EINARSON       Fisk       ons 09:00   ons 07:55*  ≤ 6 t   –     │ ██████████░░ 46,6 % │
-│ TROLLFJORD     Passasjer  ons 10:00   ons 09:15   ≤ 6 t   –     │ Naiv ETA: 12,9 %    │
-│ BERGEN ENERGY  Tank       ons 11:00   ons 09:55   ≤ 6 t   –     │ Passasjer (kontroll)│
+│ EINARSON       Fisk       ons 09:00   ons 07:56*  ≤ 6 t   –     │ ██████████░░ 46,6 % │
+│ TROLLFJORD     Passasjer  ons 10:00   ons 09:15   ≤ 6 t   –     │ Naiv ETA: 12,8 %    │
+│ BERGEN ENERGY  Tank       ons 11:00   ons 09:56   ≤ 6 t   –     │ Passasjer (kontroll)│
 │ VASCO DA GAMA  Passasjer  ons 11:00   ons 10:15   ≤ 6 t   –     │ ███████████░ 79,6 % │
-│ ELEKTRON       Last       ons 11:30   ons 10:25   ≤ 6 t   –     │ Naiv ETA: 7,4 %     │
+│ ELEKTRON       Last       ons 11:30   ons 10:26   ≤ 6 t   –     │ Naiv ETA: 7,4 %     │
 │ STAVANGERFJORD Passasjer  ons 13:06   ons 12:21   ≤ 6 t   –     │ Fasit: 1 427/1 566  │
-│ OCEAN RESPONSE Last       ons 13:45   ons 12:40   ≤ 6 t   –     │ Hva betyr tallene? ›│
-│ ELDJARN        Fisk       ons 14:00   ons 12:55   ≤ 6 t   –     │                     │
+│ OCEAN RESPONSE Last       ons 13:45   ons 12:41   ≤ 6 t   –     │ Hva betyr tallene? ›│
+│ ELDJARN        Fisk       ons 14:00   ons 12:56   ≤ 6 t   –     │                     │
 │ …                                                               │                     │
-│ SIEM PEARL     Slep       ons 16:30   ons 15:25   6–24 t  –     │                     │
+│ SIEM PEARL     Slep       ons 16:30   ons 15:26   6–24 t  –     │                     │
 │ MSC POESIA     Passasjer  tor 07:00   tor 06:15   6–24 t  –     │                     │
 ├──────────────────────────────────────────────────────────────┴────────────────────────┤
 │ «–» i Varsel: baselinen varsler ikke. Skipsnavn er lenke til detaljside.             │
@@ -88,13 +88,13 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 │ Skip ▲▼        Gruppe     Rapportert  Predikert   Faktisk    Avvik ▲▼        Varsel │
 │ ───────────── ────────── ─────────── ─────────── ────────── ─────────────── ────── │
 │ ROTTERDAM      Passasjer  ons 08:00   ons 07:15   ons 06:28  −47 min           –    │
-│ BERGEN ENERGY  Tank       ons 11:00   ons 09:55   ons 13:18  ▲ +3 t 22 min     –    │
+│ BERGEN ENERGY  Tank       ons 11:00   ons 09:56   ons 13:18  ▲ +3 t 22 min     –    │
 │                                                              FORSINKET              │
-│ OCEAN RESPONSE Last       ons 13:45   ons 12:40   ons 20:06  ▲ +7 t 25 min     –    │
+│ OCEAN RESPONSE Last       ons 13:45   ons 12:41   ons 20:06  ▲ +7 t 25 min     –    │
 │                                                              FORSINKET              │
-│ SIEM PEARL     Slep       ons 16:30   ons 15:25   ons 22:02  ▲ +6 t 36 min     –    │
+│ SIEM PEARL     Slep       ons 16:30   ons 15:26   ons 22:02  ▲ +6 t 36 min     –    │
 │                                                              FORSINKET              │
-│ G O SARS       Auxiliary  ons 16:00   ons 14:55   ons 10:39  −4 t 16 min       –    │
+│ G O SARS       Auxiliary  ons 16:00   ons 14:56   ons 10:39  −4 t 16 min       –    │
 │ (rad uten AIS) Tank       …           …           Fasit mangler (ingen AIS-data    │
 │                                                   hentet)                          │
 │ (avkortet)     Last       …           …           Fasit mangler (avkortet av neste │
@@ -128,7 +128,7 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 │ └──────────────────────────────┘ │
 │ ┌──────────────────────────────┐ │
 │ │ BERGEN ENERGY           Tank │ │
-│ │ Predikert   ons 09:55        │ │
+│ │ Predikert   ons 09:56        │ │
 │ │ Rapportert  ons 11:00        │ │
 │ │ Faktisk     ons 13:18        │ │  ← bare med fasit på
 │ │ ▲ +3 t 22 min  FORSINKET     │ │
@@ -159,7 +159,7 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 ├───────────────────────────────────────────────────────────┤
 │ Tidspunkt (norsk tid)                                     │
 │   Rapportert ETA ........ ons 08.10 11:00                 │
-│   Predikert ankomst ..... ons 08.10 09:55                 │
+│   Predikert ankomst ..... ons 08.10 09:56                 │
 │   Faktisk ankomst ....... ons 08.10 13:18  (fasit)        │
 │   Avvik ................. ▲ +3 t 22 min  FORSINKET        │
 ├───────────────────────────────────────────────────────────┤
@@ -187,7 +187,7 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 
 ```
 Ugyldig tidspunkt:                         Tomt vindu:
-  Dato «nå»                                 0 anløp · lør 01.11 03:00 – søn 02.11 03:00
+  Dato «nå»                                 0 anløp · tir 03.02 08:00 – ons 04.02 08:00
   [01.06.2025]                              ┌────────────────────────────────────────┐
   ⚠ Datoen må være innenfor testperioden    │ Ingen anløp med rapportert ETA i dette │
     14.09.2025–15.03.2026.                  │ vinduet. Prøv et annet tidspunkt.      │
@@ -212,13 +212,13 @@ Kjøres manuelt i E1-S15 og på nytt før levering (fase 6). Resultat og dato f�
 
 | Krav | Sjekk | Test | Resultat |
 |---|---|---|---|
-| UU1 | Alle tokenpar under ≥ 4,5:1 (tekst) / 3:1 (kant) | `tests/test_kontrast.py` | |
+| UU1 | Alle tokenpar under ≥ 4,5:1 (tekst) / 3:1 (kant) | `tests/test_kontrast.py` (E1-S06: tokens = tabellen i §7, kontrast regnet på nytt) | |
 | UU2 | Hele skjerm A og C kan brukes med bare tastatur. Fokus synlig hele veien. Hopp-lenke virker. | manuell | |
 | UU3 | Skjermbilde i gråtoner: FORSINKET og varsel kan fortsatt skilles ut | manuell | |
-| UU4 | Alle `<img>`/`<svg>` med mening har tekstalternativ | `tests/test_uu_struktur.py` | |
+| UU4 | Alle `<img>`/`<svg>` med mening har tekstalternativ | `tests/test_uu_struktur.py` (E1-S06: `img alt`, `svg` med tittel, pyntetegn `aria-hidden`), `tests/test_ruter.py::test_varselkolonnen_forklarer_seg` | |
 | UU5 | Alle `<input>` har `<label for>`, og feil har `aria-describedby` | `tests/test_uu_struktur.py` | |
-| UU6 | 360 px, 1280 px, 1920 px og 200 % zoom uten horisontal rulling | manuell + skjermbilder | |
-| UU7 | `lang="nb"`, én `h1`, `th scope`, `aria-sort`, landemerker | `tests/test_uu_struktur.py` | |
+| UU6 | 360 px, 1280 px, 1920 px og 200 % zoom uten horisontal rulling | manuell + skjermbilder (`docs/ux/skjermbilder/`, E1-S06) | |
+| UU7 | `lang="nb"`, én `h1`, `th scope`, `aria-sort`, landemerker | `tests/test_uu_struktur.py` (E1-S06: `lang`, én `h1` uten hoppede nivåer, `th scope`, `header`/`main`, hopp-lenke, `data-label`, viewport, tastaturnåbare elementer; `aria-sort` kommer med E1-S10) | |
 | — | Skjermleser (VoiceOver): les opp én rad og detaljsiden | manuell | |
 
 **Tastaturrekkefølge, skjerm A:** hopp-lenke → dato → klokkeslett → filter (piltaster i radiogruppa) → fasit → Oppdater → sorteringsknapper → skipsnavn (rad for rad) → «Hva betyr tallene?».
@@ -227,7 +227,7 @@ Kjøres manuelt i E1-S15 og på nytt før levering (fase 6). Resultat og dato f�
 
 Nøkternt kontrollrom-uttrykk: mye luft, én aksentfarge og varselfarge bare der noe faktisk er galt. Systemfonter (ingen nedlasting), tall med `font-variant-numeric: tabular-nums` så klokkeslett står rett under hverandre. Lyst tema som standard, mørkt via `prefers-color-scheme` for nattevakt.
 
-Kontrasten er regnet ut mot `--bakgrunn` / `--flate`. Testen i E1-S13 regner det samme fra `style.css`.
+Kontrasten er regnet ut mot `--bakgrunn` / `--flate`. `tests/test_kontrast.py` (E1-S06) sjekker at tokenene i `style.css` er like tabellen, og regner kontrasten på nytt for parene stilarket bruker.
 
 | Token | Lys | Kontrast | Mørk | Kontrast | Bruk |
 |---|---|---|---|---|---|
@@ -252,3 +252,16 @@ Fokusring: 3 px `--aksent` med 2 px avstand, aldri `outline: none` uten erstatni
   - Panelet har fått naiv Passasjer og dekning.
   - «Tre av fire» er rettet til «alle tre».
 - **2026-10-22** — Teksten for `empty` er endret til «ingen AIS-data hentet» etter at beslutning 07 ble korrigert. Dataene finnes i Kystdatahuset, men ble ikke hentet.
+- **2026-10-27** — E0-S18: tider vises avrundet til nærmeste minutt, så BERGEN ENERGY (09:55:48) blir 09:56 i skissene. Bare visningen avrundes, og avvik og ±30 min regnes uavrundet. Vinduet velger på rapportert ETA i v1.
+- **2026-10-27** — E1-S05: naiv ETA for Øvrige i skissen er rettet fra 12,9 % til 12,8 %. Det gamle tallet kom fra avrundet avvik i pipelinen.
+- **2026-10-27** — E1-S06, hovedskjermen er bygd. Skjermbilder av standardvinduet ligger i [`skjermbilder/`](skjermbilder/) (desktop 1280 px og mobil 360 px). Avvik fra skissene:
+  - Seks predikerte tider i skjerm A og A2 er rettet til avrunding til nærmeste minutt: EINARSON 07:56, ELEKTRON 10:26, OCEAN RESPONSE 12:41, ELDJARN 12:56, SIEM PEARL 15:26 og G O SARS 14:56 (A2). Alle Øvrige har 64,2 min offset, altså :48 sekunder, og runder opp.
+  - Eksempelet på tomt vindu i §5 (lør 01.11 03:00) hadde 7 anløp. Det er byttet til tir 03.02 08:00, som ligger i en pause i dataene og er det testen bruker.
+  - Linja «15 anløp · …» er en `h2`, så overskriftene ikke hopper fra `h1` rett til tabellen.
+  - Hjelpeteksten «predikert før valgt tidspunkt» står med liten tekst under tiden i Predikert-cellen, sammen med `*`.
+  - Fotnoten sier «Alle tider er norsk tid, avrundet til nærmeste minutt» i stedet for «Skipsnavn er lenke til detaljside». Detaljsiden kommer først i E1-S11.
+  - Varsel-cellens «–» er skjult for skjermlesere og har en skjult tekst, «Ingen varsel: baselinen varsler ikke avvik».
+  - Mobil (skjerm B): kortet har skipsnavnet som tittel og så én linje per kolonne i samme rekkefølge som tabellen (Gruppe, Rapportert, Predikert, Horisont, Varsel). Skissen hadde gruppe ved siden av navnet, predikert før rapportert og horisont og varsel på samme linje. Én rekkefølge for tabell og kort gjør at skjermlesere og `data-label` følger samme kolonner.
+  - Mobil: telle-linja bruker samme format som desktop («ons 08.10 08:00 – tor 09.10 08:00 (norsk tid)»), og prediktor-stripa har hele teksten i stedet for den korte versjonen. Lenka «Mer ›» er utelatt til `/metode` bygges i E1-S12.
+  - Mobil: tabellen har eksplisitte ARIA-roller (`table`, `rowgroup`, `row`, `columnheader`, `cell`). `display: block` under 640 px fjerner tabellsemantikken i Safari/VoiceOver, og uten rollene ville ikke skjermlesere sett en tabell, slik §3 lover.
+  - Mobil: toppen viser også «Ankomstprediksjon · Bergen Havn» og «Avspilling av historiske data», som på desktop.

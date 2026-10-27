@@ -515,6 +515,7 @@ def main() -> None:
         arrival_in_area = find_zone_entry(pts, OUTER_RADIUS_KM, fetch_start, window_end_used)
         if arrival_in_area is not None:
             row_out["arrival_in_area_utc"] = arrival_in_area.isoformat()
+            # Avrundet til 0,1 min: ikke bruk kolonnen til ±30-scoring; appen scorer uavrundede tider (E1-S05).
             row_out["deviation_in_area_minutes"] = round((arrival_in_area - eta).total_seconds() / 60, 1)
             row_out["status_in_area"] = "ok"
             if (arrival_in_area - fetch_start) < timedelta(hours=EDGE_PROXIMITY_HOURS) or \

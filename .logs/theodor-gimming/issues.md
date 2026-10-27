@@ -1,0 +1,11 @@
+# Åpne punkter
+
+- [ ] 2026-10-27 [e1-omfang-og-prediktor](999-2026-10-27-16-37-22-e1-omfang-og-prediktor.md) — kontraktendringen i arkitektur §3 (E1-S04) må godkjennes av begge eiere i E1-PR-en
+- [x] 2026-10-27 [e1-omfang-og-prediktor](999-2026-10-27-16-37-22-e1-omfang-og-prediktor.md) — E1-S06: vindu på rapportert ETA (A) eller predikert ankomst (B), avgjøres med gruppa — rapportert ETA i v1, predikert vurderes i E2-S08 (løst 2026-10-27)
+- [x] 2026-10-27 [e1-omfang-og-prediktor](999-2026-10-27-16-37-22-e1-omfang-og-prediktor.md) — E1-S06: avrundingsregel for visning (09:55 avkortet eller 09:56 avrundet) — avrundet til nærmeste minutt, bare visning (løst 2026-10-27)
+- [ ] 2026-10-27 [e1-omfang-og-prediktor](999-2026-10-27-16-37-22-e1-omfang-og-prediktor.md) — E2-S07: tilstand ved t_kutt gjennom grensen, med test
+- [x] 2026-10-27 [e1-omfang-og-prediktor](999-2026-10-27-16-37-22-e1-omfang-og-prediktor.md) — epic-1-context.md har gammel prediktor-signatur, må lages på nytt før S05 (løst 2026-10-27)
+- [ ] 2026-10-27 [e1-s05-metrikker-og-dataregresjon](998-2026-10-27-17-01-33-e1-s05-metrikker-og-dataregresjon.md) — README mangler 79,6 %, 12,8 % og 7,4 % (tas i E1-S16)
+- [ ] 2026-10-27 [e1-s06-hovedskjerm](997-2026-10-27-17-24-40-e1-s06-hovedskjerm.md) — manuell tastaturgjennomgang (UU2) og VoiceOver på mobil, føres i UU-sjekklista i E1-S16
+- [ ] 2026-10-27 [e1-s16-readme-forhandssjekk](996-2026-10-27-17-35-00-e1-s16-readme-forhandssjekk.md) — E1 må merges til main før klone-testen; README-klonen gir main, der appen ikke finnes (PR #4 åpnet 27.10, venter på godkjenning fra Thomas og Felipe)
+- [ ] 2026-10-27 [e1-s16-readme-forhandssjekk](996-2026-10-27-17-35-00-e1-s16-readme-forhandssjekk.md) — klone-testen kjøres av Felipe eller Thomas 28.10 og logges under deres navn; tiden føres i README
