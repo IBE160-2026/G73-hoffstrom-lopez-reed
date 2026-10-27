@@ -56,7 +56,7 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 │ ───────────── ────────── ─────────── ─────────── ─────── ────── │ Øvrige (hovedtall)  │
 │ ROTTERDAM      Passasjer  ons 08:00   ons 07:15*  ≤ 6 t   –     │ Innenfor ±30 min    │
 │ EINARSON       Fisk       ons 09:00   ons 07:55*  ≤ 6 t   –     │ ██████████░░ 46,6 % │
-│ TROLLFJORD     Passasjer  ons 10:00   ons 09:15   ≤ 6 t   –     │ Naiv ETA: 12,9 %    │
+│ TROLLFJORD     Passasjer  ons 10:00   ons 09:15   ≤ 6 t   –     │ Naiv ETA: 12,8 %    │
 │ BERGEN ENERGY  Tank       ons 11:00   ons 09:56   ≤ 6 t   –     │ Passasjer (kontroll)│
 │ VASCO DA GAMA  Passasjer  ons 11:00   ons 10:15   ≤ 6 t   –     │ ███████████░ 79,6 % │
 │ ELEKTRON       Last       ons 11:30   ons 10:25   ≤ 6 t   –     │ Naiv ETA: 7,4 %     │
@@ -253,3 +253,4 @@ Fokusring: 3 px `--aksent` med 2 px avstand, aldri `outline: none` uten erstatni
   - «Tre av fire» er rettet til «alle tre».
 - **2026-10-22** — Teksten for `empty` er endret til «ingen AIS-data hentet» etter at beslutning 07 ble korrigert. Dataene finnes i Kystdatahuset, men ble ikke hentet.
 - **2026-10-27** — E0-S18: tider vises avrundet til nærmeste minutt, så BERGEN ENERGY (09:55:48) blir 09:56 i skissene. Bare visningen avrundes, og avvik og ±30 min regnes uavrundet. Vinduet velger på rapportert ETA i v1.
+- **2026-10-27** — E1-S05: naiv ETA for Øvrige i skissen er rettet fra 12,9 % til 12,8 %. Det gamle tallet kom fra avrundet avvik i pipelinen.

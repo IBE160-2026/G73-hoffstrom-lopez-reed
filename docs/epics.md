@@ -61,7 +61,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 | | Stories, i rekkefølge |
 |---|---|
-| **MÅ** | E1-S04 ✅ → E1-S05 → E1-S06 → E1-S16. Første klone-test kjøres rett etter S06, og den gjentas til slutt. |
+| **MÅ** | E1-S04 ✅ → E1-S05 ✅ → E1-S06 → E1-S16. Første klone-test kjøres rett etter S06, og den gjentas til slutt. |
 | **KAN** | E1-S07 → E1-S13 → E1-S08 → E1-S09 → E1-S11 → E1-S12 → E1-S10 → E1-S15 → E1-S14 → E1-S17 |
 
 UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (det MÅ viser), og UU-sjekklista fylles ut i E1-S16. Det som gjenstår av E1-S13, E1-S14 og E1-S15, gjelder skjermer og temaer som bygges i KAN-storyene.
@@ -100,11 +100,13 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_prediktor_kontrakt.py`, `tests/test_baseline.py` (BERGEN ENERGY: 11:00 → 09:55 norsk tid)
 
-### E1-S05 — Metrikkmodul og dataregresjon ☐ · MÅ
+### E1-S05 — Metrikkmodul og dataregresjon ✅ · MÅ
 **Krav:** FR8, NFR3, A6 · **Avhenger av:** E1-S04
 - `andel_innenfor(prediksjoner, anlop, minutter=30)` regner bare på anløp med fasit.
-- På testsplitten av det ekte utdraget gir baselinen **46,6 %** (Øvrige) og **79,6 %** (Passasjer). Naiv ETA gir **12,9 %** (Øvrige) og **7,4 %** (Passasjer). Alt avrundes til én desimal.
+- På testsplitten av det ekte utdraget gir baselinen **46,6 %** (Øvrige) og **79,6 %** (Passasjer). Naiv ETA gir **12,8 %** (Øvrige) og **7,4 %** (Passasjer). Alt avrundes til én desimal.
 - `dekning()` gir antall per status. Testperioden har 1 427 av 1 566 med fasit: 126 `empty`, 8 `not_detected` og 5 `avkortet_av_neste_seilas`.
+- Alle tallene lages gjennom S04-kontrakten (`lag_input(a, eta − H)` → `prediker`, H = 6 og 24). Naiv ETA er en egen referanseprediktor, `NaivPrediktor`, som står i `PREDIKTORER` og består kontrakttesten. Den kan ikke velges med `velg_prediktor`.
+- ±30 min er inklusiv og regnes på uavrundede tider. Regresjonstesten låser eksakte antall (464/996, 343/431, 127/996, 32/431).
 
 **Test:** `tests/test_metrikker.py` (fixture), `tests/test_dataregresjon.py` (ekte utdrag)
 
@@ -408,3 +410,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
   - S06 avhenger nå av S04, og S16 av S05 og S06.
   - E0-S16 er en fast ID for løpende sesjonslogg.
 - **2026-10-27** — E0-S18: E1-S06 har fått to avgjørelser. Vinduet velger på rapportert ETA (A), og predikert ankomst vurderes i E2-S08. Tider vises avrundet til nærmeste minutt, men beregningene er uavrundet.
+- **2026-10-27** — E1-S05: naiv ETA for Øvrige er 12,8 % (127/996), ikke 12,9 %. Pipelinen avrundet avviket til 0,1 min før ±30-sammenligningen, så seilas 3542899 (+30 min 1 s) ble telt som treff. `NaivPrediktor` er lagt til som referanseprediktor i kontrakttesten.

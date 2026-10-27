@@ -65,3 +65,22 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Hvordan det ble oppdaget:** Gruppa så det i oppsummeringen. Claude hadde ikke sjekket `git log --all --grep` før den valgte ID-en, selv om tabellen i `docs/epics.md` viste at S05 var i bruk.
 - **Resultat:** Commiten ble omdøpt til `E0-S16` før push (`68655d4`). E0-S16 er nå den faste ID-en for løpende logging, og E0-S17 brukes for omfangssjekken. Begge står i E0-tabellen.
 - **Lærdom (råt):** Før en ID tas i bruk, sjekkes både tabellen og `git log --all --grep <ID>`. Det er billig.
+
+## 2026-10-27 — Pipelinen rundet avviket før sammenligningen (12,9 % skulle vært 12,8 %)
+
+- **Hva:** `pipeline/derive_arrivals.py:518`, skrevet med KI i september (co-author Claude Sonnet 5, `c1fe8c3`/`9299bbe`), runder avviket til 0,1 min før ±30 min-sammenligningen. Seilas 3542899 bommer med 30 min og 1 sekund. Den ble rundet til 30,0 og telt som treff. Naiv ETA for Øvrige ble dermed 12,9 % i stedet for 12,8 % (127/996). Tallet har stått i brief, PRD, addendum, UX, arkitektur, epics og beslutning 04 siden 28.09. 46,6 % og 79,6 % påvirkes ikke.
+- **Hvordan det ble oppdaget:** Da regresjonstesten i E1-S05 ble spesifisert, *før* den var skrevet, regnet Claude tallene gjennom S04-kontrakten på det ekte utdraget for å sjekke at de låste tallene kunne reproduseres. 46,6 og 79,6 stemte, men naiv Øvrige ga 12,8. Claude sammenlignet den uavrundede tiden i utdraget med den avrundede kolonnen `deviation_in_area_minutes`, og nøyaktig én seilas skilte seg ut.
+- **Resultat:** gruppa valgte å låse 12,8 % og rette dokumentene i bruk i E1-S05. Beslutning 04 og promptloggene står som historikk, med en merknad. Regelen fra E1-S02 om uavrundede tider gjelder overalt. Se `git log --oneline --grep E1-S05`.
+- **Lærdom (råt):**
+  - Et tall som har stått i sju dokumenter i en måned, var aldri regnet ut av en test.
+  - Feilen ble funnet fordi tallene ble reprodusert *før* testen ble skrevet, og ikke skrevet inn i testen som fasit.
+  - Avrunding i et mellomsteg er en kilde til avvik selv når sluttresultatet rundes til én desimal.
+
+## 2026-10-27 — Samme testhull som i S03, gjentatt i S05 (fasit avgjort av ankomsttid, ikke status)
+
+- **Hva:** Implementasjons-subagenten skrev `har_fasit()` riktig: status `ok` *og* utfylt ankomsttid. Testene den skrev, kunne likevel ikke skille dette fra en feil versjon som bare sjekker ankomsttiden. Testhjelperen satte alltid ankomsttid til `None` når status ikke var `ok`, så den feile versjonen passerte alle testene. Det er nøyaktig samme hull som review fant i E1-S03 22.10.
+- **Hvordan det ble oppdaget:** Claudes egen mutasjonssjekk etter implementasjonen. Fem av seks mutanter ble fanget, og denne overlevde. Ingen av de tre reviewerne meldte den som et hull. Verification Gap-revieweren skrev tvert imot at den «ikke har noen realistisk regresjon», fordi datalaget setter ankomsttid til `None` i dag.
+- **Resultat:** en ny test bygger et anløp med status `empty` *og* utfylt ankomsttid og viser at det holdes utenfor. Mutanten feiler nå. Se `git log --oneline --grep E1-S05`.
+- **Lærdom (råt):**
+  - Det at en regel holder i dag fordi et annet lag sørger for det, er ikke det samme som at testen låser regelen.
+  - Lærdommen fra S03 ble ikke overført til S05 av seg selv. Mutasjonssjekken fanget det, ikke hukommelsen.

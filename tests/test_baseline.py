@@ -109,6 +109,15 @@ def test_velg_prediktor_gir_baseline(monkeypatch, verdi):
     assert isinstance(velg_prediktor(), BaselinePrediktor)
 
 
+def test_naiv_kan_ikke_velges(monkeypatch):
+    """``NaivPrediktor`` er bare referanse i regresjonen (E1-S05), ikke et valg."""
+    with pytest.raises(ValueError):
+        velg_prediktor("naiv")
+    monkeypatch.setenv("PREDIKTOR", "naiv")
+    with pytest.raises(ValueError):
+        velg_prediktor()
+
+
 def test_velg_prediktor_ukjent_verdi(monkeypatch):
     monkeypatch.setenv("PREDIKTOR", "tull")
     with pytest.raises(ValueError) as feil:

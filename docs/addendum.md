@@ -54,9 +54,11 @@ Pipeline work is stopped here per the group's decision (2026-09-27: "vi starter 
 
   | Group | n | naive ±30min | calibrated ±30min | calibrated late >2h (er_forsinket) |
   |---|---|---|---|---|
-  | ALL | 1,427 | 11.2% | **56.6%** | 13.7% |
+  | ALL | 1,427 | 11.1% | **56.6%** | 13.7% |
   | Passasjer | 431 | 7.4% | **79.6%** | 0.5% |
-  | Non-Passasjer | 996 | 12.9% | **46.6%** | 19.5% |
+  | Non-Passasjer | 996 | 12.8% | **46.6%** | 19.5% |
+
+  Corrected 2026-10-27 (E1-S05): naive Non-Passasjer was 12.9% because the pipeline rounded the deviation to 0.1 min before the ±30 comparison, so voyage 3542899 (+30 min 1 s) counted as a hit; unrounded it is 127/996 = 12.8%. The ALL row moved from 11.2% to 11.1% (159/1,427) for the same reason.
 
   Calibration fixes the systematic bias (median goes from roughly -50min to near zero) but barely moves MAE for Non-Passasjer (126→102 min overall, still driven by the tail) — a constant offset corrects the typical case, not the extreme one. The late >2h column is signed — arrival more than 2 hours after the calibrated baseline — which is the `er_forsinket` definition (decision 06) and the base rate the model's delay flag is scored against (PRD FR10). Until 2026-10-22 this column showed absolute misses over 2 hours, a different and larger tail that the flag does not measure. **This ~14-20% delay rate is the real target the model needs to move**, not the ±30min headline alone.
 - **Label agreement** (arrival_in_area calibrated vs. arrival_at_quay raw, on the >2h flag): 97.0% (n=5,010) — the two independently-derived labels agree on which voyages are genuine disruptions almost all the time, on the subset where both exist.

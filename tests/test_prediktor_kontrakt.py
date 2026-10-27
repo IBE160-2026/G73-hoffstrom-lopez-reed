@@ -7,6 +7,8 @@ og kuttpunktet ligger aldri etter «nå».
 import ast
 import dataclasses
 import datetime as dt
+import importlib
+import inspect
 from pathlib import Path
 
 import pytest
@@ -14,10 +16,12 @@ import pytest
 from app.data import Anlop, anlop_i_vindu, last_utdrag
 from app.prediksjon import Prediksjon, PrediksjonsInput, lag_input
 from app.prediksjon.baseline import BaselinePrediktor
+from app.prediksjon.naiv import NaivPrediktor
 
 UTC = dt.timezone.utc
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "anlop_mini.csv"
 PREDIKSJON_DIR = Path(__file__).resolve().parent.parent / "app" / "prediksjon"
+METRIKKER = Path(__file__).resolve().parent.parent / "app" / "metrikker.py"
 NAA = dt.datetime(2025, 10, 8, 6, 0, tzinfo=UTC)  # 08:00 norsk tid, standardvinduet
 TEST_FRA = dt.datetime(2025, 9, 14, 3, 15, tzinfo=UTC)
 
@@ -28,7 +32,7 @@ INPUTFELT = (
 )
 
 # E2-S07 legger til ModellPrediktor her.
-PREDIKTORER = [BaselinePrediktor]
+PREDIKTORER = [BaselinePrediktor, NaivPrediktor]
 
 
 @pytest.fixture(params=PREDIKTORER, ids=lambda k: k.__name__)
@@ -211,7 +215,30 @@ def _forbudte_referanser(kilde: str):
 
 
 def test_prediktormoduler_finnes():
-    assert "baseline.py" in [p.name for p in _prediktormoduler()]
+    assert {"baseline.py", "naiv.py"} <= {p.name for p in _prediktormoduler()}
+
+
+def _prediktorklasser():
+    """Alle klasser med ``prediker`` definert i en prediktormodul."""
+    rot = PREDIKSJON_DIR.parent.parent
+    funnet = set()
+    for sti in _prediktormoduler():
+        modulnavn = ".".join(sti.relative_to(rot).with_suffix("").parts)
+        modul = importlib.import_module(modulnavn)
+        for _, klasse in inspect.getmembers(modul, inspect.isclass):
+            if klasse.__module__ == modul.__name__ and callable(getattr(klasse, "prediker", None)):
+                funnet.add(klasse)
+    return funnet
+
+
+def test_alle_prediktorer_er_i_kontrakten():
+    """Ingen prediktor slipper unna kontrakten (E1-S05, gruppekrav 1).
+
+    Hver klasse med ``prediker`` i ``app/prediksjon/`` må stå i ``PREDIKTORER``, og
+    omvendt. En ny modul (f.eks. E2s ``modell.py``) som ikke legges til, feiler her.
+    """
+    assert _prediktorklasser() == set(PREDIKTORER)
+    assert {BaselinePrediktor, NaivPrediktor} <= set(PREDIKTORER)
 
 
 @pytest.mark.parametrize(
@@ -232,3 +259,76 @@ def test_prediktormodul_leser_ikke_datalaget(sti):
 ])
 def test_ast_sjekken_fanger_juks(kilde):
     assert _forbudte_referanser(kilde)
+
+
+# --- Metrikkmodulen (E1-S05) ---------------------------------------------------------
+
+
+# Det eneste metrikker.py får importere fra app: typene den scorer.
+METRIKK_TILLATT = {("app.data", "Anlop"), ("app.prediksjon", "Prediksjon")}
+
+
+def _metrikk_brudd(kilde: str):
+    """``metrikker.py`` scorer prediksjoner; den lager dem aldri selv.
+
+    Importer: standardbiblioteket, ``Anlop`` fra ``app.data`` og ``Prediksjon`` fra
+    ``app.prediksjon``. Alt annet fra ``app`` (prediktorer, ``velg_prediktor``) og
+    relative importer er forbudt. Forbudt er også referanse til ``baseline.json`` og
+    navn som viser at den regner ``eta − offset`` selv (``offset``, ``eta_reported``).
+    """
+    feil = []
+    for node in ast.walk(ast.parse(kilde)):
+        if isinstance(node, ast.Import):
+            feil += [a.name for a in node.names
+                     if a.name == "app" or a.name.startswith("app.")]
+        elif isinstance(node, ast.ImportFrom):
+            modul = node.module or ""
+            if node.level:
+                feil.append(f"relativ import: {modul!r}")
+            elif modul == "app" or modul.startswith("app."):
+                feil += [f"from {modul} import {a.name}" for a in node.names
+                         if (modul, a.name) not in METRIKK_TILLATT]
+        tekst = None
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            tekst = node.value
+        elif isinstance(node, ast.Name):
+            tekst = node.id
+        elif isinstance(node, ast.Attribute):
+            tekst = node.attr
+        elif isinstance(node, ast.arg):
+            tekst = node.arg
+        if tekst:
+            liten = tekst.lower()
+            if "baseline.json" in liten:
+                feil.append(f"refererer baseline.json: {tekst!r}")
+            if "offset" in liten or liten == "eta_reported":
+                feil.append(f"regner prediksjon selv: {tekst!r}")
+    return feil
+
+
+def test_metrikker_lager_ikke_prediksjoner():
+    assert _metrikk_brudd(METRIKKER.read_text(encoding="utf-8")) == []
+
+
+@pytest.mark.parametrize("kilde", [
+    "import app.prediksjon.baseline",
+    "from app.prediksjon.baseline import BaselinePrediktor",
+    "from app.prediksjon import baseline",
+    "from app.prediksjon import velg_prediktor",
+    "from app.prediksjon.naiv import NaivPrediktor",
+    "from app.prediksjon import Prediksjon, lag_input",
+    "import app.prediksjon",
+    "from .prediksjon import Prediksjon",
+    "p = 'data/baseline.json'",
+    "x = a.eta_reported - dt.timedelta(minutes=64.2)",
+    "x = OFFSET_MINUTTER['Øvrige']",
+])
+def test_metrikk_ast_sjekken_fanger_juks(kilde):
+    assert _metrikk_brudd(kilde)
+
+
+def test_metrikk_ast_sjekken_tillater_typene():
+    assert _metrikk_brudd(
+        "import datetime as dt\nfrom collections import Counter\n"
+        "from app.data import Anlop\nfrom app.prediksjon import Prediksjon\n"
+    ) == []

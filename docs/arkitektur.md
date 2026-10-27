@@ -178,7 +178,7 @@ LLM_MODELL=claude-haiku-5-5
 | Enhet | datalag, baseline, metrikker, formatering | `tests/test_*.py` mot `tests/fixtures/anlop_mini.csv` (håndlagde rader med kjente svar) |
 | Kontrakt | alle prediktorer mot §3, inkludert `t_H ≤ naa` | `tests/test_prediktor_kontrakt.py` (parametrisert) |
 | Lekkasje | tilstand og features er uendret når AIS etter `t_H` eller faktisk ankomst endres | `tests/test_tilstand.py`, `tests/test_features.py` (PRD FR9a) |
-| Dataregresjon | utdraget gir 46,6 % / 79,6 % (naiv 12,9 % / 7,4 %) og 1 427/1 566 med fasit på testsplitten | `tests/test_dataregresjon.py` (PRD FR8, NFR3) |
+| Dataregresjon | utdraget gir 46,6 % / 79,6 % (naiv 12,8 % / 7,4 %) og 1 427/1 566 med fasit på testsplitten | `tests/test_dataregresjon.py` (PRD FR8, NFR3) |
 | Rute | statuskoder, rader, feilmeldinger, at URL-tilstanden bevares | Flask-testklient |
 | UU-struktur | `lang`, `label for`, `th scope`, `aria-sort`, alt-tekst, én `h1` | `tests/test_uu_struktur.py` med `html.parser` fra standardbiblioteket |
 | Kontrast | tokenpar fra `style.css` ≥ 4,5:1 / 3:1 | `tests/test_kontrast.py` |
@@ -200,3 +200,4 @@ LLM_MODELL=claude-haiku-5-5
   - Valideringsdel er lagt til, og teststrategien har fått en egen rad for lekkasje.
 - **2026-10-22** — Etter beslutning 09: tilstandsvinduet er 24 t, og posisjoner filtreres på tidsstemplet i svaret.
 - **2026-10-27** — E1-S04: prediktor-kontrakten er input-basert. `prediker` tar `PrediksjonsInput` (bygd av `lag_input`) i stedet for `Anlop`, så prediktorer ikke kan nå fasiten. `t_kutt = min(eta − H, naa)`. Kontrakttesten dekker lekkasje, og `test_kutt_ikke_etter_naa` er flyttet hit fra E2-S07. Krever godkjenning fra begge eiere i PR-en.
+- **2026-10-27** — E1-S05: naiv ETA for Øvrige i dataregresjonen er 12,8 %, ikke 12,9 %, fordi avviket nå sammenlignes uavrundet. `app/metrikker.py` scorer prediksjoner fra prediktorer i `PREDIKTORER` og lager aldri egne.
