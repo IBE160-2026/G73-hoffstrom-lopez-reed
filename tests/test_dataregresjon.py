@@ -45,13 +45,14 @@ def _score(prediktorklasse, test_split, gruppe, horisont):
     return andel_innenfor(_prediker_ved_kutt(prediktorklasse(), anlop, horisont), anlop)
 
 
-@pytest.mark.parametrize("horisont", HORISONTER)
+@pytest.mark.parametrize("horisont", HORISONTER, ids=lambda h: f"{h}t")
 @pytest.mark.parametrize("prediktor, gruppe, treff, n, prosent", [
     (BaselinePrediktor, "Øvrige", 464, 996, "46,6"),
     (BaselinePrediktor, "Passasjer", 343, 431, "79,6"),
     (NaivPrediktor, "Øvrige", 127, 996, "12,8"),
     (NaivPrediktor, "Passasjer", 32, 431, "7,4"),
-])
+], ids=lambda v: {BaselinePrediktor: "baseline", NaivPrediktor: "naiv",
+                  "Øvrige": "ovrige"}.get(v, str(v).lower() if isinstance(v, str) else str(v)))
 def test_treffandel_innenfor_30_min(test_split, prediktor, gruppe, treff, n, prosent, horisont):
     r = _score(prediktor, test_split, gruppe, horisont)
     assert (r.treff, r.n) == (treff, n)

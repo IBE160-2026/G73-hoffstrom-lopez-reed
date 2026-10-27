@@ -98,3 +98,10 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Hvordan det ble oppdaget:** Implementasjons-subagenten i E1-S06 trengte et vindu uten anløp for `test_tomt_vindu`, og prøvde eksempelet. Claude bekreftet det ved å telle på nytt (7 anløp 01.11 kl. 03:00, 0 anløp 03.02.2026 kl. 08:00).
 - **Resultat:** UX §5 bruker nå tir 03.02.2026 08:00, som også er vinduet testen bruker. Endringen står i UX-endringsloggen. Se `git log --oneline --grep E1-S06`.
 - **Lærdom (råt):** Et eksempel i en skisse er også en påstand om dataene. Det samme mønsteret ga feil skissetider i E0-S18.
+
+## 2026-10-27 — Feilsøkingsråd i README skrevet uten å sjekke (E1-S16)
+
+- **Hva:** I «Kom i gang» skrev Claude at port 5000 er «opptatt» på macOS fordi AirPlay bruker den, og at man må bytte port. Det var en antakelse fra generell kunnskap, og den ble ikke sjekket. I virkeligheten starter Flask fint på 127.0.0.1:5000. Det som går galt, er at `http://localhost:5000` havner hos AirPlay (403, `Server: AirTunes`) fordi `localhost` slås opp som `::1`.
+- **Hvordan det ble oppdaget:** Gruppa ba om en tørrkjøring av README i en ny, tom mappe. Claude så at AirPlay lyttet på port 5000 mens Flask likevel svarte, og testet derfor `127.0.0.1`, `localhost` og `[::1]` hver for seg.
+- **Resultat:** Rådet er skrevet om til det som faktisk skjer: bruk nøyaktig `127.0.0.1`, eller bytt port. Se `git log --oneline --grep E1-S16`.
+- **Lærdom (råt):** Et feilsøkingsråd er en påstand om en feil. Skrives den uten at feilen er gjenskapt, kan den sende brukeren feil vei akkurat når de står fast.

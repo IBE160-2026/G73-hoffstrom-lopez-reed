@@ -85,7 +85,8 @@ Skjermbildet lages med et eget skript som ikke er en del av testene. Se [`docs/u
 **Hvis noe går galt**
 
 - *`flask: command not found` eller `pytest: command not found`:* det virtuelle miljøet er ikke aktivert. Kjør `source .venv/bin/activate` (Windows: `.venv\Scripts\Activate.ps1`) i samme terminal.
-- *Port 5000 er opptatt* (på macOS bruker AirPlay-mottakeren den): start med `flask --app app run --port 5001` og åpne <http://127.0.0.1:5001>.
+- *`403 Forbidden` på `http://localhost:5000`:* på macOS lytter AirPlay-mottakeren også på port 5000, og `localhost` kan havne der i stedet for i appen. Bruk nøyaktig <http://127.0.0.1:5000>, eller start med `flask --app app run --port 5001` og åpne <http://127.0.0.1:5001>.
+- *`WARNING: You are using pip version …`:* advarselen er ufarlig. Installasjonen er ferdig når det står `Successfully installed`.
 
 ## Datakilder
 
