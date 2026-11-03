@@ -29,7 +29,7 @@ Alle metodevalg er logget som egne beslutninger med kontekst, alternativer og be
 
 ## Hva er åpent
 
-- **De ~13 % uten AIS-data.** 83 % av de 935 tomme seilasene er utenlandskflaggede. Forklaringen med tilgangsbegrensning eller utdatert MMSI er motbevist (22.10.2026): 7 av 10 i en stikkprøve gir data i dag. Hvorfor den opprinnelige hentingen fikk tomme svar, vet vi ikke. Vi henter ikke på nytt, fordi datasettet er låst (beslutning 07). Vær klar over at utenlandskflagget, ikke-rutegående trafikk er underrepresentert i evalueringen.
+- **De ~13 % uten AIS-data.** 63 av de 935 tomme seilasene har MMSI 0 i SafeSeaNet. Det er ikke et ekte fartøy, så de kan aldri få fasit fra AIS. Av de andre 872 er 81,4 % utenlandskflaggede, mot 33,2 % blant anløpene med fasit. Det tidligere tallet på 83 % regnet MMSI 0 som utenlandsk (beslutning 07, oppdatert 03.11.2026). Forklaringen med tilgangsbegrensning eller utdatert MMSI er motbevist (22.10.2026): 7 av 10 i en stikkprøve gir data i dag. Hvorfor den opprinnelige hentingen fikk tomme svar, vet vi ikke. Vi henter ikke på nytt, fordi datasettet er låst (beslutning 07). Vær klar over at utenlandskflagget, ikke-rutegående trafikk er underrepresentert i evalueringen.
 - **Skjevhet i kalibreringen.** Offset-tallet (44,8 min rutegående / 64,2 min ikke-rutegående) er beregnet på et utvalg som overrepresenterer større, mer rutepregede skip — det er de typene der vi klarer å utlede kaitidspunkt i tillegg til soneinngang. Dokumentert, ikke korrigert.
 - **Vintervridd testsett.** Splitten som brukes til evaluering er kronologisk (riktig valg for å unngå lekkasje), men det betyr testperioden er sep. 2025–mars 2026 — i hovedsak vinterhalvår. Ikke trekk konklusjoner om sommertrafikk fra disse tallene.
 
