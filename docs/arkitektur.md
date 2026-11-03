@@ -88,7 +88,7 @@ def velg_prediktor(verdi: Optional[str] = None) -> Prediktor:
 ```
 
 - **Lekkasje er umulig per konstruksjon, ikke bare forbudt.** Prediktorer får aldri et `Anlop`. `PrediksjonsInput` har ingen felt, egenskap eller referanse som fører til `faktisk_ankomst`, `status_in_area` eller `split`, så en prediktor som prøver å lese dem, får `AttributeError`. `lag_input()` er den eneste koden i `app/prediksjon/` som rører `app.data`. Ingen prediktormodul (alt unntatt `__init__.py`) får importere `app.data` eller lese `data/utdrag/`. Det sjekkes med en AST-test. Garantien gjelder feil som skjer ved et uhell, ikke bevisst kode (for eksempel dynamisk `importlib`): grensesnittet gir ingen vei til fasiten, og en utilsiktet import eller fillesing får testen til å feile. Ruten (E1-S06) når en prediktor bare via `lag_input`, og det finnes ingen variant av `prediker` som tar `Anlop`.
-- Horisonten velges i `lag_input`: 6 t hvis `eta_reported − naa ≤ 6 t`, ellers 24 t. Kuttpunktet er `t_kutt = min(eta_reported − H, naa)`. Med dagens utvalg (rapportert ETA i [nå, nå + 24 t)) er det det samme som `eta_reported − H` (PRD FR9a). Klemmen mot `naa` gjør at kontrakten også holder hvis E1-S06 ber om prediksjoner for anløp mer enn 24 t fram: kuttet ligger da aldri etter «nå». Tilstanden ved `t_kutt` (fra `data/utdrag/tilstand_ved_kutt.csv`) skal nå modellen gjennom grensen, altså `lag_input` eller en søsterfunksjon i `__init__.py`, og aldri leses av prediktormodulen selv. Aldri noe nyere enn `t_kutt` leses. Nøyaktig hvordan avgjøres i E2-S07. Baselinen bruker bare horisonten til visning.
+- Horisonten velges i `lag_input`: 6 t hvis `eta_reported − naa ≤ 6 t`, ellers 24 t. Kuttpunktet er `t_kutt = min(eta_reported − H, naa)`. Med dagens utvalg (rapportert ETA i [nå, nå + 24 t)) er det det samme som `eta_reported − H` (PRD FR9a). Klemmen mot `naa` gjør at kontrakten også holder hvis E1-S06 ber om prediksjoner for anløp mer enn 24 t fram: kuttet ligger da aldri etter «nå». Tilstanden ved `t_kutt` (fra `data/utdrag/tilstand_ved_kutt.csv`) skal nå modellen gjennom grensen, altså `lag_input` eller en søsterfunksjon i `__init__.py`, og aldri leses av prediktormodulen selv. Aldri noe nyere enn `t_kutt` leses. Nøyaktig hvordan avgjøres i E2-S07. Baselinen bruker bare horisonten til visning. `ModellPrediktor` gjelder bare Øvrige (beslutning 11). Den har `kan_varsle = True`, men delegerer Passasjer-rader og rader uten tilstand til `BaselinePrediktor`. Delegerte rader får `forventet_forsinket = None` og `forklaring["metode"] = "baseline"`. Det endrer ikke kontrakten. Statiske felt og ferdigregnet fartøyhistorikk (F8–F16) skal nå modellen samme vei som tilstanden. Krever det nye felt i `PrediksjonsInput`, er det en kontraktendring som tas i egen PR (se over).
 - `prediker` skal gi `TypeError` for alt som ikke er `PrediksjonsInput`. Kontrakttesten krever det.
 - Om 24 t-vinduet velger på rapportert eller predikert ankomst, er et åpent valg for E1-S06. Kontrakten støtter begge.
 - *Avvik* og *forsinket* (fasit) regnes i `metrikker.py` mot kalibrert baseline og er aldri en del av `Prediksjon`. Bytter man prediktor, endres derfor ikke fasiten (PRD §3).
@@ -121,11 +121,13 @@ def velg_prediktor(verdi: Optional[str] = None) -> Prediktor:
 
 `voyageid, horisont_timer, t_kutt_utc, lat, lon, distanse_km, fart_knop, kurs_grader, posisjon_alder_min, allerede_ankommet`
 
-Feltene er tomme når posisjon mangler, og raden beholdes. Fila er ~15 600 rader og ~1,5 MB og committes. Det er den eneste AIS-avledede inputen modellen får hos sensor (PRD NFR1).
+Feltene er tomme når posisjon mangler, og raden beholdes. Fila er ~15 600 rader og ~1,5 MB og committes. Det er den eneste AIS-avledede inputen modellen får hos sensor (PRD NFR1). `allerede_ankommet` er et evalueringsflagg, ikke modellinput: F6 i beslutning 11 tar samme signal fra posisjonen.
+
+**Utdrag med statiske seilasfelt** (E2-S04; navnet avgjøres der) — `ship_type`, `length`, `etd` og `dep_locname` per anløp, til featurene F8, F9, F13 og F14 (beslutning 11). De finnes bare i den gitignorerte seilasfila i `pipeline/data/`, og `anlop.csv` er låst. Fila committes. Alt E2 committer under `data/` skal til sammen være under 10 MB (PRD NFR1): begge utdragene, fire modellartefakter og `metrikker.json`.
 
 **Tidssoner:** all lagring og beregning skjer i UTC. `arrival_in_area_utc` mangler tidssonesuffiks i kilden og normaliseres ved innlasting. Visning skjer i `Europe/Oslo` via `zoneinfo`. `tzdata` ligger i `requirements.txt` fordi Windows ikke har tidssonedatabasen.
 
-**`data/modell/`** (E2): `modell_6t.joblib`, `modell_24t.joblib` og `metrikker.json`. Alt committes hvis det er under 10 MB, så sensor slipper å trene.
+**`data/modell/`** (E2): `modell_6t.joblib` og `modell_24t.joblib` (bare Øvrige), ablasjonene uten F13–F14 ved siden av, og `metrikker.json`. Alt committes innenfor den samlede grensen på 10 MB, så sensor slipper å trene.
 
 ## 5. Mappestruktur
 
@@ -204,3 +206,4 @@ LLM_MODELL=claude-haiku-5-5
 - **2026-11-03** — Godkjenningen av kontraktendringen fra E1-S04, slik den faktisk skjedde. Den kom ikke i en egen PR, men i PR #4 (hele E1), som ble merget 03.11 kl. 15:57 UTC.
   - **Felipe** (modell) kommenterte PR #4 kl. 15:57 UTC, før merge: «Godt over og godkjenner mergen». Han ga ingen formell review.
   - **Thomas** (dashbord) godkjente ikke før merge. Han bekreftet i etterkant, 03.11, at han godkjenner kontraktendringen. Bekreftelsen kom gjennom Theodor og står ikke på PR #4.
+- **2026-11-03** — E2-S01, beslutning 11: `ModellPrediktor` gjelder bare Øvrige og delegerer Passasjer og rader uten tilstand til baselinen (§3). §4 har fått et nytt utdrag med statiske seilasfelt og ablasjonsmodellene, og en presisering om at `allerede_ankommet` ikke er modellinput.

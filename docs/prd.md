@@ -93,11 +93,16 @@ ID-ene brukes i stories (`docs/epics.md`) og i tester.
   - Anløp der skipet allerede har ankommet før `t_H` beholdes, siden vakta ville sett det. De telles og rapporteres separat (1,6 % ved 6 t, 0,4 % ved 24 t).
   - `[NOTE FOR PM]` Ved 6 t bruker dashbordet et spor som kan være opptil 6 t eldre enn «nå». Å kutte ved «nå» ville gitt ferskere data, men da ville input i drift ikke ligne input i trening. Gruppa velger konsistens framfor ferskhet.
 - **FR9 — Modellprediksjon.** Modellen leverer predikert ankomst og varsel per anløp og horisont gjennom samme grensesnitt som baselinen. Dashbordet bytter kilde uten endringer i visningskoden.
+  - **Modellen gjelder bare Øvrige, med én modell per horisont** (beslutning 11). Passasjer beholder den kalibrerte baselinen. Prediktoren delegerer Passasjer-rader og rader uten AIS-tilstand til baselinen, og viser hvilken metode som ble brukt.
+  - Input er featurelista F1–F16 i beslutning 11. Fartøyhistorikken (F15–F16) og snittet den trekkes mot, regnes bare på treningsdata med faktisk ankomst før `t_H`.
   - Hvilken horisont som brukes for en rad, bestemmes av bøtta i FR2.
   - Varsel = `predikert ankomst − kalibrert baseline > 120 min`, altså samme terskel og retning som fasitetiketten. `[ASSUMPTION]`
 - **FR10 — Modell mot baseline.** Panelet og `metrikker.json` viser modell og kalibrert baseline side om side, **per horisont og per gruppe**, på nøyaktig samme anløp. Det betyr at tallet for «ingen AIS-tilstand» regnes med som baseline-prediksjoner, og at et tall bare for rader med tilstand rapporteres i tillegg.
   - **±30 min:** modellen lykkes hvis den har høyere andel innenfor ±30 min enn baselinen på Øvrige, separat for hver horisont.
-  - **Varsel:** grunnraten er **19,5 %** forsinket blant Øvrige i testperioden (signert, n = 996 med fasit). Briefen, statusnotatet og addendumet bruker det samme tallet (rettet 22.10.2026). Baselinen kan ikke varsle, så referansen er regelen «varsle alle»: presisjon 19,5 %, recall 100 %, F1 ≈ 0,33. Modellen lykkes på varsel hvis F1 er høyere enn referansen. `[ASSUMPTION]`
+  - **Varsel:** grunnraten er **19,5 %** forsinket blant Øvrige i testperioden (signert, n = 996 med fasit). Briefen, statusnotatet og addendumet bruker det samme tallet (rettet 22.10.2026). Baselinen kan ikke varsle, så referansen er regelen «varsle alle»: presisjon 19,5 %, recall 100 %, F1 ≈ 0,33. Modellen lykkes på varsel hvis F1 er høyere enn referansen (bekreftet i beslutning 11).
+  - **Passasjer** rapporteres bare som baseline, fordi det ikke finnes noen modell for gruppen.
+  - **Ablasjon:** modellen trenes også uten avgangshavn og ETD (F13–F14), og begge resultatene rapporteres. Det viser hvor mye modellen hviler på felt vi ikke kan verifisere.
+  - **Rader i ankomstsonen ved `t_H`** (F6) gir modellen en fordel baselinen ikke har. Alle tall for modell mot baseline rapporteres både med og uten disse radene.
   - Presisjon, recall og F1 vises alltid sammen, og et tap vises like tydelig som en seier.
 
 ### Generativt AI-lag (E3)
@@ -133,7 +138,7 @@ Kriterienumrene viser til [`docs/vurderingskriterier.md`](vurderingskriterier.md
   - **Versjonert datautdrag** i `data/utdrag/`, ikke den gitignorede `pipeline/data/`.
   - **Lagret baseline** (`data/baseline.json`: offset per gruppe, splittidspunkt, kildefilens sjekksum), slik at ingenting må regnes ut på nytt ved oppstart.
   - **`.env.example`** med alle variabler og *ingen* ekte nøkler. Appen starter uten `.env`.
-  - Fra E2: **versjonert tilstandsutdrag** (`data/utdrag/tilstand_ved_kutt.csv`, én rad per anløp og horisont, regnet etter FR9a, med kildens sjekksum) og **lagret modellartefakt**. Sensor trenger verken AIS-cachen eller å trene. Grense: under 10 MB til sammen.
+  - Fra E2: **versjonert tilstandsutdrag** (`data/utdrag/tilstand_ved_kutt.csv`, én rad per anløp og horisont, regnet etter FR9a, med kildens sjekksum), **utdrag med statiske seilasfelt for featurene** (skipstype, lengde, ETD og avgangshavn, beslutning 11) og **lagret modellartefakt**. Sensor trenger verken AIS-cachen eller å trene. Grense: under 10 MB til sammen.
   - Fra E3: **testmodus som standard** (FR13).
   - Verifisert med en *klone-test*: et gruppemedlem som ikke bygde oppsettet følger README på en ren maskin. Tiden loggføres.
 - **NFR2 — Testbarhet (kriterium 3).** Hver story har akseptansekriterier som kan sjekkes og en navngitt test, automatisk der det går og ellers et manuelt sjekkpunkt. `pytest` kjører uten nett og uten `pipeline/data/` på under ett minutt. `GET /` svarer på under 1 s lokalt for standardvinduet.
@@ -158,23 +163,25 @@ Som i briefens Scope/OUT: live-data, flere havner, API for andre, innlogging og 
 - **Havnekaptein/driftsleder** (brief, sekundærbruker) får ingen egne visninger i v1.
 - **HTTP Basic Auth** (brief Scope IN 5) er ikke nødvendig, siden appen kjøres lokalt.
 
+**Kjente begrensninger** (verifiseres ikke, men rapporteres i resultatnotatet, E2-S10):
+
+- **Rapportert ETA ved `t_H`** (tidligere antakelse A1, beslutning 11). Datasettet har én rapportert ETA per seilas og ingen tidsstempel for når den ble meldt. Vi vet ikke om det er ETA-en slik den var meldt ved `t_H`, eller en senere oppdatering. Er den oppdatert, får både modell og baseline litt mer informasjon enn vakta hadde. Dette kan ikke verifiseres i dataene.
+- **Avgangshavn og ETD** (F13–F14, beslutning 11) kommer fra en seilaspost som kan være satt sammen i etterkant. ETD brukes bare når den ligger før `t_H`. Hvor mye modellen hviler på disse feltene, måles med ablasjonen i FR10.
+
 ## 8. Åpne spørsmål
 
 | Spørsmål | Avgjøres i | Eier |
 |---|---|---|
-| Én modell, eller separate for Passasjer og Øvrige? | E2-S01 | Felipe |
-| Er rapportert ETA verdien slik den var ved `t_24`, eller en senere oppdatering? Sjekk Kystdatahuset-dokumentasjonen og rådata (A1 i §9). | E2-S01 | Theodor |
-| Bekreft suksesskriteriet for varsel (F1 mot «varsle alle», A2 i §9) før første modell trenes | E2-S01 | Felipe |
 | Før opp avvikene i §7 i brief.md og brief.no.md. (Halen er rettet til 19,5 % signert 22.10.2026, E0-S08.) | før fase 3 | Theodor |
 | Hvilken språkmodell-leverandør skal brukes i ekte modus? Arkitekturen antar Anthropic, men adapteren gjør byttet billig. | E3-S03 | Thomas |
 
-**Lukket:** *Hva skiller 6 t fra 24 t?* Kuttpunktet ved rapportert ETA − H (FR9a, beslutning 08, 16.10.2026). *Er skipene utenfor AIS-rekkevidde 24 t før, så 24 t-horisonten må droppes?* Nei. ≈ 93 % har posisjon med 24 t tilbakeblikk, og de fleste ligger i en norsk havn (beslutning 09, 22.10.2026). *Skal `empty`-seilasene hentes på nytt?* Nei. Datasettet er låst, og 46,6 % og alle tall nedstrøms bygger på det. 87,1 % dekning føres som en kjent underestimering, og ny henting er videre arbeid (beslutning 07, korrigert 22.10.2026).
+**Lukket:** *Én modell, eller separate for Passasjer og Øvrige?* Én modell, bare for Øvrige, trent per horisont. Passasjer beholder baselinen (beslutning 11, 03.11.2026). *Er rapportert ETA slik den var ved `t_24`?* Det kan ikke verifiseres, og føres som kjent begrensning i §7 (beslutning 11). *Holder suksesskriteriet for varsel?* Ja: F1 høyere enn «varsle alle» (beslutning 11). *Hva skiller 6 t fra 24 t?* Kuttpunktet ved rapportert ETA − H (FR9a, beslutning 08, 16.10.2026). *Er skipene utenfor AIS-rekkevidde 24 t før, så 24 t-horisonten må droppes?* Nei. ≈ 93 % har posisjon med 24 t tilbakeblikk, og de fleste ligger i en norsk havn (beslutning 09, 22.10.2026). *Skal `empty`-seilasene hentes på nytt?* Nei. Datasettet er låst, og 46,6 % og alle tall nedstrøms bygger på det. 87,1 % dekning føres som en kjent underestimering, og ny henting er videre arbeid (beslutning 07, korrigert 22.10.2026).
 
 ## 9. Antakelser
 
-- **A1** (FR9a, FR10): rapportert ETA er kjent ved `t_24`. Datasettet har én ETA per anløp og ingen tidsstempel for når den ble meldt. Er den oppdatert senere, får både modell og baseline litt mer informasjon enn vakta hadde. Det rapporteres som begrensning hvis det ikke kan avkreftes.
-- **A2** (FR10): suksess på varsel = F1 høyere enn «varsle alle» (≈ 0,33 på Øvrige).
-- **A3** (FR9): varselet er en terskel på predikert avvik (> 120 min), ikke en egen klassifikator. Kan endres i E2-S01, men da endres FR9 først.
+A1 og A2 ble avgjort i beslutning 11 (03.11.2026). A1 er nå en kjent begrensning (§7), og A2 er bekreftet som suksesskriterium (FR10).
+
+- **A3** (FR9): varselet er en terskel på predikert avvik (> 120 min), ikke en egen klassifikator. Beholdt uendret i E2-S01 (beslutning 11). Endres den senere, endres FR9 først.
 
 ## Endringslogg
 
@@ -193,3 +200,4 @@ Som i briefens Scope/OUT: live-data, flere havner, API for andre, innlogging og 
 - **2026-10-22** — E0-S10, beslutning 09: 24 t-horisonten beholdes. FR9a har fått tilbakeblikk på 24 t og krav om at posisjoner filtreres på tidsstemplet i svaret, siden API-et forskyver og kutter vinduer. Nytt åpent spørsmål om ny henting av `empty`-seilasene.
 - **2026-10-22** — E0-S13, beslutning 07 korrigert: gruppespørsmålet om ny henting er besvart med nei, og ny henting er ført under §7. Teksten for `empty` i FR4 er endret til «ingen AIS-data hentet», siden dataene finnes i Kystdatahuset.
 - **2026-10-27** — E1-S05: naiv ETA for Øvrige er rettet fra 12,9 % til 12,8 % (127/996) i FR8. Pipelinen avrundet avviket før ±30-sammenligningen. Uavrundet regnes alle tall, som besluttet i E0-S18.
+- **2026-11-03** — E2-S01, beslutning 11: modellen gjelder bare Øvrige og trenes per horisont, mens Passasjer beholder baselinen (FR9). Featurelista F1–F16 er låst. Fartøyhistorikken og snittet den trekkes mot, regnes bare på treningsdata. FR10 har fått ablasjon uten F13–F14 og rapportering med og uten rader i ankomstsonen. A1 er flyttet fra §9 til kjente begrensninger i §7, sammen med avgangshavn og ETD. A2 er bekreftet, og `[ASSUMPTION]` er fjernet fra FR10. Tre spørsmål i §8 er lukket.
