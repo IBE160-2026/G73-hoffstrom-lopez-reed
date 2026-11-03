@@ -105,3 +105,13 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Hvordan det ble oppdaget:** Gruppa ba om en tørrkjøring av README i en ny, tom mappe. Claude så at AirPlay lyttet på port 5000 mens Flask likevel svarte, og testet derfor `127.0.0.1`, `localhost` og `[::1]` hver for seg.
 - **Resultat:** Rådet er skrevet om til det som faktisk skjer: bruk nøyaktig `127.0.0.1`, eller bytt port. Se `git log --oneline --grep E1-S16`.
 - **Lærdom (råt):** Et feilsøkingsråd er en påstand om en feil. Skrives den uten at feilen er gjenskapt, kan den sende brukeren feil vei akkurat når de står fast.
+
+## 2026-11-03 — Klone-testen ble grønn selv om `git clone` hadde feilet (E1-S16)
+
+- **Hva:** I klone-testen fulgte Felipe README steg 1–4 mot `main`, og sluttresultatet var grønt: 179 tester grønne, appen svarte 200 på `http://127.0.0.1:8000`, og siden viste «15 anløp». Men steg 1 hadde feilet. `git clone` stoppet fordi mappa fantes fra et tidligere forsøk i samme økt, og testen fortsatte i den eksisterende mappa. Et grønt sluttresultat sa dermed ingenting om at README-ens første steg virket, eller om at koden som ble testet, var den på `main`.
+- **Hvordan det ble oppdaget:** Vi leste hele terminalutskriften i stedet for bare sluttresultatet.
+- **Resultat:** Det ble verifisert i etterkant at den eksisterende mappa var identisk med `main` (`59a5cbb`, «On branch main», up to date with origin/main). Testen er derfor gyldig, og avviket står i loggen (`.logs/felipe-knudstad-lopez/`).
+- **Lærdom (råt):**
+  - Samme mønster som tidsstempeltesten 22.10: et resultat som ser riktig ut, er ikke et bevis før man har sjekket hva som faktisk kjørte.
+  - En klone-test må starte i en mappe som garantert ikke finnes fra før, ellers kan et feilet første steg skjules av en gammel kopi.
+  - Les hele utskriften, ikke bare siste linje.

@@ -22,6 +22,8 @@ Appen er et dashbord som spiller av historiske anløp til Bergen Havn og viser n
 
 **Du trenger:** Python 3.9 eller nyere, og git. Sjekk med `python3 --version` (Windows: `py --version`).
 
+**Tid:** ca. 4 minutter fra steg 1 til siden viser «15 anløp». Det er målt i klone-testen 03.11.2026, der et gruppemedlem som ikke bygde appen, fulgte stegene under på egen maskin mot `main` (Python 3.9.6). Målet er under 20 minutter.
+
 **1. Klon repoet og gå inn i mappa**
 
 ```
