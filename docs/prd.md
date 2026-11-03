@@ -165,7 +165,7 @@ Som i briefens Scope/OUT: live-data, flere havner, API for andre, innlogging og 
 
 **Kjente begrensninger** (verifiseres ikke, men rapporteres i resultatnotatet, E2-S10):
 
-- **Rapportert ETA ved `t_H`** (tidligere antakelse A1, beslutning 11). Datasettet har én rapportert ETA per seilas og ingen tidsstempel for når den ble meldt. Vi vet ikke om det er ETA-en slik den var meldt ved `t_H`, eller en senere oppdatering. Er den oppdatert, får både modell og baseline litt mer informasjon enn vakta hadde. Dette kan ikke verifiseres i dataene.
+- **Rapportert ETA ved `t_H`** (tidligere antakelse A1, beslutning 11). Datasettet har én rapportert ETA per seilas og ingen tidsstempel for når den ble meldt. Seilas-endepunktet i Kystdatahuset har ikke noe slikt felt (sjekket mot det kjørende API-et 10.09.2026, beslutning 11). Vi vet ikke om det er ETA-en slik den var meldt ved `t_H`, eller en senere oppdatering. Er den oppdatert, får både modell og baseline litt mer informasjon enn vakta hadde. Dette kan ikke verifiseres i dataene.
 - **Avgangshavn og ETD** (F13–F14, beslutning 11) kommer fra en seilaspost som kan være satt sammen i etterkant. ETD brukes bare når den ligger før `t_H`. Hvor mye modellen hviler på disse feltene, måles med ablasjonen i FR10.
 
 ## 8. Åpne spørsmål
