@@ -255,12 +255,14 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_fetch_ais_kutt.py::test_vindu_fra_rapportert_eta` (vinduet endres ikke når faktisk ankomst endres), `::test_filtrerer_bort_punkter_etter_kutt` (et svar med punkter etter `t_H` gir ingen slike i cachen) og en loggført dekningstabell.
 
-### E2-S03 — Tilstandsutdrag og lekkasjetest ☐
+### E2-S03 — Tilstandsutdrag og lekkasjetest ◐
 **Krav:** FR9a, NFR1 · **Avhenger av:** E2-S02
-- `scripts/lag_tilstand.py` skriver `data/utdrag/tilstand_ved_kutt.csv`: én rad per anløp og H, med posisjon, gjenstående distanse, fart, kurs, alder på posisjon og flagget `allerede_ankommet`. Fila committes, og kildens sjekksum legges i `data/baseline.json`.
+- `scripts/lag_tilstand.py` skriver `data/utdrag/tilstand_ved_kutt.csv`: én rad per anløp og H, med `ais_status`, posisjon, gjenstående distanse, fart, kurs og alder på posisjon. Scriptet leser ingen ankomstfelt. Fila committes.
+- Kildens sjekksum står i `data/utdrag/tilstand_ved_kutt.json`, ikke i `data/baseline.json`, som er låst.
 - Mangler posisjon i [`t_H` − 24 t, `t_H`], blir feltene tomme, og raden beholdes.
+- Kode og tester committes før utdraget. Utdraget genereres og committes for seg når hentingen i E2-S02 er ferdig, og da settes E2-S03 til ✅.
 
-**Test:** `tests/test_tilstand.py::test_ingen_lekkasje` (punkter etter `t_H` fjernet eller flyttet, faktisk ankomst endret → identisk rad) og `::test_mangler_posisjon`
+**Test:** `tests/test_tilstand.py::test_ingen_lekkasje` (punkter etter `t_H` lagt til, fjernet eller flyttet, faktisk ankomst endret → byte-identisk utdrag, som i PRD FR9a), `::test_mangler_posisjon`, med flere. Etter genereringen kommer i tillegg `::test_committet_tilstand`.
 
 ### E2-S04 — Features og valideringssplitt ☐
 **Krav:** FR9a, NFR3 · **Avhenger av:** E2-S03
@@ -285,8 +287,9 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
   - presisjon, recall og F1 på varsel, mot «varsle alle»
   - MAE og median
   - dekning av tilstand
-  - antall `allerede_ankommet`
-  - alt over også for ablasjonen uten F13–F14, og både med og uten rader i ankomstsonen ved `t_H` (F6)
+  - antall rader i ankomstsonen ved `t_H`, regnet med F6 (posisjon ved kuttet)
+  - alt over også for ablasjonen uten F13–F14, og både med og uten rader i ankomstsonen ved `t_H`
+  - én definisjon i hele rapporten: «allerede i ankomstsonen» er F6, aldri et flagg regnet fra faktisk ankomst. Flagget regnes i evalueringen fra tilstandsutdraget, ikke fra `anlop.csv`.
   - Passasjer bare som baseline
 - Skriptet teller kjøringer mot testperioden (`--test`) og lagrer antallet.
 
@@ -435,3 +438,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-10-27** — E1-S06: hovedskjermen viser standardvinduet (15 anløp) med UU-minimum og kort under 640 px. Testene er `test_ruter.py`, `test_visning.py`, `test_uu_struktur.py` og `test_kontrast.py`. Skjermbilder ligger i `docs/ux/skjermbilder/` og lages med `scripts/ta_skjermbilder.py` utenfor `pytest`. Avvikene fra skissene står i UX-endringsloggen.
 - **2026-11-03** — E1-S16 er ferdig. Klone-testen tok ca. 4 min (Felipe), og UU-sjekklista i UX §6 er fylt ut (Thomas). E1-S18 (hopp-lenken dekker overskriften) og E1-S19 (norsk navn for «Auxiliary») er lagt til som KAN etter funn i UU-sjekken.
 - **2026-11-03** — E2-S01, beslutning 11: én modell for Øvrige, trent per horisont, og Passasjer beholder baselinen. Featurelista F1–F16 er lagt inn i E2-S04 med to nye tester, ablasjonen i E2-S05 og E2-S06, og rapportering med og uten F6 i E2-S06 og E2-S10. E2-S07 delegerer Passasjer til baselinen.
+- **2026-11-03** — E2-S03: tilstandsutdraget får `ais_status` og metadata i `tilstand_ved_kutt.json`, og `allerede_ankommet` er tatt ut. E2-S06 bruker F6 som eneste definisjon av «allerede i ankomstsonen» (Felipe).

@@ -27,7 +27,7 @@ Felipe avgjorde spørsmålene 03.11.2026 (spec: `_bmad-output/implementation-art
    - **Ingen treningsrader før `t_H`:** finnes det ingen Øvrige-treningsrader med ankomst før `t_H` (de tidligste radene), er snittet det trekkes mot 0. Fartøyet uten historikk får F15 = det snittet og F16 = 0.
    - Avviket i F15 er kalibrert med offseten fra `baseline.json`, som er fittet på hele treningsdelen. Det er en konstant forskyvning av alle verdier, både fartøyets snitt og snittet det trekkes mot. Den bærer derfor ingen informasjon om senere ankomster og er ikke en lekkasje.
 6. **Avgangshavn og ETD (F13–F14) beholdes** med en begrensning ved siden av A1, og det trenes en **ablasjon** uten dem.
-7. **Rader der skipet allerede er i ankomstsonen ved `t_H`** (F6 sann) rapporteres for seg: alle tall for modell mot baseline oppgis både med og uten disse radene. Splitten bruker F6, som er regnet fra posisjonen. Fasitflagget `allerede_ankommet` (FR9a) telles fortsatt for seg som før. De to settene er ikke identiske, så overlappet mellom dem rapporteres også.
+7. **Rader der skipet allerede er i ankomstsonen ved `t_H`** (F6 sann) rapporteres for seg: alle tall for modell mot baseline oppgis både med og uten disse radene. Splitten bruker F6, som er regnet fra posisjonen. **Oppdatert 03.11.2026 (E2-S03, Felipe):** F6 er den eneste definisjonen av «allerede i ankomstsonen ved kuttet» i hele E2-rapporten, både for splitten og for antallet. Et flagg regnet fra faktisk ankomst brukes ikke, og `allerede_ankommet` er tatt ut av tilstandsutdraget.
 8. **Kontrakten i arkitektur §3 endres ikke av denne beslutningen.** Delegeringen skjer inne i `ModellPrediktor`, og `forklaring` har allerede `metode`. Prediktoren beholder `kan_varsle = True`. Rader som delegeres til baselinen, får `forventet_forsinket = None` og `forklaring["metode"] = "baseline"`.
    - **Hvordan F1–F16 når prediktoren, avgjøres i E2-S07.** Både tilstand, statiske felt og ferdigregnet historikk skal gå gjennom `lag_input` eller en søsterfunksjon i `__init__.py`, aldri ved at prediktormodulen leser `data/utdrag/` selv. AST-testen gjelder uendret. F15–F16 er ferdig aggregerte tall regnet i E2-S04 og gir ingen vei til `faktisk_ankomst` for raden selv.
    - Må `PrediksjonsInput` få nye felt, er det en kontraktendring. Den tas da i en egen PR som Thomas (dashbord) og Felipe (modell) begge godkjenner (arkitektur §3), og eieren av AI-laget (E3) ser også på den, fordi `forklaring` mates dit.
@@ -43,7 +43,7 @@ Bare rader for Øvrige som har AIS-tilstand ved `t_H`, går til modellen.
 | F3 | `kurs_mot_havn` = cos(kurs over grunn − peiling til havna), i [−1, 1]. Tom når kursen mangler eller er ≥ 360 (AIS «ikke tilgjengelig»), når farten er under 1 knop (kursen er da støy), og når distansen er 0 | siste AIS ≤ `t_H`. Rå kurs er sirkulær (359° ≈ 1°). |
 | F4 | `posisjon_alder_min` | `t_H` − tidspunktet for posisjonen |
 | F5 | `lat`, `lon` | siste AIS ≤ `t_H`. Skiller rutene fra nord og sør. |
-| F6 | `i_sonen_ved_kutt` (0/1) | regnet fra posisjonen (distanse ≤ 15 km, samme radius som ankomstsonen i beslutning 03 og `OUTER_RADIUS_KM` i `derive_arrivals.py`), **ikke** fra fasitflagget `allerede_ankommet` |
+| F6 | `i_sonen_ved_kutt` (0/1) | regnet fra posisjonen (distanse ≤ 15 km, samme radius som ankomstsonen i beslutning 03 og `OUTER_RADIUS_KM` i `derive_arrivals.py`), **ikke** fra et flagg regnet fra faktisk ankomst |
 | F7 | `slakk_timer` (definert under) | utledet av F1 og F2 |
 | F8 | `skipstype` (kategori). Typer med færre enn 20 Øvrige-rader i dataene modellen fittes på, slås sammen til `annet`, og det samme gjelder manglende og ukjente typer | statiske seilasdata |
 | F9 | `lengde_m`, tom hvis den mangler | statiske seilasdata |
@@ -73,7 +73,7 @@ Positiv slakk betyr at skipet rekker ETA-en med farten det har nå.
 - ETD-verdien når ETD > `t_H`.
 - Statistikk regnet over testperioden.
 - Rå `mmsino` og `shipname` som ID-er. Fartøyet er dekket av F15–F16, og rå ID-er gir overtilpasning.
-- `allerede_ankommet` som input. Det er utledet av fasiten, og F6 tar samme signal fra posisjonen.
+- Et flagg for «allerede ankommet» regnet fra faktisk ankomst. Det er utledet av fasiten, og F6 tar samme signal fra posisjonen (valg 7).
 
 ## Begrunnelse
 

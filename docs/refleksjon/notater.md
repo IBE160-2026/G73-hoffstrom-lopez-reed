@@ -115,3 +115,15 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
   - Samme mønster som tidsstempeltesten 22.10: et resultat som ser riktig ut, er ikke et bevis før man har sjekket hva som faktisk kjørte.
   - En klone-test må starte i en mappe som garantert ikke finnes fra før, ellers kan et feilet første steg skjules av en gammel kopi.
   - Les hele utskriften, ikke bare siste linje.
+
+## 2026-11-03 — Røyktesten mot ekte data fant søppelposisjoner som alle fixture-testene hadde godkjent (E2-S03)
+
+- **Hva:** `scripts/lag_tilstand.py` hadde 14 grønne tester og en mutasjonssjekk der alle mutasjonene ble fanget. Tre uavhengige reviewere hadde gått gjennom koden. Likevel ville utdraget ha fått rader med status `ok` og «siste posisjon» 7 000–17 000 km fra Bergen, 6 timer før ankomst. Alle seilasene det gjaldt, hadde MMSI 0, og API-et svarer da med posisjoner fra alle fartøy i verden som sender 0. 63 seilaser i datasettet har MMSI 0.
+- **Hvordan det ble oppdaget:** Claude kjørte scriptet mot den delvise AIS-cachen. Cachen ble bare lest, og resultatet ble skrevet til scratchpad. Formålet var å sjekke kolonnerekkefølgen mot ekte API-punkter, etter at en reviewer hadde påpekt at testene og koden delte samme antakelse om kolonnene. Maksdistansen på 15 000 km falt ut i oppsummeringen, og alle de rare radene hadde MMSI 0.
+- **Resultat:** Felipe bestemte at en posisjon er gyldig bare hvis MMSI-en i punktet er lik seilasens MMSI og har 9 sifre. Regelen har en egen test og er mutasjonssjekket. Etter endringen er maksdistansen 645 km ved 24 t. Funnet står i beslutning 07: 63 av de 935 tomme seilasene, og hva det ikke forklarer. Se `git log --oneline --grep E2-S03`.
+- **Lærdom (råt):**
+  - Fixtures tester det vi tenkte på. Ekte data inneholder det vi ikke tenkte på.
+  - Alle testene og mutasjonene var grønne fordi ingen fixture hadde et punkt som tilhørte et annet fartøy.
+  - En mutasjonssjekk viser at testene fanger feil i koden, ikke at koden dekker dataene.
+  - Kjør på ekte data før commit, og se på ytterpunktene (min og maks), ikke bare medianen.
+

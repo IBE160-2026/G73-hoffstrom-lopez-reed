@@ -119,9 +119,16 @@ def velg_prediktor(verdi: Optional[str] = None) -> Prediktor:
 
 **`data/utdrag/tilstand_ved_kutt.csv`** (E2-S03) — én rad per anløp og horisont, regnet med `scripts/lag_tilstand.py` fra AIS hentet av `pipeline/fetch_ais_kutt.py` (vindu [`t_H` − 24 t, `t_H`], filtrert på tidsstemplet i svaret, beslutning 09; beslutning 08):
 
-`voyageid, horisont_timer, t_kutt_utc, lat, lon, distanse_km, fart_knop, kurs_grader, posisjon_alder_min, allerede_ankommet`
+`voyageid, horisont_timer, t_kutt_utc, ais_status, lat, lon, distanse_km, fart_knop, kurs_grader, posisjon_alder_min`
 
-Feltene er tomme når posisjon mangler, og raden beholdes. Fila er ~15 600 rader og ~1,5 MB og committes. Det er den eneste AIS-avledede inputen modellen får hos sensor (PRD NFR1). `allerede_ankommet` er et evalueringsflagg, ikke modellinput: F6 i beslutning 11 tar samme signal fra posisjonen.
+`ais_status` er `ok`, `ingen_posisjon` (hentet, men ingen gyldig posisjon i vinduet) eller `ikke_hentet` (ingen cachefil). Når statusen ikke er `ok`, er alle tilstandsfeltene tomme, og raden beholdes. En posisjon er gyldig bare hvis MMSI-en i punktet er lik seilasens MMSI og har 9 sifre (63 seilaser har MMSI 0, beslutning 07), og bredde/lengde er en reell posisjon. Også med `ok` kan `fart_knop` og `kurs_grader` være tomme: verdiene for «ikke tilgjengelig» (fart ≥ 102,3, kurs ≥ 360) og negative verdier skrives ikke. E2-S04 må tåle det. Fila er ~15 600 rader og ~1,5 MB og committes. Det er den eneste AIS-avledede inputen modellen får hos sensor (PRD NFR1). Scriptet leser ingen ankomstfelt, og utdraget har ikke noe flagg regnet fra faktisk ankomst: «allerede i sonen» er F6 i beslutning 11, regnet fra posisjonen.
+
+**`data/utdrag/tilstand_ved_kutt.json`** (E2-S03) — metadata for utdraget:
+
+- sti og sha256 for `anlop.csv`
+- kildemappe, antall cachefiler for anløpene i `anlop.csv` og samlet sha256 (sha256 av de sorterte per-fil-sjekksummene)
+- antall tomme API-svar (`status: "tom"`, kan hentes på nytt med `--prov-tomme`)
+- sha256 for CSV-en, dato (`--laget`, oppgis ved regenerering) og antall per horisont og `ais_status` `data/baseline.json` er en del av det låste datasettet og røres ikke.
 
 **Utdrag med statiske seilasfelt** (E2-S04; navnet avgjøres der) — `ship_type`, `length`, `etd` og `dep_locname` per anløp, til featurene F8, F9, F13 og F14 (beslutning 11). De finnes bare i den gitignorerte seilasfila i `pipeline/data/`, og `anlop.csv` er låst. Fila committes. Alt E2 committer under `data/` skal til sammen være under 10 MB (PRD NFR1): begge utdragene, fire modellartefakter og `metrikker.json`.
 
@@ -207,3 +214,4 @@ LLM_MODELL=claude-haiku-5-5
   - **Felipe** (modell) kommenterte PR #4 kl. 15:57 UTC, før merge: «Godt over og godkjenner mergen». Han ga ingen formell review.
   - **Thomas** (dashbord) godkjente ikke før merge. Han bekreftet i etterkant, 03.11, at han godkjenner kontraktendringen. Bekreftelsen kom gjennom Theodor og står ikke på PR #4.
 - **2026-11-03** — E2-S01, beslutning 11: `ModellPrediktor` gjelder bare Øvrige og delegerer Passasjer og rader uten tilstand til baselinen (§3). §4 har fått et nytt utdrag med statiske seilasfelt og ablasjonsmodellene, og en presisering om at `allerede_ankommet` ikke er modellinput.
+- **2026-11-03** — E2-S03: tilstandsutdraget har fått `ais_status` og en egen metadatafil (`tilstand_ved_kutt.json`), og `allerede_ankommet` er tatt ut (§4).

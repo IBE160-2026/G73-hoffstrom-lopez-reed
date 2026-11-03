@@ -90,7 +90,7 @@ ID-ene brukes i stories (`docs/epics.md`) og i tester.
   - **Test:** prediksjonen er uendret når alle AIS-punkter etter `t_H` fjernes eller flyttes, og når faktisk ankomst endres.
   - Tilstanden hentes fra siste posisjon i [`t_H` − 24 t, `t_H`] (beslutning 09). Kystdatahuset forskyver vinduet og kan kutte svar ved midnatt, så posisjonene filtreres på tidsstemplet i svaret, aldri på vinduet det ble bedt om. Filtreringen testes.
   - Anløp uten AIS-posisjon i [`t_H` − 24 t, `t_H`] får baselinens prediksjon og merket «ingen AIS-tilstand ved prediksjonstidspunktet». De tas ikke ut av evalueringen.
-  - Anløp der skipet allerede har ankommet før `t_H` beholdes, siden vakta ville sett det. De telles og rapporteres separat (1,6 % ved 6 t, 0,4 % ved 24 t).
+  - Anløp der skipet allerede er i ankomstsonen ved `t_H` beholdes, siden vakta ville sett det. De telles og rapporteres separat. Definisjonen er F6 i beslutning 11: posisjonen ved kuttet er innenfor 15 km. Den samme definisjonen gjelder i hele rapporten, og det brukes ikke noe flagg regnet fra faktisk ankomst. (Beslutning 08 målte 1,6 % ved 6 t og 0,4 % ved 24 t med fasitflagget, før F6 fantes.)
   - `[NOTE FOR PM]` Ved 6 t bruker dashbordet et spor som kan være opptil 6 t eldre enn «nå». Å kutte ved «nå» ville gitt ferskere data, men da ville input i drift ikke ligne input i trening. Gruppa velger konsistens framfor ferskhet.
 - **FR9 — Modellprediksjon.** Modellen leverer predikert ankomst og varsel per anløp og horisont gjennom samme grensesnitt som baselinen. Dashbordet bytter kilde uten endringer i visningskoden.
   - **Modellen gjelder bare Øvrige, med én modell per horisont** (beslutning 11). Passasjer beholder den kalibrerte baselinen. Prediktoren delegerer Passasjer-rader og rader uten AIS-tilstand til baselinen, og viser hvilken metode som ble brukt.
@@ -102,7 +102,7 @@ ID-ene brukes i stories (`docs/epics.md`) og i tester.
   - **Varsel:** grunnraten er **19,5 %** forsinket blant Øvrige i testperioden (signert, n = 996 med fasit). Briefen, statusnotatet og addendumet bruker det samme tallet (rettet 22.10.2026). Baselinen kan ikke varsle, så referansen er regelen «varsle alle»: presisjon 19,5 %, recall 100 %, F1 ≈ 0,33. Modellen lykkes på varsel hvis F1 er høyere enn referansen (bekreftet i beslutning 11).
   - **Passasjer** rapporteres bare som baseline, fordi det ikke finnes noen modell for gruppen.
   - **Ablasjon:** modellen trenes også uten avgangshavn og ETD (F13–F14), og begge resultatene rapporteres. Det viser hvor mye modellen hviler på felt vi ikke kan verifisere.
-  - **Rader i ankomstsonen ved `t_H`** (F6) gir modellen en fordel baselinen ikke har. Alle tall for modell mot baseline rapporteres både med og uten disse radene.
+  - **Rader i ankomstsonen ved `t_H`** (F6, samme definisjon som i FR9a) gir modellen en fordel baselinen ikke har. Alle tall for modell mot baseline rapporteres både med og uten disse radene.
   - Presisjon, recall og F1 vises alltid sammen, og et tap vises like tydelig som en seier.
 
 ### Generativt AI-lag (E3)
@@ -202,3 +202,4 @@ A1 og A2 ble avgjort i beslutning 11 (03.11.2026). A1 er nå en kjent begrensnin
 - **2026-10-27** — E1-S05: naiv ETA for Øvrige er rettet fra 12,9 % til 12,8 % (127/996) i FR8. Pipelinen avrundet avviket før ±30-sammenligningen. Uavrundet regnes alle tall, som besluttet i E0-S18.
 - **2026-11-03** — E2-S01, beslutning 11: modellen gjelder bare Øvrige og trenes per horisont, mens Passasjer beholder baselinen (FR9). Featurelista F1–F16 er låst. Fartøyhistorikken og snittet den trekkes mot, regnes bare på treningsdata. FR10 har fått ablasjon uten F13–F14 og rapportering med og uten rader i ankomstsonen. A1 er flyttet fra §9 til kjente begrensninger i §7, sammen med avgangshavn og ETD. A2 er bekreftet, og `[ASSUMPTION]` er fjernet fra FR10. Tre spørsmål i §8 er lukket.
 - **2026-11-03** — NFR4: PR-beskrivelsen lenker til sesjonsloggene i `.logs/<bruker>/`, ikke til `docs/prompts/`. Det har vært praksis siden 27.10 (E0-S16), og logg føres bare ett sted.
+- **2026-11-03** — E2-S03: «allerede i ankomstsonen ved `t_H`» har én definisjon i FR9a og FR10, nemlig F6 (posisjon ved kuttet, beslutning 11), og ikke et flagg regnet fra faktisk ankomst. Tilstandsutdraget har ikke lenger `allerede_ankommet`.
