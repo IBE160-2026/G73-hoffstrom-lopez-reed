@@ -1,0 +1,315 @@
+"""Målrettet AIS-henting ved kuttpunktene (E2-S02, PRD FR9a, beslutning 08/09).
+
+Ingen test bruker nett: hentefunksjonen erstattes av en falsk som returnerer et
+konstruert API-svar.
+"""
+import csv
+import importlib.util
+import io
+import json
+import urllib.error
+from datetime import datetime, timedelta
+from pathlib import Path
+
+import pytest
+
+REPO_ROT = Path(__file__).resolve().parent.parent
+_spec = importlib.util.spec_from_file_location("fetch_ais_kutt", REPO_ROT / "pipeline" / "fetch_ais_kutt.py")
+fak = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(fak)
+
+ETA = "2026-02-26T12:00:00+00:00"
+ETA_DT = datetime(2026, 2, 26, 12, 0)
+T6, T24 = ETA_DT - timedelta(hours=6), ETA_DT - timedelta(hours=24)
+
+
+def punkt(t):
+    # Samme kolonnerekkefølge som API-et: mmsi, tid, lon, lat, cog, sog, …
+    return [257000000, t.isoformat() if isinstance(t, datetime) else t, 5.3, 60.4, 90.0, 10.0, 1, 10.0, 10, 50, 90, 0]
+
+
+def rad(**over):
+    r = {"voyageid": "100", "mmsino": "257000000", "ship_group": "Last", "eta_reported": ETA, "split": "test"}
+    r.update(over)
+    return r
+
+
+def skriv_kilde(tmp_path, rader, ekstra=("arrival_in_area_utc", "status_in_area")):
+    sti = tmp_path / "anlop.csv"
+    felt = list(fak.FELTER) + list(ekstra)
+    with open(sti, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=felt)
+        w.writeheader()
+        for r in rader:
+            w.writerow({**{k: "" for k in ekstra}, **r})
+    return sti
+
+
+def alle_tider_i_cache(cache_fil):
+    c = json.loads(Path(cache_fil).read_text(encoding="utf-8"))
+    return {h: [fak.tidsstempel(p) for p in v["posisjoner"]] for h, v in c["horisonter"].items()}
+
+
+class FalskHent:
+    def __init__(self, svar=None, feil=False):
+        self.svar, self.feil, self.kall = svar or [], feil, []
+
+    def __call__(self, mmsi, start, slutt):
+        self.kall.append((mmsi, start, slutt))
+        if self.feil:
+            raise fak.HenteFeil("nede")
+        return list(self.svar)
+
+
+# Et svar slik API-et faktisk oppfører seg: forskjøvet +1 t og med punkter helt fram til ETA.
+SVAR = [punkt(ETA_DT + timedelta(minutes=m)) for m in range(-72 * 60, 18 * 60 + 61, 30)] + [
+    punkt(T6), punkt(T6 + timedelta(seconds=1)), punkt(T24), punkt(T24 + timedelta(seconds=1)),
+    punkt(T24 - timedelta(hours=24)), punkt(T24 - timedelta(hours=24, seconds=1)),
+]
+
+
+def test_vindu_fra_rapportert_eta():
+    """Forespørsel og kuttpunkter avhenger bare av rapportert ETA, ikke av faktisk ankomst."""
+    assert fak.foresporselsvindu(ETA_DT) == (ETA_DT - timedelta(hours=72), ETA_DT + timedelta(hours=18))
+    assert fak.kuttpunkter(ETA_DT) == {6: T6, 24: T24}
+    hent_a, hent_b = FalskHent(SVAR), FalskHent(SVAR)
+    a = fak.bygg_cache(rad(arrival_in_area_utc="2026-02-26T11:00:00"), hent_a("x", *fak.foresporselsvindu(ETA_DT)))
+    b = fak.bygg_cache(rad(arrival_in_area_utc="2026-02-28T03:00:00"), hent_b("x", *fak.foresporselsvindu(ETA_DT)))
+    a.pop("hentet_utc"), b.pop("hentet_utc")
+    assert a == b
+
+
+def test_leser_ikke_ankomstfelt(tmp_path):
+    sti = skriv_kilde(tmp_path, [rad(arrival_in_area_utc="2026-02-26T11:00:00", status_in_area="ok")])
+    lest = fak.les_anlop(sti)
+    assert set(lest[0]) == set(fak.FELTER)
+    # Uten ankomstkolonnene i fila virker skriptet like godt.
+    (tmp_path / "uten").mkdir()
+    sti2 = skriv_kilde(tmp_path / "uten", [rad()], ekstra=())
+    assert fak.les_anlop(sti2) == [rad()]
+
+
+def test_filtrerer_bort_punkter_etter_kutt(tmp_path):
+    """Et svar med punkter etter t_H gir ingen slike i cachen, og grensene er inklusive."""
+    fak.behandle(rad(), str(tmp_path), FalskHent(SVAR))
+    tider = alle_tider_i_cache(tmp_path / "100.json")
+    for h, t_kutt in ((6, T6), (24, T24)):
+        assert tider[str(h)], h
+        assert max(tider[str(h)]) == t_kutt
+        assert min(tider[str(h)]) == t_kutt - timedelta(hours=24)
+        assert all(t_kutt - timedelta(hours=24) <= t <= t_kutt for t in tider[str(h)])
+
+
+def test_ingenting_etter_eta_minus_6t(tmp_path, monkeypatch):
+    """Hardt tak (Felipe 03.11.2026): ingen punkter etter ETA − 6 t når disk, selv om
+    vindusfilteret per horisont skulle svikte. Mutasjonssjekket: testen feiler når taket
+    i kutt_ved_tak fjernes."""
+    monkeypatch.setattr(fak, "filtrer_til_vindu", lambda svar, fra, til: list(svar))
+    try:
+        fak.behandle(rad(), str(tmp_path), FalskHent(SVAR))
+    except RuntimeError:
+        pytest.fail("taket slapp gjennom punkter etter ETA − 6 t")
+    raa = (tmp_path / "100.json").read_text(encoding="utf-8")
+    tider = [t for ts in alle_tider_i_cache(tmp_path / "100.json").values() for t in ts]
+    assert tider and max(tider) == T6
+    assert (T6 + timedelta(seconds=1)).isoformat() not in raa
+    c = json.loads(raa)
+    assert c["kastet_etter_tak"] == sum(1 for p in SVAR if fak.tidsstempel(p) > T6)
+
+
+def test_uleselige_tidsstempler_kastes(tmp_path):
+    svar = [punkt("tull"), [1], punkt(T6 + timedelta(hours=1, minutes=-59)), punkt("2026-02-26T05:00:00Z"),
+            punkt("2026-02-26T07:30:00+02:00")]  # = 05:30 UTC
+    fak.behandle(rad(), str(tmp_path), FalskHent(svar))
+    assert alle_tider_i_cache(tmp_path / "100.json")["6"] == [datetime(2026, 2, 26, 5, 0), datetime(2026, 2, 26, 5, 30)]
+
+
+def test_hopper_over_cachet(tmp_path):
+    kilde = skriv_kilde(tmp_path, [rad(), rad(voyageid="101")])
+    cache = tmp_path / "cache"
+    argv = ["--kilde", str(kilde), "--cache-dir", str(cache), "--logg", str(tmp_path / "l.csv"),
+            "--dekning", str(tmp_path / "d.csv"), "--pause", "0"]
+    h1 = FalskHent(SVAR)
+    assert fak.main(argv, hent=h1) == 0
+    assert len(h1.kall) == 2
+    h2 = FalskHent(SVAR)
+    assert fak.main(argv, hent=h2) == 0
+    assert h2.kall == []
+
+
+def test_feil_gir_ingen_cache(tmp_path):
+    kilde = skriv_kilde(tmp_path, [rad(voyageid=str(i)) for i in range(12)])
+    cache = tmp_path / "cache"
+    argv = ["--kilde", str(kilde), "--cache-dir", str(cache), "--logg", str(tmp_path / "l.csv"),
+            "--dekning", str(tmp_path / "d.csv"), "--pause", "0"]
+    h = FalskHent(feil=True)
+    assert fak.main(argv, hent=h) == 2           # stopper etter 10 feil på rad
+    assert len(h.kall) == fak.MAKS_FEIL_PA_RAD
+    assert list(cache.iterdir()) == []
+    logg = list(csv.DictReader(open(tmp_path / "l.csv", encoding="utf-8")))
+    assert all(r["status"].startswith("feil") for r in logg)
+    h2 = FalskHent(SVAR)                          # neste kjøring prøver alle igjen
+    assert fak.main(argv, hent=h2) == 0 and len(h2.kall) == 12
+
+
+def test_tomt_svar(tmp_path):
+    kilde = skriv_kilde(tmp_path, [rad()])
+    cache = tmp_path / "cache"
+    argv = ["--kilde", str(kilde), "--cache-dir", str(cache), "--logg", str(tmp_path / "l.csv"),
+            "--dekning", str(tmp_path / "d.csv"), "--pause", "0"]
+    fak.main(argv, hent=FalskHent([]))
+    c = json.loads((cache / "100.json").read_text(encoding="utf-8"))
+    assert c["status"] == "tom" and c["horisonter"]["6"]["posisjoner"] == []
+    assert fak.main(argv, hent=(h := FalskHent(SVAR))) == 0 and h.kall == []
+    assert fak.main(argv + ["--prov-tomme"], hent=(h := FalskHent(SVAR))) == 0 and len(h.kall) == 1
+
+
+def test_ingen_tmp_fil_ved_avbrudd(tmp_path, monkeypatch):
+    def krasj(*a, **k):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(fak.json, "dump", krasj)
+    with pytest.raises(KeyboardInterrupt):
+        fak.skriv_atomisk(str(tmp_path / "100.json"), {"a": 1})
+    assert list(tmp_path.iterdir()) == []         # verken 100.json eller 100.json.tmp
+
+
+def test_dekningstabell(tmp_path):
+    rader = [rad(voyageid="1"), rad(voyageid="2", ship_group="Passasjer", split="train"),
+             rad(voyageid="3"), rad(voyageid="4")]
+    cache = str(tmp_path)
+    fak.behandle(rader[0], cache, FalskHent(SVAR))                          # posisjon rett ved kutt
+    fak.behandle(rader[1], cache, FalskHent([punkt(T6 - timedelta(hours=5)),
+                                             punkt(T24 - timedelta(hours=5))]))  # bare gammel posisjon
+    fak.behandle(rader[2], cache, FalskHent([]))                            # tom; rad 4 er ikke hentet
+    tab = {(r["horisont_timer"], r["gruppe"], r["split"]): r for r in fak.dekning(rader, cache)}
+    assert len(tab) == 4
+    o = tab[(6, "Øvrige", "test")]
+    assert (o["n"], o["hentet"], o["med_posisjon_24t"], o["med_posisjon_1t"]) == (3, 2, 1, 1)
+    assert o["andel_med_posisjon_24t"] == "0.500"
+    p = tab[(24, "Passasjer", "train")]
+    assert (p["n"], p["hentet"], p["med_posisjon_24t"], p["med_posisjon_1t"]) == (1, 1, 1, 0)
+    fak.skriv_dekning(list(tab.values()), str(tmp_path / "d.csv"))
+    assert len(list(csv.DictReader(open(tmp_path / "d.csv", encoding="utf-8")))) == 4
+
+
+def argv_for(tmp_path, kilde, *ekstra):
+    return ["--kilde", str(kilde), "--cache-dir", str(tmp_path / "cache"), "--logg", str(tmp_path / "l.csv"),
+            "--dekning", str(tmp_path / "d.csv"), "--pause", "0", *ekstra]
+
+
+class FalskRespons(io.BytesIO):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def test_hent_posisjoner_kropp_og_gjentak(monkeypatch):
+    kall, sovn = [], []
+    svar = iter([OSError("timeout"), b'{"success": false, "msg": "x"}', b'[]',
+                 b'{"success": true, "data": [[1, "2026-02-26T05:00:00"]]}'])
+
+    def urlopen(req, timeout):
+        kall.append(req)
+        x = next(svar)
+        if isinstance(x, Exception):
+            raise x
+        return FalskRespons(x)
+    monkeypatch.setattr(fak.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(fak.time, "sleep", sovn.append)
+    start, slutt = fak.foresporselsvindu(ETA_DT)
+    assert fak.hent_posisjoner("257000000", start, slutt) == [[1, "2026-02-26T05:00:00"]]
+    assert json.loads(kall[0].data) == {"mmsiIds": [257000000], "start": "202602231200", "end": "202602270600"}
+    assert kall[0].full_url == fak.API_URL and kall[0].get_method() == "POST"
+    assert sovn == list(fak.BACKOFF_SEK)
+
+
+def test_hent_posisjoner_gir_opp(monkeypatch):
+    def urlopen(req, timeout):
+        raise urllib.error.URLError("nede")
+    monkeypatch.setattr(fak.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(fak.time, "sleep", lambda s: None)
+    with pytest.raises(fak.HenteFeil):
+        fak.hent_posisjoner("1", ETA_DT, ETA_DT)
+
+
+def test_hent_posisjoner_4xx_uten_gjentak(monkeypatch):
+    kall = []
+
+    def urlopen(req, timeout):
+        kall.append(1)
+        raise urllib.error.HTTPError(req.full_url, 400, "Bad Request", {}, None)
+    monkeypatch.setattr(fak.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(fak.time, "sleep", lambda s: None)
+    with pytest.raises(fak.HenteFeil):
+        fak.hent_posisjoner("1", ETA_DT, ETA_DT)
+    assert len(kall) == 1
+
+
+def test_bare_uleselige_tidsstempler_er_feil(tmp_path):
+    with pytest.raises(fak.HenteFeil):
+        fak.behandle(rad(), str(tmp_path), FalskHent([punkt("26.02.2026 05:00")]))
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_feil_pa_rad_nullstilles(tmp_path):
+    kilde = skriv_kilde(tmp_path, [rad(voyageid=str(i), mmsino=str(i)) for i in range(19)])
+
+    def hent(mmsi, start, slutt):
+        if mmsi != "9":
+            raise fak.HenteFeil("nede")
+        return list(SVAR)
+    assert fak.main(argv_for(tmp_path, kilde), hent=hent) == 0
+    assert [f.name for f in (tmp_path / "cache").iterdir()] == ["9.json"]
+
+
+def test_utvalg_er_deterministisk_og_hopper_over_cachet(tmp_path):
+    kilde = skriv_kilde(tmp_path, [rad(voyageid=str(i)) for i in range(6)])
+    h = FalskHent(SVAR)
+    (tmp_path / "cache").mkdir()
+    fak.behandle(rad(voyageid="0"), str(tmp_path / "cache"), h)  # allerede cachet før piloten
+    h1, h2 = FalskHent(SVAR), FalskHent(SVAR)
+    fak.main(argv_for(tmp_path, kilde, "--utvalg", "2", "--seed", "2"), hent=h1)
+    valgt = sorted(f.name for f in (tmp_path / "cache").iterdir())
+    assert len(h1.kall) == 2 and len(valgt) == 3 and "0.json" in valgt
+    for f in (tmp_path / "cache").iterdir():
+        if f.name != "0.json":
+            f.unlink()
+    fak.main(argv_for(tmp_path, kilde, "--utvalg", "2", "--seed", "2"), hent=h2)
+    assert sorted(f.name for f in (tmp_path / "cache").iterdir()) == valgt
+
+
+def test_avbrudd_skriver_dekning_og_kan_fortsette(tmp_path):
+    kilde = skriv_kilde(tmp_path, [rad(voyageid=str(i), mmsino=str(i)) for i in range(3)])
+
+    def hent(mmsi, start, slutt):
+        if mmsi == "1":
+            raise KeyboardInterrupt
+        return list(SVAR)
+    assert fak.main(argv_for(tmp_path, kilde), hent=hent) == 130
+    assert [f.name for f in (tmp_path / "cache").iterdir()] == ["0.json"]
+    assert (tmp_path / "d.csv").exists()
+    h = FalskHent(SVAR)
+    assert fak.main(argv_for(tmp_path, kilde), hent=h) == 0 and len(h.kall) == 2
+
+
+def test_tom_kilde(tmp_path):
+    kilde = skriv_kilde(tmp_path, [])
+    assert fak.main(argv_for(tmp_path, kilde), hent=FalskHent()) == 0
+    assert (tmp_path / "d.csv").read_text(encoding="utf-8").strip() == ",".join(fak.DEKNING_KOLONNER)
+
+
+def test_manglende_dagstabell_uten_gjentak(monkeypatch):
+    """Sett i piloten: success=false med 42P01 «does not exist» kommer igjen hver gang."""
+    kall = []
+
+    def urlopen(req, timeout):
+        kall.append(1)
+        return FalskRespons(json.dumps({"success": False, "msg": '42P01: relation "ais202410.ais_20241028" '
+                                        'does not exist\n\nPOSITION: 978'}).encode())
+    monkeypatch.setattr(fak.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(fak.time, "sleep", lambda s: None)
+    with pytest.raises(fak.HenteFeil, match="mangler hos API-et"):
+        fak.hent_posisjoner("1", ETA_DT, ETA_DT)
+    assert len(kall) == 1
