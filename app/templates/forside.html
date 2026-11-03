@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block hoppmaal %}anlopslista{% endblock %}
+{% block hopptekst %}Hopp til anløpslista{% endblock %}
+{% block h1 %}Anløp de neste 24 timene{% endblock %}
+{% block innhold %}
+<section class="prediktor" aria-label="Prediktor">
+  <p>
+    Prediktor: <span class="merke" aria-hidden="true">■</span>
+    <strong class="prediktor-navn">{{ prediktor_navn }}</strong>
+    {%- if prediktor_beskrivelse %} — {{ prediktor_beskrivelse }}{% endif %}
+  </p>
+  {% if not kan_varsle %}
+  <p class="prediktor-varsel">Baselinen kan ikke varsle avvik. Varselkolonnen fylles når modellen kommer.</p>
+  {% endif %}
+</section>
+
+<section id="anlopslista" class="liste" aria-labelledby="vindu-tittel" tabindex="-1">
+  <h2 id="vindu-tittel">{{ rader|length }} anløp · {{ vindu_fra }} – {{ vindu_til }} (norsk tid)</h2>
+  {% if rader %}
+  <table class="anlop" role="table">
+    <caption class="visually-hidden">Anløp med rapportert ETA i vinduet, sortert etter predikert ankomst. Alle tider er norsk tid.</caption>
+    <thead role="rowgroup">
+      <tr role="row">
+        <th scope="col" role="columnheader">Skip</th>
+        <th scope="col" role="columnheader">Gruppe</th>
+        <th scope="col" role="columnheader">Rapportert</th>
+        <th scope="col" role="columnheader">Predikert</th>
+        <th scope="col" role="columnheader">Horisont</th>
+        <th scope="col" role="columnheader">Varsel</th>
+      </tr>
+    </thead>
+    <tbody role="rowgroup">
+      {% for r in rader %}
+      <tr role="row">
+        <td role="cell" data-label="Skip" class="skip">{{ r.skip }}</td>
+        <td role="cell" data-label="Gruppe">{{ r.gruppe }}</td>
+        <td role="cell" data-label="Rapportert" class="tid">{{ r.rapportert }}</td>
+        <td role="cell" data-label="Predikert" class="tid">{{ r.predikert }}
+          {%- if r.for_naa %}<span aria-hidden="true">*</span> <span class="hjelpetekst">predikert før valgt tidspunkt</span>{% endif %}</td>
+        <td role="cell" data-label="Horisont">{{ r.horisont }}</td>
+        <td role="cell" data-label="Varsel" class="varsel"><span aria-hidden="true">–</span><span class="visually-hidden">Ingen varsel: baselinen varsler ikke avvik</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="fotnote">«–» i Varsel: baselinen varsler ikke. Alle tider er norsk tid, avrundet til nærmeste minutt.</p>
+  {% else %}
+  <p class="tomt">Ingen anløp med rapportert ETA i dette vinduet. Prøv et annet tidspunkt.</p>
+  {% endif %}
+</section>
+{% endblock %}

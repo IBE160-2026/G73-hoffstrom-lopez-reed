@@ -16,6 +16,78 @@ Et AIS-basert beslutningsstøtteverktøy som predikerer når skip faktisk ankomm
 
 Full produktbrief ligger i [`docs/brief.md`](docs/brief.md) (norsk versjon: [`docs/brief.no.md`](docs/brief.no.md)), med utdypende teknisk grunnlag i [`docs/addendum.md`](docs/addendum.md). Beslutninger tatt underveis i datapipelinen er logget enkeltvis i [`docs/beslutninger/`](docs/beslutninger/).
 
+## Kom i gang
+
+Appen er et dashbord som spiller av historiske anløp til Bergen Havn og viser når hvert skip er predikert å ankomme. Den bruker data som ligger i repoet, så du trenger verken API-nøkler, `.env` eller nettilgang etter installasjonen.
+
+**Du trenger:** Python 3.9 eller nyere, og git. Sjekk med `python3 --version` (Windows: `py --version`).
+
+**1. Klon repoet og gå inn i mappa**
+
+```
+git clone https://github.com/IBE160-2026/G73-hoffstrom-lopez-reed.git
+cd G73-hoffstrom-lopez-reed
+```
+
+**2. Lag et virtuelt miljø og installer avhengighetene**
+
+macOS og Linux:
+
+```
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Windows (PowerShell):
+
+```
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+**3. Kjør testene**
+
+```
+pytest
+```
+
+Alle testene skal være grønne, og det skal ikke være noen feil eller hoppede tester. Testene trenger ikke nett, nettleser eller noe annet enn det som står i `requirements.txt`.
+
+Tallene prosjektet bygger på, er låst i en egen test. Den viser dem slik:
+
+```
+pytest tests/test_dataregresjon.py -v
+```
+
+Kalibrert baseline treffer innenfor ±30 min for **46,6 %** av ikke-rutegående anløp (Øvrige) og **79,6 %** av rutegående (Passasjer) i testperioden. Naiv ETA, altså skipets egen rapporterte tid, treffer for 12,8 % og 7,4 %. Endres data eller kode slik at tallene flytter seg, feiler testen.
+
+**4. Start appen**
+
+```
+flask --app app run --port 8000
+```
+
+Åpne <http://127.0.0.1:8000> i nettleseren (`http://localhost:8000` virker også). Stopp appen med Ctrl+C.
+
+**Hva du skal se:** anløpene de neste 24 timene fra «nå» = onsdag 08.10.2025 kl. 08:00 (norsk tid).
+
+- Overskriften sier «15 anløp · ons 08.10 08:00 – tor 09.10 08:00 (norsk tid)».
+- Lista starter med ROTTERDAM og slutter med MSC POESIA. Den er sortert etter predikert ankomst. BERGEN ENERGY har rapportert ETA ons 11:00 og predikert ankomst ons 09:56.
+- Prediktor-stripa viser «Kalibrert baseline». Varselkolonnen viser «–», fordi baselinen ikke kan varsle avvik. Det står forklart på siden.
+- Under 640 px bredde vises anløpene som kort i stedet for tabell.
+
+![Hovedskjermen i standardvinduet, 1280 px](docs/ux/skjermbilder/hovedskjerm-desktop.png)
+
+Skjermbildet lages med et eget skript som ikke er en del av testene. Se [`docs/ux/skjermbilder/README.md`](docs/ux/skjermbilder/README.md).
+
+**Hvis noe går galt**
+
+- *`flask: command not found` eller `pytest: command not found`:* det virtuelle miljøet er ikke aktivert. Kjør `source .venv/bin/activate` (Windows: `.venv\Scripts\Activate.ps1`) i samme terminal.
+- *`Address already in use`:* et annet program bruker port 8000. Start med `flask --app app run --port 8001` og åpne <http://127.0.0.1:8001>.
+- *`WARNING: You are using pip version …`:* advarselen er ufarlig. Installasjonen er ferdig når det står `Successfully installed`.
+
 ## Datakilder
 
 - **Kystverkets Kystdatahuset Open API** (`https://kystdatahuset.no/ws/api/...`) — hovedkilden.

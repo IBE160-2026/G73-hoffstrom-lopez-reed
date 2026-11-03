@@ -1,0 +1,10 @@
+{
+  "kilde": "pipeline/data/bergen_eta_avvik.csv",
+  "kilde_sha256": "9c071d47ba5596ac5e7f275eb58d7c20f45286c36fc4534f05ecf9c805a44212",
+  "laget": "2026-10-22",
+  "offset_minutter": {
+    "Passasjer": 44.75,
+    "Øvrige": 64.2
+  },
+  "test_fra_utc": "2025-09-14T03:15:00Z"
+}

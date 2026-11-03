@@ -1,0 +1,252 @@
+/* Ankomstprediksjon · Bergen Havn (E1-S06, UX §7).
+   Tokenene er kopiert fra tabellen i docs/ux/dashbord.md §7 (lyst tema).
+   tests/test_kontrast.py sjekker at verdiene er like og regner kontrasten på nytt.
+   Mørkt tema, --varsel og --ok kommer i E1-S13. */
+:root {
+  --bakgrunn: #FFFFFF;
+  --flate: #F3F5F7;
+  --tekst: #1A1F24;
+  --dempet: #4A5560;
+  --aksent: #0B5CAD;
+  --kant: #7A8590;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bakgrunn);
+  color: var(--tekst);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+a {
+  color: var(--aksent);
+}
+
+/* Fokusring (UX §7, UU2): 3 px aksent med 2 px avstand. Aldri outline: none. */
+:focus-visible {
+  outline: 3px solid var(--aksent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Hopp-lenke: første Tab-stopp, synlig bare ved fokus. */
+.hopp {
+  position: absolute;
+  left: 1rem;
+  top: -10rem;
+  padding: 0.75rem 1rem;
+  background: var(--bakgrunn);
+  color: var(--aksent);
+  border: 1px solid var(--kant);
+  z-index: 10;
+}
+
+.hopp:focus {
+  top: 0.5rem;
+}
+
+.topp {
+  border-bottom: 1px solid var(--kant);
+}
+
+.topp-innhold,
+main {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.topp-innhold {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.5rem 2rem;
+}
+
+.overtittel {
+  margin: 0;
+  color: var(--dempet);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0.25rem 0 0;
+  font-size: 1.75rem;
+  line-height: 1.2;
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.125rem;
+}
+
+.modus {
+  margin: 0;
+  color: var(--dempet);
+  font-size: 0.875rem;
+}
+
+.prediktor {
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--flate);
+  border: 1px solid var(--kant);
+}
+
+.prediktor p {
+  margin: 0;
+}
+
+.merke {
+  color: var(--aksent);
+}
+
+.prediktor-navn {
+  color: var(--aksent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.prediktor-varsel {
+  color: var(--dempet);
+}
+
+.anlop {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.anlop th,
+.anlop td {
+  padding: 0.5rem 0.75rem 0.5rem 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--kant);
+}
+
+.anlop th {
+  color: var(--dempet);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.skip {
+  font-weight: 600;
+}
+
+.tid {
+  white-space: nowrap;
+}
+
+.hjelpetekst {
+  display: block;
+  color: var(--dempet);
+  font-size: 0.8125rem;
+  white-space: normal;
+}
+
+.fotnote {
+  margin-top: 1rem;
+  color: var(--dempet);
+  font-size: 0.875rem;
+}
+
+.tomt {
+  padding: 1rem;
+  background: var(--flate);
+  border: 1px solid var(--kant);
+}
+
+/* Skjerm B (UX §3, UU6): samme tabell som kort under 640 px. */
+@media (max-width: 639.98px) {
+  .topp-innhold,
+  main {
+    padding: 0.75rem 1rem;
+  }
+
+  h1 {
+    font-size: 1.375rem;
+  }
+
+  .anlop,
+  .anlop tbody,
+  .anlop tr,
+  .anlop td {
+    display: block;
+    width: 100%;
+  }
+
+  /* Samme mønster som .visually-hidden. */
+  .anlop thead tr {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .anlop tr {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--flate);
+    border: 1px solid var(--kant);
+  }
+
+  .anlop td {
+    position: relative;
+    padding: 0.125rem 0 0.125rem 7rem;
+    border-bottom: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .anlop td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0;
+    width: 6.5rem;
+    color: var(--dempet);
+    font-size: 0.875rem;
+    font-weight: 400;
+  }
+
+  /* Skipsnavnet er korttittelen (UX §3), så det trenger ingen etikett. */
+  .anlop td.skip {
+    padding-left: 0;
+    font-size: 1.0625rem;
+  }
+
+  .anlop td.skip::before {
+    content: none;
+  }
+
+  .tid {
+    white-space: normal;
+  }
+}

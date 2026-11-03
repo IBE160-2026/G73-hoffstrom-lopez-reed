@@ -36,3 +36,72 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Hva:** Risikopunktet i `brief.md` og `brief.no.md` sa at hullet i AIS-dataene ga en skjevhet «mot norskflagget trafikk». Det er motsatt: utenlandskflaggede skip mangler, så de er underrepresentert. Teksten har stått slik siden september.
 - **Hvordan det ble oppdaget:** Da beslutning 07 ble skrevet om, ble det målt at 83 % av «empty»-seilasene er utenlandske, mot 33 % av dem med fasit.
 - **Rettet i:** `bc97e76` (E0-S13).
+
+## 2026-10-22 — Feil forventning i en review-rettelse (E1-S03)
+
+- **Hva:** I review av E1-S03 fant Verification Gap-revieweren at `timer` aldri var testet med en annen verdi enn 24. Både revieweren og Claude (orkestratoren) skrev forventningen for `timer=6` som «12:00 inne, 14:00 ute» og begrunnet det med «12:00 < 06:00 + 6 t». Det er feil: vinduet er halvåpent, [06:00, 12:00), så 12:00 er *ute*.
+- **Hvordan det ble oppdaget:** Implementasjons-subagenten skrev testen slik den var bedt om. Testen feilet mot koden. I stedet for å endre koden til å passe forventningen, sjekket den mot specen (halvåpent vindu), sa ifra og foreslo `timer=7` som alternativ.
+- **Resultat:** Testen sjekker nå begge deler. `timer=6` gir `[1003, 1004]` (12:00 er ute), og `timer=7` gir `[1003, 1004, 1005, 1006]`. Mutasjonssjekk med kontrollkjøring på uendret kode: grønn på originalen. Testene feiler når `timer` er hardkodet til 24 t, når sluttgrensen er lukket (`<=`), og når fasit avgjøres av ankomsttid i stedet for status. Se commiten `git log --oneline --grep E1-S03`.
+- **Lærdom (råt):**
+  - To «uavhengige» KI-er gjorde samme regnefeil på grensen, så det at to er enige, er ikke en verifikasjon.
+  - Det som fanget feilen, var at specen var tydelig på halvåpent vindu, og at en test som feiler ble behandlet som informasjon, ikke som noe som må gjøres grønt.
+
+## 2026-10-27 — Arkitekturen motsa sin egen nye regel (E1-S04)
+
+- **Hva:** Implementasjons-subagenten skrev den nye lekkasjeregelen i arkitektur §3: ingen prediktormodul får lese `data/utdrag/`. I samme seksjon lot den stå at «modellen leser tilstanden ved `t_H` fra `tilstand_ved_kutt.csv`», men den fila ligger i `data/utdrag/`. Dokumentet sa dermed to ting som ikke kan være sanne samtidig. E2-S07 ville ha bygd modellen slik teksten sa, og så feilet på AST-testen.
+- **Hvordan det ble oppdaget:** Ingen av de tre reviewerne fant det. Claude (orkestratoren) så det under triagen, da den sjekket hvor `tilstand_ved_kutt.csv` ligger (`grep` i `docs/`) for å vurdere et funn om AIS etter kuttet.
+- **Resultat:** §3 sier nå at tilstanden skal nå modellen gjennom grensen (`lag_input` eller en søsterfunksjon), og at nøyaktig hvordan avgjøres i E2-S07. Det er også ført i `deferred-work.md`. Se `git log --oneline --grep E1-S04`.
+- **Lærdom (råt):** Tre reviewere leste diffen, men ingen sjekket påstandene i diffen mot resten av repoet. Selvmotsigelser mellom en ny regel og gammel tekst står ofte utenfor de endrede linjene.
+
+## 2026-10-27 — En mutant som ikke kompilerte, så ut som en fanget mutant (E1-S04)
+
+- **Hva:** I mutasjonssjekken la Claude til `faktisk_ankomst` med standardverdi *foran* `t_kutt` i `PrediksjonsInput`. Det gjør dataklassen ugyldig, så pytest stoppet med «2 errors» allerede ved innsamlingen. Det ser rødt ut, men ingen test hadde faktisk fanget lekkasjen.
+- **Hvordan det ble oppdaget:** Claude la merke til at resultatet var «errors», ikke «failed», og kjørte mutanten på nytt med feltet sist og fylt fra `Anlop`. Da feilet fire lekkasjetester, slik de skal.
+- **Lærdom (råt):** En mutant teller bare som fanget når en *test* feiler (failed). En importfeil eller syntaksfeil beviser ingenting om testene.
+
+## 2026-10-27 — Story-ID brukt to ganger (E0-S05)
+
+- **Hva:** Claude committet dagens promptlogg som `E0-S05` og skrev i sluttoppsummeringen at ingen story dekket loggen. E0-S05 var allerede brukt på planoppdateringen 16.10 (`2e7183d`). Da ville `git log --grep E0-S05` gitt to ulike arbeider, og det bryter regelen om at nummer aldri gjenbrukes.
+- **Hvordan det ble oppdaget:** Gruppa så det i oppsummeringen. Claude hadde ikke sjekket `git log --all --grep` før den valgte ID-en, selv om tabellen i `docs/epics.md` viste at S05 var i bruk.
+- **Resultat:** Commiten ble omdøpt til `E0-S16` før push (`68655d4`). E0-S16 er nå den faste ID-en for løpende logging, og E0-S17 brukes for omfangssjekken. Begge står i E0-tabellen.
+- **Lærdom (råt):** Før en ID tas i bruk, sjekkes både tabellen og `git log --all --grep <ID>`. Det er billig.
+
+## 2026-10-27 — Pipelinen rundet avviket før sammenligningen (12,9 % skulle vært 12,8 %)
+
+- **Hva:** `pipeline/derive_arrivals.py:518`, skrevet med KI i september (co-author Claude Sonnet 5, `c1fe8c3`/`9299bbe`), runder avviket til 0,1 min før ±30 min-sammenligningen. Seilas 3542899 bommer med 30 min og 1 sekund. Den ble rundet til 30,0 og telt som treff. Naiv ETA for Øvrige ble dermed 12,9 % i stedet for 12,8 % (127/996). Tallet har stått i brief, PRD, addendum, UX, arkitektur, epics og beslutning 04 siden 28.09. 46,6 % og 79,6 % påvirkes ikke.
+- **Hvordan det ble oppdaget:** Da regresjonstesten i E1-S05 ble spesifisert, *før* den var skrevet, regnet Claude tallene gjennom S04-kontrakten på det ekte utdraget for å sjekke at de låste tallene kunne reproduseres. 46,6 og 79,6 stemte, men naiv Øvrige ga 12,8. Claude sammenlignet den uavrundede tiden i utdraget med den avrundede kolonnen `deviation_in_area_minutes`, og nøyaktig én seilas skilte seg ut.
+- **Resultat:** gruppa valgte å låse 12,8 % og rette dokumentene i bruk i E1-S05. Beslutning 04 og promptloggene står som historikk, med en merknad. Regelen fra E1-S02 om uavrundede tider gjelder overalt. Se `git log --oneline --grep E1-S05`.
+- **Lærdom (råt):**
+  - Et tall som har stått i sju dokumenter i en måned, var aldri regnet ut av en test.
+  - Feilen ble funnet fordi tallene ble reprodusert *før* testen ble skrevet, og ikke skrevet inn i testen som fasit.
+  - Avrunding i et mellomsteg er en kilde til avvik selv når sluttresultatet rundes til én desimal.
+
+## 2026-10-27 — Samme testhull som i S03, gjentatt i S05 (fasit avgjort av ankomsttid, ikke status)
+
+- **Hva:** Implementasjons-subagenten skrev `har_fasit()` riktig: status `ok` *og* utfylt ankomsttid. Testene den skrev, kunne likevel ikke skille dette fra en feil versjon som bare sjekker ankomsttiden. Testhjelperen satte alltid ankomsttid til `None` når status ikke var `ok`, så den feile versjonen passerte alle testene. Det er nøyaktig samme hull som review fant i E1-S03 22.10.
+- **Hvordan det ble oppdaget:** Claudes egen mutasjonssjekk etter implementasjonen. Fem av seks mutanter ble fanget, og denne overlevde. Ingen av de tre reviewerne meldte den som et hull. Verification Gap-revieweren skrev tvert imot at den «ikke har noen realistisk regresjon», fordi datalaget setter ankomsttid til `None` i dag.
+- **Resultat:** en ny test bygger et anløp med status `empty` *og* utfylt ankomsttid og viser at det holdes utenfor. Mutanten feiler nå. Se `git log --oneline --grep E1-S05`.
+- **Lærdom (råt):**
+  - Det at en regel holder i dag fordi et annet lag sørger for det, er ikke det samme som at testen låser regelen.
+  - Lærdommen fra S03 ble ikke overført til S05 av seg selv. Mutasjonssjekken fanget det, ikke hukommelsen.
+
+## 2026-10-27 — Avrundingsregelen ble bare brukt på ett skip i skissen (E0-S18)
+
+- **Hva:** Gruppa bestemte at tider vises avrundet til nærmeste minutt. Claude rettet da UX-skissene, men bare BERGEN ENERGY (09:55 → 09:56), fordi det var eksempelet i spørsmålet. Alle Øvrige-anløp har offset 64,2 min, som gir :48 sekunder, så de rundes opp. Fem andre tider i skissen ble derfor stående feil: EINARSON, ELEKTRON, OCEAN RESPONSE, ELDJARN og SIEM PEARL. Commit-meldingen (`debbbf8`) sa at «UX-skissene er oppdatert».
+- **Hvordan det ble oppdaget:** Da E1-S06 ble spesifisert, regnet Claude ut standardvinduet fra de ekte dataene og sammenlignet med skissen rad for rad.
+- **Resultat:** De fem tidene rettes i E1-S06, med en linje i UX-endringsloggen. Se `git log --oneline --grep E1-S06`.
+- **Lærdom (råt):** En regel ble brukt på eksempelet, ikke på mønsteret. Å regne ut alle radene fra data var billig, og det burde vært gjort da regelen ble innført.
+
+## 2026-10-27 — Eksempelet på «tomt vindu» i UX-skissen hadde 7 anløp (E0-S02)
+
+- **Hva:** UX §5 viste et tomt vindu som eksempel: «0 anløp · lør 01.11 03:00 – søn 02.11 03:00». Skissen ble skrevet av Claude i UI/UX-rollen 16.10 (`a1f0c5c`). Det vinduet har 7 anløp i dataene. Tidspunktet ble valgt fordi det så sannsynlig ut, men det ble aldri sjekket.
+- **Hvordan det ble oppdaget:** Implementasjons-subagenten i E1-S06 trengte et vindu uten anløp for `test_tomt_vindu`, og prøvde eksempelet. Claude bekreftet det ved å telle på nytt (7 anløp 01.11 kl. 03:00, 0 anløp 03.02.2026 kl. 08:00).
+- **Resultat:** UX §5 bruker nå tir 03.02.2026 08:00, som også er vinduet testen bruker. Endringen står i UX-endringsloggen. Se `git log --oneline --grep E1-S06`.
+- **Lærdom (råt):** Et eksempel i en skisse er også en påstand om dataene. Det samme mønsteret ga feil skissetider i E0-S18.
+
+## 2026-10-27 — Feilsøkingsråd i README skrevet uten å sjekke (E1-S16)
+
+- **Hva:** I «Kom i gang» skrev Claude at port 5000 er «opptatt» på macOS fordi AirPlay bruker den, og at man må bytte port. Det var en antakelse fra generell kunnskap, og den ble ikke sjekket. I virkeligheten starter Flask fint på 127.0.0.1:5000. Det som går galt, er at `http://localhost:5000` havner hos AirPlay (403, `Server: AirTunes`) fordi `localhost` slås opp som `::1`.
+- **Hvordan det ble oppdaget:** Gruppa ba om en tørrkjøring av README i en ny, tom mappe. Claude så at AirPlay lyttet på port 5000 mens Flask likevel svarte, og testet derfor `127.0.0.1`, `localhost` og `[::1]` hver for seg.
+- **Resultat:** Rådet er skrevet om til det som faktisk skjer: bruk nøyaktig `127.0.0.1`, eller bytt port. Se `git log --oneline --grep E1-S16`.
+- **Lærdom (råt):** Et feilsøkingsråd er en påstand om en feil. Skrives den uten at feilen er gjenskapt, kan den sende brukeren feil vei akkurat når de står fast.
