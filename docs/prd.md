@@ -147,7 +147,7 @@ Kriterienumrene viser til [`docs/vurderingskriterier.md`](vurderingskriterier.md
   - **Modellvalg, features og tuning skjer bare på en valideringsdel:** de siste 20 % av treningsdataene, kronologisk.
   - **Testperioden brukes bare til tallene som rapporteres.** Antall kjøringer mot testperioden logges i `metrikker.json` og i resultatnotatet.
   - Baselinetallene i FR8 er en regresjonstest. Endrer de seg, er noe galt.
-- **NFR4 — Sporbarhet (kriterium 1).** Én story = én commit, med story-ID først i commit-meldingen (`E1-S03: …`). Én branch og én PR per epic. PR-beskrivelsen lister storyene og lenker til promptloggen for øktene (`docs/prompts/`).
+- **NFR4 — Sporbarhet (kriterium 1).** Én story = én commit, med story-ID først i commit-meldingen (`E1-S03: …`). Én branch og én PR per epic. PR-beskrivelsen lister storyene og lenker til sesjonsloggene for øktene i `.logs/<bruker>/` (faglærers format fra 27.10). `docs/prompts/` er historikk til og med 27.10 og føres ikke videre.
 - **NFR5 — Enkelhet (kriterium 5).** Ingen database, ingen JS-rammeverk, ingen byggesteg. Begrunnet i arkitekturen (A1–A3).
 - **NFR6 — Hemmeligheter (kriterium 7).** Nøkler bare i `.env`, som er gitignored. Ingen nøkkel trengs for å kjøre eller teste.
 
@@ -201,3 +201,4 @@ A1 og A2 ble avgjort i beslutning 11 (03.11.2026). A1 er nå en kjent begrensnin
 - **2026-10-22** — E0-S13, beslutning 07 korrigert: gruppespørsmålet om ny henting er besvart med nei, og ny henting er ført under §7. Teksten for `empty` i FR4 er endret til «ingen AIS-data hentet», siden dataene finnes i Kystdatahuset.
 - **2026-10-27** — E1-S05: naiv ETA for Øvrige er rettet fra 12,9 % til 12,8 % (127/996) i FR8. Pipelinen avrundet avviket før ±30-sammenligningen. Uavrundet regnes alle tall, som besluttet i E0-S18.
 - **2026-11-03** — E2-S01, beslutning 11: modellen gjelder bare Øvrige og trenes per horisont, mens Passasjer beholder baselinen (FR9). Featurelista F1–F16 er låst. Fartøyhistorikken og snittet den trekkes mot, regnes bare på treningsdata. FR10 har fått ablasjon uten F13–F14 og rapportering med og uten rader i ankomstsonen. A1 er flyttet fra §9 til kjente begrensninger i §7, sammen med avgangshavn og ETD. A2 er bekreftet, og `[ASSUMPTION]` er fjernet fra FR10. Tre spørsmål i §8 er lukket.
+- **2026-11-03** — NFR4: PR-beskrivelsen lenker til sesjonsloggene i `.logs/<bruker>/`, ikke til `docs/prompts/`. Det har vært praksis siden 27.10 (E0-S16), og logg føres bare ett sted.

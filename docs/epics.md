@@ -20,7 +20,7 @@ bygger_på: docs/prd.md, docs/arkitektur.md, docs/ux/dashbord.md
   Da finner sensor (og vi) koden til en story med `git log --oneline --grep 'E1-S04'`.
 - **Ferdig betyr:** akseptansekriteriene er oppfylt, testen er skrevet og `pytest` er grønn, og statusen under er satt til ✅ *i samme commit*. Avviker oppførselen fra PRD- eller UX-dokumentet, oppdateres det dokumentet i samme commit, med en linje i endringsloggen.
 - **Ny eller endret story underveis** legges til her med neste ledige nummer. Nummer gjenbrukes aldri, og forkastede stories markeres ✗ med begrunnelse.
-- PR-beskrivelsen lister storyene og lenker til promptloggen for øktene (`docs/prompts/`).
+- PR-beskrivelsen lister storyene og lenker til sesjonsloggene for øktene (`.logs/<bruker>/`). `docs/prompts/` er historikk til og med 27.10.
 
 Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
@@ -349,7 +349,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 **Krav:** FR11, A8 · **Avhenger av:** E3-S02
 - `anthropic_klient.py` leser `ANTHROPIC_API_KEY` og `LLM_MODELL`, og prompten ligger i `app/begrunnelse/prompt.md`.
 - Ved tidsavbrudd eller feil faller den tilbake til testmodus med merket fra UX §5.
-- Den første ekte prompten og et svar logges i `docs/prompts/`.
+- Den første ekte prompten og et svar logges i sesjonsloggen (`.logs/<bruker>/`).
 
 **Test:** `tests/test_begrunnelse.py::test_ekte_med_mock`, `::test_fallback_ved_feil`
 
