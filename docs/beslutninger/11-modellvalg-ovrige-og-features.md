@@ -24,6 +24,7 @@ Felipe avgjorde spørsmålene 03.11.2026 (spec: `_bmad-output/implementation-art
 3. **A2 beholdes, og A3 står uendret**: varselet er fortsatt en terskel på predikert avvik (> 120 min). **A2:** Modellen lykkes på varsel hvis F1 er høyere enn regelen som varsler alle anløp. Referansen er presisjon 19,5 %, recall 100 % og F1 ≈ 0,33 for Øvrige i testperioden.
 4. **Featurelista F1–F16 er låst** (tabellen under).
 5. **Fartøyhistorikken (F15–F16) regnes bare på treningsdata.** Den bruker bare treningsrader med samme MMSI og `arrival_in_area < t_H` for raden som predikeres, og aldri raden selv. Snittet for Øvrige som F15 trekkes mot, regnes også bare på treningsrader med ankomst før `t_H`. Avvik fra testperioden går aldri inn i noen feature, og testrader telles aldri i F16.
+   - **Valideringsradene får historikk bare fra treningsdelen, frosset ved grensen, slik testradene får** (oppdatert 03.11.2026, E2-S04, Felipe). Ellers ville valideringen fått ferskere historikk enn testen, og modellvalget sett bedre ut enn testen viser. Den endelige treningen bruker historikk fra trening og validering samlet. Featurefila har derfor F15–F16 i to varianter: `*_modellvalg` og endelig.
    - **Ingen treningsrader før `t_H`:** finnes det ingen Øvrige-treningsrader med ankomst før `t_H` (de tidligste radene), er snittet det trekkes mot 0. Fartøyet uten historikk får F15 = det snittet og F16 = 0.
    - Avviket i F15 er kalibrert med offseten fra `baseline.json`, som er fittet på hele treningsdelen. Det er en konstant forskyvning av alle verdier, både fartøyets snitt og snittet det trekkes mot. Den bærer derfor ingen informasjon om senere ankomster og er ikke en lekkasje.
 6. **Avgangshavn og ETD (F13–F14) beholdes** med en begrensning ved siden av A1, og det trenes en **ablasjon** uten dem.
@@ -88,7 +89,7 @@ Positiv slakk betyr at skipet rekker ETA-en med farten det har nå.
 ## Konsekvens
 
 - **PRD:** FR9 og FR10 er oppdatert. A1 og avgangshavna er ført under kjente begrensninger i §7. §8 er lukket for E2-S01, og A1 og A2 er tatt ut av §9. A3 står uendret.
-- **E2-S04:** `app/prediksjon/features.py` bygger F1–F16. Skipstype, lengde, ETD og avgangshavn finnes bare i den gitignorerte seilasfila i `pipeline/data/`, og den låste `data/utdrag/anlop.csv` skal ikke endres. E2-S04 skriver derfor et nytt, committet utdrag med disse feltene. Det og tilstandsutdraget skal til sammen være under 10 MB (NFR1).
+- **E2-S04:** `app/prediksjon/features.py` bygger F1–F16. Skipstype, lengde, ETD og avgangshavn finnes bare i den gitignorerte seilasfila i `pipeline/data/`, og den låste `data/utdrag/anlop.csv` skal ikke endres. E2-S04 skriver derfor F1–F16 til en committet `data/utdrag/features.csv`, uten rå ETD (oppdatert 03.11.2026: det finnes ikke noe eget rått utdrag). Alt E2 committer under `data/` skal til sammen være under 10 MB (NFR1).
   - `tests/test_features.py::test_fartoyhistorikk_bare_fra_trening`:
     - Endres alle avvik i testperioden og radens eget, er F15, F16 og snittet det trekkes mot, identiske for alle rader.
     - Legges testrader til, fjernes de eller flyttes de i tid, er F16 identisk.

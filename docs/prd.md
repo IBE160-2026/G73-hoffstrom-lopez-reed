@@ -138,7 +138,7 @@ Kriterienumrene viser til [`docs/vurderingskriterier.md`](vurderingskriterier.md
   - **Versjonert datautdrag** i `data/utdrag/`, ikke den gitignorede `pipeline/data/`.
   - **Lagret baseline** (`data/baseline.json`: offset per gruppe, splittidspunkt, kildefilens sjekksum), slik at ingenting må regnes ut på nytt ved oppstart.
   - **`.env.example`** med alle variabler og *ingen* ekte nøkler. Appen starter uten `.env`.
-  - Fra E2: **versjonert tilstandsutdrag** (`data/utdrag/tilstand_ved_kutt.csv`, én rad per anløp og horisont, regnet etter FR9a, med kildens sjekksum), **utdrag med statiske seilasfelt for featurene** (skipstype, lengde, ETD og avgangshavn, beslutning 11) og **lagret modellartefakt**. Sensor trenger verken AIS-cachen eller å trene. Grense: under 10 MB til sammen.
+  - Fra E2: **versjonert tilstandsutdrag** (`data/utdrag/tilstand_ved_kutt.csv`, én rad per anløp og horisont, regnet etter FR9a, med kildens sjekksum), **featurefil** (`data/utdrag/features.csv`, F1–F16 fra beslutning 11, uten rå ETD) og **lagret modellartefakt**. Sensor trenger verken AIS-cachen eller å trene. Grense: under 10 MB til sammen.
   - Fra E3: **testmodus som standard** (FR13).
   - Verifisert med en *klone-test*: et gruppemedlem som ikke bygde oppsettet følger README på en ren maskin. Tiden loggføres.
 - **NFR2 — Testbarhet (kriterium 3).** Hver story har akseptansekriterier som kan sjekkes og en navngitt test, automatisk der det går og ellers et manuelt sjekkpunkt. `pytest` kjører uten nett og uten `pipeline/data/` på under ett minutt. `GET /` svarer på under 1 s lokalt for standardvinduet.
