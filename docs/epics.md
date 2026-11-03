@@ -61,8 +61,8 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
 | | Stories, i rekkefølge |
 |---|---|
-| **MÅ** | E1-S04 ✅ → E1-S05 ✅ → E1-S06 ✅ → E1-S16. Første klone-test kjøres rett etter S06, og den gjentas til slutt. |
-| **KAN** | E1-S07 → E1-S13 → E1-S08 → E1-S09 → E1-S11 → E1-S12 → E1-S10 → E1-S15 → E1-S14 → E1-S17 |
+| **MÅ** | E1-S04 ✅ → E1-S05 ✅ → E1-S06 ✅ → E1-S16 ✅. Første klone-test kjøres rett etter S06, og den gjentas til slutt. |
+| **KAN** | E1-S07 → E1-S13 → E1-S08 → E1-S09 → E1-S11 → E1-S12 → E1-S10 → E1-S15 → E1-S14 → E1-S17 → E1-S18 → E1-S19 |
 
 UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (det MÅ viser), og UU-sjekklista fylles ut i E1-S16. Det som gjenstår av E1-S13, E1-S14 og E1-S15, gjelder skjermer og temaer som bygges i KAN-storyene.
 
@@ -196,7 +196,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_uu_struktur.py` + utfylt sjekkliste
 
-### E1-S16 — README og klone-test ◐ · MÅ
+### E1-S16 — README og klone-test ✅ · MÅ
 **Krav:** NFR1, UX §6 · **Avhenger av:** E1-S05, E1-S06
 - README har en «Kom i gang»-seksjon: krav (Python ≥ 3.9), venv, `pip install -r requirements.txt`, `flask --app app run`, `pytest`, og hva man bør se: standardvinduet med 15 anløp, og 46,6 % fra dataregresjonen i E1-S05 (i panelet hvis E1-S12 er bygd).
 - Et gruppemedlem som ikke bygde E1 kloner repoet på nytt og følger bare README. Tiden logges i README (mål: < 20 min), og alt som var uklart rettes.
@@ -210,6 +210,21 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - `docs/ux/skjermbilder/` har skjerm A, A2, B og C fra den kjørende appen (1280 px og 360 px). UX-dokumentet får en seksjon om hva som ble annerledes enn skissen, og hvorfor.
 
 **Test:** manuell. Filene finnes og avvikene er beskrevet.
+
+### E1-S18 — Hopp-lenken dekker overskriften ved fokus ☐ · KAN
+**Krav:** UU2 · **Avhenger av:** E1-S06
+- Funn fra UU-sjekken 03.11.2026 (E1-S16): når hopp-lenken har fokus, ligger den over «ANKOMSTPREDIKSJON» og første bokstav i «Anløp».
+- Hopp-lenken er fortsatt første Tab-stopp og synlig ved fokus, men dekker ikke overskriften eller annen tekst.
+
+**Test:** manuell, med punkt UU2 i UX §6. `tests/test_uu_struktur.py` er fortsatt grønn.
+
+### E1-S19 — Norsk visningsnavn for gruppen «Auxiliary» ☐ · KAN
+**Krav:** UX §2 · **Avhenger av:** E1-S06
+- Funn fra UU-sjekken 03.11.2026 (E1-S16), ikke et UU-krav: gruppenavnet «Auxiliary» (for eksempel G O SARS) er engelsk midt i norske gruppenavn. Det gjelder 524 anløp i `data/utdrag/anlop.csv`.
+- Dashbordet viser et norsk navn. Hvilket navn, avgjøres av gruppa når storyen startes. Bare visningen endres: `ship_group` i utdraget beholdes slik kilden har det, så sjekksummer og dataregresjonen står urørt.
+- PRD-ordlista og skissen i UX skjerm A2 bruker samme navn.
+
+**Test:** test som viser at ingen rad viser «Auxiliary». `tests/test_dataregresjon.py` er uendret og grønn.
 
 ---
 
@@ -387,7 +402,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 | FR13 | E3-S01, E3-S06 |
 | FR14 | E3-S08 |
 | UU1 | E1-S06, E1-S13 |
-| UU2–UU7 | E1-S06, E1-S07, E1-S08, E1-S10, E1-S14, E1-S15, E1-S16 |
+| UU2–UU7 | E1-S06, E1-S07, E1-S08, E1-S10, E1-S14, E1-S15, E1-S16, E1-S18 |
 | NFR1 | E1-S01, E1-S02, E1-S16, E2-S03, E3-S07 |
 | NFR2 | alle (test per story) |
 | NFR3 | E1-S05, E2-S04, E2-S06, E2-S10 |
@@ -412,3 +427,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-10-27** — E0-S18: E1-S06 har fått to avgjørelser. Vinduet velger på rapportert ETA (A), og predikert ankomst vurderes i E2-S08. Tider vises avrundet til nærmeste minutt, men beregningene er uavrundet.
 - **2026-10-27** — E1-S05: naiv ETA for Øvrige er 12,8 % (127/996), ikke 12,9 %. Pipelinen avrundet avviket til 0,1 min før ±30-sammenligningen, så seilas 3542899 (+30 min 1 s) ble telt som treff. `NaivPrediktor` er lagt til som referanseprediktor i kontrakttesten.
 - **2026-10-27** — E1-S06: hovedskjermen viser standardvinduet (15 anløp) med UU-minimum og kort under 640 px. Testene er `test_ruter.py`, `test_visning.py`, `test_uu_struktur.py` og `test_kontrast.py`. Skjermbilder ligger i `docs/ux/skjermbilder/` og lages med `scripts/ta_skjermbilder.py` utenfor `pytest`. Avvikene fra skissene står i UX-endringsloggen.
+- **2026-11-03** — E1-S16 er ferdig. Klone-testen tok ca. 4 min (Felipe), og UU-sjekklista i UX §6 er fylt ut (Thomas). E1-S18 (hopp-lenken dekker overskriften) og E1-S19 (norsk navn for «Auxiliary») er lagt til som KAN etter funn i UU-sjekken.

@@ -212,14 +212,14 @@ Kjøres manuelt i E1-S15 og på nytt før levering (fase 6). Resultat og dato f�
 
 | Krav | Sjekk | Test | Resultat |
 |---|---|---|---|
-| UU1 | Alle tokenpar under ≥ 4,5:1 (tekst) / 3:1 (kant) | `tests/test_kontrast.py` (E1-S06: tokens = tabellen i §7, kontrast regnet på nytt) | |
-| UU2 | Hele skjerm A og C kan brukes med bare tastatur. Fokus synlig hele veien. Hopp-lenke virker. | manuell | |
-| UU3 | Skjermbilde i gråtoner: FORSINKET og varsel kan fortsatt skilles ut | manuell | |
-| UU4 | Alle `<img>`/`<svg>` med mening har tekstalternativ | `tests/test_uu_struktur.py` (E1-S06: `img alt`, `svg` med tittel, pyntetegn `aria-hidden`), `tests/test_ruter.py::test_varselkolonnen_forklarer_seg` | |
-| UU5 | Alle `<input>` har `<label for>`, og feil har `aria-describedby` | `tests/test_uu_struktur.py` | |
-| UU6 | 360 px, 1280 px, 1920 px og 200 % zoom uten horisontal rulling | manuell + skjermbilder (`docs/ux/skjermbilder/`, E1-S06) | |
-| UU7 | `lang="nb"`, én `h1`, `th scope`, `aria-sort`, landemerker | `tests/test_uu_struktur.py` (E1-S06: `lang`, én `h1` uten hoppede nivåer, `th scope`, `header`/`main`, hopp-lenke, `data-label`, viewport, tastaturnåbare elementer; `aria-sort` kommer med E1-S10) | |
-| — | Skjermleser (VoiceOver): les opp én rad og detaljsiden | manuell | |
+| UU1 | Alle tokenpar under ≥ 4,5:1 (tekst) / 3:1 (kant) | `tests/test_kontrast.py` (E1-S06: tokens = tabellen i §7, kontrast regnet på nytt) | ✅ 03.11.2026: testen er grønn. Mørkt tema, `--varsel` og `--ok` er ikke bygd (KAN, E1-S13). |
+| UU2 | Hele skjerm A og C kan brukes med bare tastatur. Fokus synlig hele veien. Hopp-lenke virker. | manuell | ✅ 03.11.2026, skjerm A (Thomas Kvile-Reed, full bredde). Hopp-lenken får fokus først, og fokus er tydelig synlig. Enter på hopp-lenken går til `#anlopslista`, som får fokusramme. Hopp-lenken er foreløpig det eneste interaktive elementet. **Funn:** hopp-lenken dekker overskriften når den har fokus (E1-S18). Skjerm C: ikke bygd (KAN, E1-S11). |
+| UU3 | Skjermbilde i gråtoner: FORSINKET og varsel kan fortsatt skilles ut | manuell | Ikke bygd (KAN, E1-S13). Skjermen viser verken FORSINKET eller varselfarge ennå, bare «–» i varselkolonnen. |
+| UU4 | Alle `<img>`/`<svg>` med mening har tekstalternativ | `tests/test_uu_struktur.py` (E1-S06: `img alt`, `svg` med tittel, pyntetegn `aria-hidden`), `tests/test_ruter.py::test_varselkolonnen_forklarer_seg` | ✅ 03.11.2026: testene er grønne. |
+| UU5 | Alle `<input>` har `<label for>`, og feil har `aria-describedby` | `tests/test_uu_struktur.py` | Ikke bygd (KAN, E1-S07). Skjermen har ingen skjemafelt ennå. Testen er grønn. |
+| UU6 | 360 px, 1280 px, 1920 px og 200 % zoom uten horisontal rulling | manuell + skjermbilder (`docs/ux/skjermbilder/`, E1-S06) | ✅ 03.11.2026 (Thomas Kvile-Reed). Full bredde og smal skjerm: under 640 px vises anløpene som kort, uten sidelengs rulling. 200 % zoom er lesbart uten sidelengs rulling. Breddene i piksler er ikke oppgitt, så 1920 px er ikke bekreftet. |
+| UU7 | `lang="nb"`, én `h1`, `th scope`, `aria-sort`, landemerker | `tests/test_uu_struktur.py` (E1-S06: `lang`, én `h1` uten hoppede nivåer, `th scope`, `header`/`main`, hopp-lenke, `data-label`, viewport, tastaturnåbare elementer; `aria-sort` kommer med E1-S10) | ✅ 03.11.2026: testen er grønn. `aria-sort` er ikke bygd (KAN, E1-S10). |
+| — | Skjermleser (VoiceOver): les opp én rad og detaljsiden | manuell | ✅ 03.11.2026, én rad (Thomas Kvile-Reed, VoiceOver i mobilvisning). Overskriften leses opp, kortene leses med kolonnenavn, og varselkolonnen er forståelig. Detaljsiden: ikke bygd (KAN, E1-S11). |
 
 **Tastaturrekkefølge, skjerm A:** hopp-lenke → dato → klokkeslett → filter (piltaster i radiogruppa) → fasit → Oppdater → sorteringsknapper → skipsnavn (rad for rad) → «Hva betyr tallene?».
 
@@ -258,6 +258,7 @@ Fokusring: 3 px `--aksent` med 2 px avstand, aldri `outline: none` uten erstatni
   - Seks predikerte tider i skjerm A og A2 er rettet til avrunding til nærmeste minutt: EINARSON 07:56, ELEKTRON 10:26, OCEAN RESPONSE 12:41, ELDJARN 12:56, SIEM PEARL 15:26 og G O SARS 14:56 (A2). Alle Øvrige har 64,2 min offset, altså :48 sekunder, og runder opp.
   - Eksempelet på tomt vindu i §5 (lør 01.11 03:00) hadde 7 anløp. Det er byttet til tir 03.02 08:00, som ligger i en pause i dataene og er det testen bruker.
   - Linja «15 anløp · …» er en `h2`, så overskriftene ikke hopper fra `h1` rett til tabellen.
+- **2026-11-03** — E1-S16: UU-sjekklista i §6 er fylt ut for det som er bygd, med manuell sjekk av Thomas Kvile-Reed mot `main`. Alt som er bygd, er bestått. Rader for det som ikke er bygd, er merket med KAN-storyen. Det kom fram to funn: hopp-lenken dekker overskriften ved fokus (E1-S18), og gruppenavnet «Auxiliary» er engelsk (E1-S19).
   - Hjelpeteksten «predikert før valgt tidspunkt» står med liten tekst under tiden i Predikert-cellen, sammen med `*`.
   - Fotnoten sier «Alle tider er norsk tid, avrundet til nærmeste minutt» i stedet for «Skipsnavn er lenke til detaljside». Detaljsiden kommer først i E1-S11.
   - Varsel-cellens «–» er skjult for skjermlesere og har en skjult tekst, «Ingen varsel: baselinen varsler ikke avvik».
