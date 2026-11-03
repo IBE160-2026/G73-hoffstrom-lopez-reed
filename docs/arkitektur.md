@@ -201,3 +201,6 @@ LLM_MODELL=claude-haiku-5-5
 - **2026-10-22** — Etter beslutning 09: tilstandsvinduet er 24 t, og posisjoner filtreres på tidsstemplet i svaret.
 - **2026-10-27** — E1-S04: prediktor-kontrakten er input-basert. `prediker` tar `PrediksjonsInput` (bygd av `lag_input`) i stedet for `Anlop`, så prediktorer ikke kan nå fasiten. `t_kutt = min(eta − H, naa)`. Kontrakttesten dekker lekkasje, og `test_kutt_ikke_etter_naa` er flyttet hit fra E2-S07. Krever godkjenning fra begge eiere i PR-en.
 - **2026-10-27** — E1-S05: naiv ETA for Øvrige i dataregresjonen er 12,8 %, ikke 12,9 %, fordi avviket nå sammenlignes uavrundet. `app/metrikker.py` scorer prediksjoner fra prediktorer i `PREDIKTORER` og lager aldri egne.
+- **2026-11-03** — Godkjenningen av kontraktendringen fra E1-S04, slik den faktisk skjedde. Den kom ikke i en egen PR, men i PR #4 (hele E1), som ble merget 03.11 kl. 15:57 UTC.
+  - **Felipe** (modell) kommenterte PR #4 kl. 15:57 UTC, før merge: «Godt over og godkjenner mergen». Han ga ingen formell review.
+  - **Thomas** (dashbord) godkjente ikke før merge. Han bekreftet i etterkant, 03.11, at han godkjenner kontraktendringen. Bekreftelsen kom gjennom Theodor og står ikke på PR #4.
