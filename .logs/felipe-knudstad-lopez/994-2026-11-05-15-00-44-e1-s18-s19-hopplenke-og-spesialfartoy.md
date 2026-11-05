@@ -22,7 +22,13 @@ Mens E2-hentingen kjører, skulle KAN-storyene E1-S18 (hopp-lenken dekker oversk
   Funnene om `:focus-visible` og den ujevne skissekanten er forkastet.
 - **Tester og PR:** alle 182 tester er grønne på branchen. Commiten er `58bae80` med Felipe som forfatter og er pushet. PR: https://github.com/IBE160-2026/G73-hoffstrom-lopez-reed/pull/6
 
+**Manuell sjekk (samme dag):** Theodor Gimming sjekket UU2 mot `fix/e1-s18-s19`:
+- Hopp-lenken dekker ikke lenger «ANKOMSTPREDIKSJON» eller «Anløp» ved fokus.
+- Fokusrammen er tydelig, og Enter går til `#anlopslista`.
+- G O SARS vises som «Spesialfartøy».
+
+Gruppa har godkjent navnet. UU2-raden i UX §6 er fylt ut, E1-S18 er satt til ✅, og specen er `done`. Det står i commit `fa94e6b`, som er pushet til PR #6.
+
 ### Åpne punkter
-- E1-S18: UU2 i UX §6 må sjekkes manuelt (Tab på forsiden: hopp-lenken skal synes uten å dekke overskriften). Fyll ut raden, og sett E1-S18 til ✅.
 - PR #6 må gjennomgås og merges inn i `main`.
 - Worktreen `../G73-fix-e1-s18-s19` kan fjernes med `git worktree remove` når PR-en er merget.
