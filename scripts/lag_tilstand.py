@@ -16,9 +16,17 @@ Lekkasjesikring:
 En posisjon er gyldig bare hvis MMSI-en i punktet er lik seilasens MMSI og har 9 sifre (Felipe,
 03.11.2026), og bredde/lengde er en reell posisjon (ikke 91/181 eller 0,0).
 
-``ais_status`` er ``ok``, ``ingen_posisjon`` (hentet, men ingen gyldig posisjon i vinduet) eller
-``ikke_hentet`` (ingen cachefil). Raden skrives alltid, med tomme tilstandsfelt når statusen
-ikke er ``ok``.
+``ais_status`` er ``ok``, ``ingen_posisjon`` (hentet, men ingen gyldig posisjon i vinduet),
+``manglende_dag`` (kuttpunktet ligger i en dag som mangler hos API-et, og det finnes ingen gyldig
+posisjon fra etter at hullet begynte) eller ``ikke_hentet`` (ingen cachefil). Raden skrives alltid,
+med tomme tilstandsfelt når statusen ikke er ``ok``. Rader som ikke er ``ok``, går til baselinen
+(beslutning 11).
+
+``manglende_dag`` (Felipe, 05.11.2026): ligger kuttpunktet i det tapte intervallet til en dag i
+cachens ``manglende_dager`` (``fetch_ais_kutt.tapt_intervall``: hele dagen pluss 2 t inn i dagen
+etter, beslutning 09), ville en posisjon fra før hullet se gammel ut av en grunn som ikke er ekte.
+Raden skal ikke stå som ``ok`` med en posisjon fra dagen før. En gyldig posisjon fra innenfor hullet
+(om vinteren kan høyre delvindu ha data fra 01:00 dagen etter) er ekte, og gir ``ok``.
 
 Kjøres fra repo-roten når hentingen er ferdig:
 
@@ -57,7 +65,7 @@ SOG_IKKE_TILGJENGELIG = 102.3
 COG_IKKE_TILGJENGELIG = 360.0
 KOLONNER = ["voyageid", "horisont_timer", "t_kutt_utc", "ais_status", "lat", "lon",
             "distanse_km", "fart_knop", "kurs_grader", "posisjon_alder_min"]
-STATUSER = ("ok", "ingen_posisjon", "ikke_hentet")
+STATUSER = ("ok", "ingen_posisjon", "manglende_dag", "ikke_hentet")
 # Kolonnene i et Kystdatahuset-punkt (verifisert mot API-et 27.09.2026, se pipeline/fetch_ais.py).
 I_MMSI, I_LON, I_LAT, I_COG, I_SOG = 0, 2, 3, 4, 5
 
@@ -68,6 +76,7 @@ _spec.loader.exec_module(_fak)
 tidsstempel = _fak.tidsstempel
 filtrer_til_vindu = _fak.filtrer_til_vindu
 naive_utc = _fak.naive_utc
+tapt_intervall = _fak.tapt_intervall
 
 
 class KuttAvvik(Exception):
@@ -138,6 +147,18 @@ def _felt(punkt, i, ikke_tilgjengelig):
     return f"{v:.1f}"
 
 
+def hull_ved_kutt(cache, t_kutt):
+    """Starten på det tapte intervallet som t_kutt ligger i, eller None."""
+    for d in cache.get("manglende_dager") or []:
+        try:
+            fra, til = tapt_intervall(dt.date.fromisoformat(d))
+        except (TypeError, ValueError) as exc:
+            raise KuttAvvik(f"ugyldig dato i manglende_dager: {d!r}") from exc
+        if fra <= t_kutt < til:
+            return fra
+    return None
+
+
 def tilstandsrad(voyageid, mmsi, h, t_kutt, cache):
     rad = {k: "" for k in KOLONNER}
     rad.update(voyageid=voyageid, horisont_timer=str(h), t_kutt_utc=t_kutt.isoformat() + "Z")
@@ -152,6 +173,10 @@ def tilstandsrad(voyageid, mmsi, h, t_kutt, cache):
                         f"men rapportert ETA − {h} t er {t_kutt.isoformat()}")
     punkter = filtrer_til_vindu(v["posisjoner"], t_kutt - TILBAKEBLIKK, t_kutt)
     p, t = siste_gyldige(punkter, mmsi)
+    hull = hull_ved_kutt(cache, t_kutt)
+    if hull is not None and (p is None or t < hull):
+        rad["ais_status"] = "manglende_dag"  # posisjonen (om noen) er fra før hullet: ikke ekte alder
+        return rad
     if p is None:
         rad["ais_status"] = "ingen_posisjon"
         return rad
@@ -274,7 +299,8 @@ def main(argv=None):
 
     for h in HORISONTER:
         a = antall[str(h)]
-        print(f"H={h:2}: ok={a['ok']} ingen_posisjon={a['ingen_posisjon']} ikke_hentet={a['ikke_hentet']}")
+        print(f"H={h:2}: ok={a['ok']} ingen_posisjon={a['ingen_posisjon']} "
+              f"manglende_dag={a['manglende_dag']} ikke_hentet={a['ikke_hentet']}")
     if any(antall[str(h)]["ikke_hentet"] for h in HORISONTER):
         print("Advarsel: noen anløp har ingen cachefil (ikke_hentet). Kjører hentingen fortsatt?",
               file=sys.stderr)

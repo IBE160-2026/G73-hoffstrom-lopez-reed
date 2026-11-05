@@ -138,7 +138,7 @@ def test_mangler_posisjon(tmp_path):
     for r in rader:
         assert all(r[k] == "" for k in ("lat", "lon", "distanse_km", "fart_knop", "kurs_grader", "posisjon_alder_min"))
     meta = json.loads((ut / "tilstand_ved_kutt.json").read_text(encoding="utf-8"))
-    assert meta["antall_per_horisont"]["6"] == {"ok": 0, "ingen_posisjon": 2, "ikke_hentet": 1}
+    assert meta["antall_per_horisont"]["6"] == {"ok": 0, "ingen_posisjon": 2, "manglende_dag": 0, "ikke_hentet": 1}
     assert meta["kilde_antall_filer"] == 2 and meta["rader"] == 6
     assert meta["kilde_antall_tomme_svar"] == 1
     assert meta["utdrag_sha256"] == hashlib.sha256((ut / "tilstand_ved_kutt.csv").read_bytes()).hexdigest()
@@ -261,3 +261,84 @@ def test_mmsi_maa_stemme_og_ha_9_sifre(tmp_path):
     assert meta["anlop_ugyldig_mmsi"] == 1
     assert not lt.gyldig_mmsi("0") and not lt.gyldig_mmsi("25700000") and not lt.gyldig_mmsi("2570000001")
     assert lt.gyldig_mmsi("257000000") and lt.gyldig_mmsi(257000000)
+
+
+# --- Kuttpunkt i en manglende dagstabell (Felipe 05.11.2026, beslutning 09) ---
+# Hentingen deler vinduet rundt en dag som mangler hos API-et. Ligger t_kutt i det tapte
+# intervallet [dag 00:00, dagen etter 02:00), er en posisjon fra før hullet ikke en ekte alder.
+
+HULL_ETA = datetime(2024, 7, 31, 10, 30)              # som seilas 2501661 fra kjøringen 03.11
+HULL_T = {6: HULL_ETA - timedelta(hours=6), 24: HULL_ETA - timedelta(hours=24)}  # 31.07 04:30, 30.07 10:30
+
+
+def hullcache(d, voyageid, pos6, pos24, manglende=("2024-07-30",), t_kutt=HULL_T):
+    cachefil(d, voyageid, pos6, pos24, t_kutt=t_kutt)
+    sti = d / f"{voyageid}.json"
+    c = json.loads(sti.read_text(encoding="utf-8"))
+    if manglende is not None:
+        c["manglende_dager"] = list(manglende)
+    sti.write_text(json.dumps(c), encoding="utf-8")
+
+
+def hull_anlop(d, rader):
+    sti = d / "anlop.csv"
+    with open(sti, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=["voyageid", "mmsino", "eta_reported"])
+        w.writeheader()
+        for v in rader:
+            w.writerow({"voyageid": v, "mmsino": str(MMSI), "eta_reported": HULL_ETA.isoformat() + "+00:00"})
+    return sti
+
+
+def test_kutt_i_manglende_dag_far_egen_status(tmp_path):
+    """t_24 = 30.07 10:30 ligger i hullet. Siste posisjon er fra 29.07 23:00: ikke ok, men manglende_dag.
+    Mutasjonssjekket: testen feiler når sjekken i tilstandsrad fjernes."""
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    for_hullet = punkt(datetime(2024, 7, 29, 23, 0))
+    hullcache(cache, "100", [for_hullet, punkt(datetime(2024, 7, 31, 4, 0))], [for_hullet])
+    kode, ut = kjør(tmp_path, cache, hull_anlop(tmp_path, ["100"]))
+    assert kode == 0
+    r6, r24 = les(ut)
+    assert r24["ais_status"] == "manglende_dag"
+    assert all(r24[k] == "" for k in ("lat", "lon", "distanse_km", "fart_knop", "kurs_grader", "posisjon_alder_min"))
+    # t_6 = 31.07 04:30 ligger etter hullet (det slutter 31.07 02:00) og har en fersk posisjon.
+    assert (r6["ais_status"], r6["posisjon_alder_min"]) == ("ok", "30.0")
+    meta = json.loads((ut / "tilstand_ved_kutt.json").read_text(encoding="utf-8"))
+    assert meta["antall_per_horisont"]["24"]["manglende_dag"] == 1
+
+
+def test_hullgrensene(tmp_path):
+    """Hullet er [30.07 00:00, 31.07 02:00). Kutt like før og ved slutten er ikke i hullet. En posisjon
+    fra innenfor hullet (vinterforskyvning +1 t gir data fra 01:00) er ekte og gir ok. Uten posisjon
+    i det hele tatt blir et kutt i hullet manglende_dag, ikke ingen_posisjon."""
+    hull = lt.tapt_intervall(datetime(2024, 7, 30).date())
+    assert hull == (datetime(2024, 7, 30), datetime(2024, 7, 31, 2, 0))
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    tilfeller = {
+        "1": ({6: datetime(2024, 7, 29, 23, 59), 24: datetime(2024, 7, 30, 0, 0)}, "ok", "manglende_dag"),
+        # Kutt nøyaktig ved slutten av hullet (31.07 02:00) er utenfor det: posisjonen fra 29.07 er
+        # da eldre enn tilbakeblikket, så statusen blir ingen_posisjon, ikke manglende_dag.
+        "2": ({6: datetime(2024, 7, 31, 2, 0), 24: datetime(2024, 7, 31, 1, 59)}, "ingen_posisjon", "manglende_dag"),
+    }
+    for v, (tk, _, _) in tilfeller.items():
+        p = punkt(datetime(2024, 7, 29, 23, 30) if v == "1" else datetime(2024, 7, 31, 1, 0) - timedelta(hours=25))
+        hullcache(cache, v, [p], [p], t_kutt=tk)
+    rad = lambda v, h, tk: lt.tilstandsrad(v, MMSI, h, tk[h], json.loads((cache / f"{v}.json").read_text()))  # noqa: E731
+    for v, (tk, s6, s24) in tilfeller.items():
+        assert (rad(v, 6, tk)["ais_status"], rad(v, 24, tk)["ais_status"]) == (s6, s24), v
+    # Posisjon inne i hullet, 31.07 01:00, ved kutt 31.07 01:30: ekte, ok.
+    tk = {6: datetime(2024, 7, 31, 1, 30), 24: datetime(2024, 7, 30, 1, 30)}
+    hullcache(cache, "3", [punkt(datetime(2024, 7, 31, 1, 0))], [], t_kutt=tk)
+    assert rad("3", 6, tk)["ais_status"] == "ok" and rad("3", 6, tk)["posisjon_alder_min"] == "30.0"
+    assert rad("3", 24, tk)["ais_status"] == "manglende_dag"   # ingen posisjon, kutt i hullet
+
+
+def test_gammel_cache_uten_manglende_dager(tmp_path):
+    """Cachefiler fra før 05.11.2026 har ikke feltet. De oppfører seg som før."""
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    hullcache(cache, "100", [], [punkt(datetime(2024, 7, 29, 23, 0))], manglende=None)
+    _, ut = kjør(tmp_path, cache, hull_anlop(tmp_path, ["100"]))
+    assert [r["ais_status"] for r in les(ut)] == ["ingen_posisjon", "ok"]

@@ -113,6 +113,11 @@ context:
   - Median distance 87 km (6 h) and 182 km (24 h). Median position age 0.1 min.
   - The column order is confirmed on real API points.
 - **Finding from the smoke run: MMSI 0.** 6 voyages (rows) sit 7 000–17 000 km from Bergen. All have `mmsino = 0`, and the API then returns points from every vessel worldwide that sends MMSI 0. There are 63 such voyages in `anlop.csv`, and all are `status_in_area = empty`, so they have no ground truth and the 46.6 % is unaffected. Felipe chose the MMSI rule (decision 4). After it, the maximum distance is 645 km at 24 h. `test_mmsi_maa_stemme_og_ha_9_sifre` is mutation-checked: removing the MMSI equality or the 9-digit requirement is caught.
+- **2026-11-05: new `ais_status` `manglende_dag`** (Felipe, after the code review of E2-S02's fix `0a85cd4`, decision 09 addendum).
+  - A cut point inside the lost interval of a missing day table (`fetch_ais_kutt.tapt_intervall`: [day 00:00, next day 02:00)) gets `manglende_dag`, unless there is a valid position from inside the hole. It does not get `ok` with a position from the day before. Rows that are not `ok` go to the baseline (`har_tilstand=0` in `lag_features.py`).
+  - Tests: `test_kutt_i_manglende_dag_far_egen_status`, `test_hullgrensene`, `test_gammel_cache_uten_manglende_dager`, and in `test_features.py` `test_manglende_dag_gar_til_baselinen`.
+  - Mutation-checked: removing the check, ignoring in-hole positions, and moving either interval bound are all caught. The first boundary test let `<=` at the end survive, and it was tightened.
+  - Real cache 05.11 (partial, read-only, output in the scratchpad): 8 cut points get `manglende_dag` (1 at 6 h, 7 at 24 h), which matches the review's count.
 
 ## Spec Change Log
 

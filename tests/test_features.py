@@ -245,6 +245,13 @@ def test_rad_uten_tilstand():
         assert x["skipstype"] == "General Cargo Ship" and x["eta_ukedag"] != ""
 
 
+def test_manglende_dag_gar_til_baselinen():
+    """Kuttpunkt i en manglende dagstabell (lag_tilstand, 05.11.2026) gir rad uten tilstand, som
+    delegeres til baselinen (beslutning 11)."""
+    for x in bygg([anlop(1, "2024-01-10T12:00:00", "train")], status="manglende_dag"):
+        assert x["har_tilstand"] == "0" and x["distanse_km"] == "" and x["posisjon_alder_min"] == ""
+
+
 def test_inkonsistent_tilstand_stopper():
     a = anlop(1, "2024-01-10T12:00:00", "train")
     t = tilstand_for([a])
