@@ -17,3 +17,4 @@
 - [ ] 2026-11-03 [e2-s04-features](995-2026-11-03-19-20-13-e2-s04-features.md) — E2-S05 (trening) startes først når utdragene er committet.
 - [ ] 2026-11-05 [e2-s02-ais-henting-ved-kuttpunkt](998-2026-11-03-18-21-12-e2-s02-ais-henting-ved-kuttpunkt.md) — Sjekk kjøreloggen for fullkjøringen (startet 05.11 kl. 14:17) i kveld og i morgen tidlig, og kjør samme kommando igjen hvis den har stoppet.
 - [ ] 2026-11-05 [e2-s02-ais-henting-ved-kuttpunkt](998-2026-11-03-18-21-12-e2-s02-ais-henting-ved-kuttpunkt.md) — Etter fullkjøringen: les med_manglende_dag og manglende_dager i dekningstabellen, og vurder om hullene skal føres som kjent begrensning i beslutning 09.
+- [ ] 2026-11-05 [e2-s02-ais-henting-ved-kuttpunkt](998-2026-11-03-18-21-12-e2-s02-ais-henting-ved-kuttpunkt.md) — Når fullkjøringen er ferdig: ta de seks review-rettelsene i `fetch_ais_kutt.py` (spec-e2-s02, «Review Findings»). B1 (status for permanente hull) står i deferred-work.md.

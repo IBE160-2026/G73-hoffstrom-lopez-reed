@@ -109,6 +109,23 @@ Fullkjøringen stoppet 03.11 kl. 19:42 etter 2 185 av 7 826 seilaser. Grunnen va
 - **Fullkjøring:** startet igjen 05.11 kl. 14:17 med `nohup caffeinate -i .venv/bin/python pipeline/fetch_ais_kutt.py >> pipeline/data/ais_kutt_kjoring.log 2>&1 &`. 5 630 seilaser gjenstår. Etter 4 min er status `[50/5630] ok=45 tom=5 feil=0`, og estimatet er rundt 7,4 t. Mange seilaser rundt 30.07 blir delt som de skal.
 - **Prosess:** endringen ble gjort direkte, ikke gjennom hele bmad-build-ruta. Kvalitetssikringen var tester, mutasjonssjekk og kjøring mot ekte API.
 
+**Review av `0a85cd4` (samme dag, etter omstarten):**
+- **Gjennomføring:** BMAD-reviewen ble kjørt med fire reviewere: Blind Hunter, Edge Case Hunter, Verification Gap og Acceptance Auditor. Funnene ble sjekket mot cachen uten å skrive noe. `fetch_ais_kutt.py` ble ikke rørt, og kjøringen gikk hele tiden.
+- **Hva sjekken viste:**
+  - 28 delte seilaser, alle med én manglende dag.
+  - 0 feil siden omstarten.
+  - 0 duplikater fra API-et i 200 seilaser.
+  - Ingen funn krever ny henting.
+- **B1, egen status for permanente hull:** utsatt av Felipe og ført i `_bmad-output/implementation-artifacts/deferred-work.md`.
+- **B2, rettet i `1cee190` (E2-S03):**
+  - `lag_tilstand.py` gir status `manglende_dag` når kuttpunktet ligger i hullet og bare har en posisjon fra før. Slike rader går til baselinen.
+  - 4 nye tester, og alle 257 er grønne. Mutasjonssjekken fanger alle fire mutasjonene. Første versjon av grensetesten lot `<=` i slutten av hullet slippe gjennom, og den er strammet inn.
+  - Mot den ekte cachen fikk 8 kuttpunkter `manglende_dag`.
+- **Seks rettelser i `fetch_ais_kutt.py`:** ført inn i story-fila (`spec-e2-s02-…`, «Review Findings»). De tas når kjøringen er ferdig. Story-statusen er satt til `in-progress`.
+- **Beslutning 09:** et tillegg forklarer hvorfor en manglende dag koster 26 t (`9ecf360`). Høyre del kan tidligst starte kl. 00:00 dagen etter, og med forskyvningen på +2 t kommer første punkt kl. 02:00 UTC. Om vinteren er tapet trolig 25 t.
+- **Rettelse av commitmeldingen:** `0a85cd4` sier «10 nye tester», men det er 9 testfunksjoner. Commiten er pushet og blir ikke endret.
+
 ### Åpne punkter
 - Sjekk kjøreloggen i kveld og i morgen tidlig (`tail pipeline/data/ais_kutt_kjoring.log`). Har den stoppet, kjør samme kommando igjen.
 - Når fullkjøringen er ferdig: les `med_manglende_dag` og `manglende_dager` i dekningstabellen, og vurder om hullene skal føres som kjent begrensning i beslutning 09.
+- Når fullkjøringen er ferdig: ta de seks review-rettelsene i `fetch_ais_kutt.py` (story-fila, «Review Findings»), og kjør `lag_tilstand.py` på nytt.
