@@ -127,3 +127,14 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
   - En mutasjonssjekk viser at testene fanger feil i koden, ikke at koden dekker dataene.
   - Kjør på ekte data før commit, og se på ytterpunktene (min og maks), ikke bare medianen.
 
+
+## 2026-11-05 — Stoppregelen tolket et permanent datahull som et API-brudd, og hentingen sto stille i nesten to døgn (E2-S02)
+
+- **Hva:** Fullkjøringen av `pipeline/fetch_ais_kutt.py` stoppet 03.11 kl. 19:42 etter 2 185 av 7 826 seilaser. Utskriften sa «API-et er trolig nede». Det var feil. De ti siste feilene var alle `42P01: relation "ais202407.ais_20240730" does not exist`: dagstabellen for 30.07.2024 mangler hos Kystdatahuset. Seilasene hentes i tidsrekkefølge, så ti seilaser på rad hadde vinduer over den samme dagen, og stoppregelen («10 feil på rad») slo til. Scriptet ble skrevet med Claude i E2-S02 (`85021b9`). Der var 42P01 allerede sett i piloten og merket som varig, så det ikke ble prøvd på nytt, men det talte likevel mot stoppregelen. I tillegg ga hver slik feil opp hele seilasen, selv om bare én av fire dager i vinduet manglet.
+- **Hvordan det ble oppdaget:** Felipe leste kjøreloggen 05.11, nesten to døgn senere. I mellomtiden hadde ingen sett at hentingen sto stille.
+- **Resultat:** `0a85cd4`. 42P01 teller ikke lenger mot stoppregelen. Vinduet deles rundt den manglende dagen, og resten hentes. Prøvekall 05.11 viste at API-et velger dagstabeller etter datoen i forespørselen, og delvinduene forlenges til minst 25 t på grunn av midnattskuttet (funn B). De manglende dagene lagres i cachen og telles i `ais_kutt_dekning.csv`. Alle de 11 seilasene som hadde feilet med 42P01, er hentet på nytt uten feil (9 `ok`, 2 `tom`), og fullkjøringen ble startet igjen 05.11 kl. 14:17.
+- **Lærdom (råt):**
+  - Sjekk loggen til en lang kjøring samme kveld eller neste morgen. En stoppet jobb er stille.
+  - En stoppregel må skille mellom «API-et svarer ikke» og «API-et svarer at dataene ikke finnes». Det siste er et permanent datahull, ikke et brudd.
+  - Feilen var kjent fra piloten, men ble bare håndtert ett sted (ikke nytt forsøk) og ikke tenkt gjennom for stoppregelen. Et kjent spesialtilfelle må følges gjennom alle steder det påvirker.
+  - Meldingen «API-et er trolig nede» var en påstand scriptet ikke hadde grunnlag for, og den kunne fått oss til å vente i stedet for å se etter.
