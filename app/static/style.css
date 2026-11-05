@@ -60,8 +60,12 @@ a {
   z-index: 10;
 }
 
+/* Ved fokus går lenka inn i flyten øverst og tar egen plass, så den skyver
+   overskriften ned i stedet for å dekke den (E1-S18, funn i UU-sjekken 03.11.2026). */
 .hopp:focus {
-  top: 0.5rem;
+  position: static;
+  display: inline-block;
+  margin: 0.5rem 1rem 0;
 }
 
 .topp {

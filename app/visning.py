@@ -15,6 +15,15 @@ UKEDAGER = ("man", "tir", "ons", "tor", "fre", "lør", "søn")
 
 HORISONT_ETIKETT = {6: "≤ 6 t", 24: "6–24 t"}
 
+# Norske visningsnavn for skipsgrupper der kilden bruker et engelsk navn (E1-S19, Felipe 05.11.2026).
+# Bare visningen: ``ship_group`` i utdraget og gruppering i Passasjer/Øvrige er uendret.
+GRUPPE_VISNINGSNAVN = {"Auxiliary": "Spesialfartøy"}
+
+
+def gruppe_visning(ship_group: str) -> str:
+    """Visningsnavnet for en skipsgruppe. Ukjente grupper vises som i kilden."""
+    return GRUPPE_VISNINGSNAVN.get(ship_group, ship_group)
+
 
 def til_oslo_minutt(t: dt.datetime) -> dt.datetime:
     """Tz-aware tid til Europe/Oslo, avrundet til nærmeste minutt (:30 sekunder runder opp)."""
