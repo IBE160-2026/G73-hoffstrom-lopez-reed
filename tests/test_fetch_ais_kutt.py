@@ -313,3 +313,144 @@ def test_manglende_dagstabell_uten_gjentak(monkeypatch):
     with pytest.raises(fak.HenteFeil, match="mangler hos API-et"):
         fak.hent_posisjoner("1", ETA_DT, ETA_DT)
     assert len(kall) == 1
+
+
+# --- Manglende dagstabell (42P01): stoppregel og deling av vinduet (05.11.2026) ---
+
+class FalskArkiv:
+    """Etterligner API-et slik prøvekallene 05.11.2026 viste: dagstabellene velges etter
+    datoen i forespørselen, og et vindu som rører en manglende dag, feiler med 42P01.
+    Returnerer ett punkt per time i [start, slutt], uten forskyvning."""
+
+    def __init__(self, mangler=()):
+        self.mangler, self.kall = set(mangler), []
+
+    def __call__(self, mmsi, start, slutt):
+        self.kall.append((start, slutt))
+        d = start.date()
+        while d <= slutt.date():
+            if d in self.mangler:
+                raise fak.ManglerDag(f'mangler hos API-et: 42P01: relation "ais{d:%Y%m}.ais_{d:%Y%m%d}" '
+                                     'does not exist', d)
+            d += timedelta(days=1)
+        t, ut = start.replace(minute=0), []
+        while t <= slutt:
+            if t >= start:
+                ut.append(punkt(t))
+            t += timedelta(hours=1)
+        return ut
+
+
+def test_manglende_dag_teller_ikke_mot_stoppregelen(tmp_path):
+    """Hentingen 03.11.2026 stoppet etter ti 42P01 på rad for samme dag. Det er ikke nedetid."""
+    kilde = skriv_kilde(tmp_path, [rad(voyageid=str(i), mmsino=str(i)) for i in range(25)])
+
+    def hent(mmsi, start, slutt):
+        if mmsi == "24":
+            return list(SVAR)
+        raise fak.ManglerDag("mangler hos API-et: 42P01", None)  # dagen kan ikke leses: kan ikke deles
+    assert fak.main(argv_for(tmp_path, kilde), hent=hent) == 0
+    assert [f.name for f in (tmp_path / "cache").iterdir()] == ["24.json"]
+    logg = list(csv.DictReader(open(tmp_path / "l.csv", encoding="utf-8")))
+    assert len(logg) == 25 and sum(r["status"].startswith("feil: mangler") for r in logg) == 24
+
+
+def test_ekte_nedetid_stopper_fortsatt_selv_med_manglende_dager_innimellom(tmp_path):
+    """Manglende dager verken teller eller nullstiller telleren: ti ekte feil stopper."""
+    kilde = skriv_kilde(tmp_path, [rad(voyageid=str(i), mmsino=str(i)) for i in range(30)])
+    kall = []
+
+    def hent(mmsi, start, slutt):
+        kall.append(mmsi)
+        if int(mmsi) % 2:
+            raise fak.ManglerDag("mangler hos API-et: 42P01", None)
+        raise fak.HenteFeil("nede")
+    assert fak.main(argv_for(tmp_path, kilde), hent=hent) == 2
+    assert len(kall) == 19  # 10 ekte feil (partall 0–18) og 9 manglende dager imellom
+
+
+def test_manglende_dag_leses_fra_meldingen(monkeypatch):
+    def urlopen(req, timeout):
+        return FalskRespons(json.dumps({"success": False, "msg": '42P01: relation "ais202407.ais_20240730" '
+                                        'does not exist\n\nPOSITION: 978'}).encode())
+    monkeypatch.setattr(fak.urllib.request, "urlopen", urlopen)
+    with pytest.raises(fak.ManglerDag) as e:
+        fak.hent_posisjoner("1", ETA_DT, ETA_DT)
+    assert e.value.dag == datetime(2024, 7, 30).date() and e.value.varig
+    assert fak.manglende_dag("noe annet") is None
+
+
+def test_delvinduer_unngar_dagen_og_er_lange_nok():
+    dag = datetime(2024, 7, 30).date()
+    # Seilas 2501661 fra kjøringen 03.11: ETA 31.07 10:30 → [28.07 10:30, 01.08 04:30].
+    start, slutt = datetime(2024, 7, 28, 10, 30), datetime(2024, 8, 1, 4, 30)
+    v, h = fak.del_rundt_dag(start, slutt, dag)
+    assert v == (start, datetime(2024, 7, 29, 23, 59))
+    assert h[0] == datetime(2024, 7, 31, 0, 0) and h[1] >= slutt
+    for s, e in (v, h):
+        assert e - s >= fak.MIN_DELVINDU
+        assert not (s.date() <= dag <= e.date())
+    # Kort rest på hver side forlenges utover, ikke innover.
+    v, h = fak.del_rundt_dag(datetime(2024, 7, 29, 20), datetime(2024, 7, 31, 3), dag)
+    assert v == (datetime(2024, 7, 28, 22, 59), datetime(2024, 7, 29, 23, 59))
+    assert h == (datetime(2024, 7, 31, 0, 0), datetime(2024, 8, 1, 1, 0))
+    # Manglende dag helt i starten eller slutten gir bare én del.
+    assert len(fak.del_rundt_dag(datetime(2024, 7, 30, 5), datetime(2024, 8, 2), dag)) == 1
+    assert len(fak.del_rundt_dag(datetime(2024, 7, 27), datetime(2024, 7, 30, 5), dag)) == 1
+
+
+def test_bare_den_manglende_dagen_gar_tapt(tmp_path):
+    dag = datetime(2024, 7, 30).date()
+    arkiv = FalskArkiv({dag})
+    r = rad(voyageid="2501661", eta_reported="2024-07-31T10:30:00+00:00")
+    loggrad = fak.behandle(r, str(tmp_path), arkiv)
+    assert loggrad[-1] == "ok"
+    assert len(arkiv.kall) == 3  # hele vinduet, så de to delene
+    c = json.loads((tmp_path / "2501661.json").read_text(encoding="utf-8"))
+    assert c["manglende_dager"] == ["2024-07-30"]
+    tider = sorted(fak.tidsstempel(p) for ps in c["horisonter"].values() for p in ps["posisjoner"])
+    assert not any(t.date() == dag for t in tider)
+    # t_24 = 30.07 10:30 ligger i hullet, men 29.07 har posisjoner; t_6 = 31.07 04:30 har 31.07.
+    assert max(fak.tidsstempel(p) for p in c["horisonter"]["24"]["posisjoner"]) == datetime(2024, 7, 29, 23, 0)
+    assert max(fak.tidsstempel(p) for p in c["horisonter"]["6"]["posisjoner"]) == datetime(2024, 7, 31, 4, 0)
+
+
+def test_to_manglende_dager_og_ingen_duplikater(tmp_path):
+    mangler = {datetime(2024, 7, 29).date(), datetime(2024, 7, 31).date()}
+    arkiv = FalskArkiv(mangler)
+    punkter, dager = fak.hent_med_hull(arkiv, "1", datetime(2024, 7, 28, 6), datetime(2024, 8, 2, 6))
+    assert dager == sorted(mangler)
+    tider = [fak.tidsstempel(p) for p in punkter]
+    assert len(tider) == len(set(tider))
+    assert not any(t.date() in mangler for t in tider)
+    # Dagen mellom de to hullene (30.07) og dagene utenfor er med.
+    for d in (28, 30, 1, 2):
+        assert any(t.day == d for t in tider), d
+
+
+def test_uten_hull_er_svaret_uendret():
+    """Uten manglende dag går det ett kall, og svaret brukes som det er (ingen dedup)."""
+    h = FalskHent(SVAR + SVAR[:3])
+    punkter, dager = fak.hent_med_hull(h, "1", *fak.foresporselsvindu(ETA_DT))
+    assert dager == [] and len(h.kall) == 1 and len(punkter) == len(SVAR) + 3
+
+
+def test_dekning_teller_manglende_dag_i_tilbakeblikket(tmp_path):
+    dag = datetime(2024, 7, 30).date()
+    rader = [rad(voyageid="1", eta_reported="2024-07-31T10:30:00+00:00"),   # t_24 i hullet
+             rad(voyageid="2", eta_reported="2024-08-02T12:00:00+00:00")]  # hullet er i vinduet, før begge tilbakeblikk
+    fak.behandle(rader[0], str(tmp_path), FalskArkiv({dag}))
+    fak.behandle(rader[1], str(tmp_path), FalskArkiv({dag}))
+    tab = {r["horisont_timer"]: r for r in fak.dekning(rader, str(tmp_path))}
+    assert tab[24]["med_manglende_dag"] == 1 and tab[24]["manglende_dager"] == "2024-07-30"
+    # t_6 = 31.07 04:30, tilbakeblikk fra 30.07 04:30: rører også hullet.
+    assert tab[6]["med_manglende_dag"] == 1
+    c2 = json.loads((tmp_path / "2.json").read_text(encoding="utf-8"))
+    assert c2["manglende_dager"] == ["2024-07-30"]  # vinduet starter 30.07 12:00, tilbakeblikket 31.07 12:00
+
+
+def test_manglende_dag_som_ikke_kan_deles_gir_feil():
+    def hent(mmsi, s, e):
+        raise fak.ManglerDag("x", datetime(2020, 1, 1).date())  # dag utenfor vinduet
+    with pytest.raises(fak.ManglerDag):
+        fak.hent_med_hull(hent, "1", ETA_DT, ETA_DT + timedelta(days=1))

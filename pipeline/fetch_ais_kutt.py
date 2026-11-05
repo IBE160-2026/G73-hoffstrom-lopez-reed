@@ -19,7 +19,14 @@ Slik virker skriptet:
   Feilede seilaser caches ikke og prøves igjen ved neste kjøring. Tomme svar caches
   med status «tom», og --prov-tomme henter dem på nytt.
 - Det tar 1 s pause etter hvert kall og prøver opptil 3 ganger på nytt (5/15/45 s)
-  ved feil. Feiler 10 seilaser på rad, stopper det.
+  ved feil. Feiler 10 seilaser på rad, stopper det. En manglende dagstabell hos API-et
+  (42P01) teller ikke: den er et permanent datahull, ikke nedetid.
+- Mangler en dagstabell, deles vinduet rundt den dagen, og resten hentes. API-et velger
+  dagstabeller etter datoen i forespørselen (prøvekall 05.11.2026: [28.07 00:00,
+  29.07 23:59] og [31.07 00:00, 01.08 06:00] går, [30.07 22:00, …] feiler). Delvinduene
+  slutter derfor kl. 23:59 dagen før og starter kl. 00:00 dagen etter. Hvert delvindu
+  forlenges utover til minst 25 t, så midnattskuttet for korte vinduer (funn B) ikke
+  slår til. Dagene som mangler, lagres i cachen og telles i dekningstabellen.
 - Hvert kall logges i pipeline/data/ais_kutt_logg.csv. Dekningen per horisont, gruppe
   og splitt skrives til pipeline/data/ais_kutt_dekning.csv etter hver kjøring.
 
@@ -60,6 +67,9 @@ FORESPORSEL_ETTER = timedelta(hours=18)  # t_6 + 24 t margin
 PAUSE_SEK = 1.0
 BACKOFF_SEK = (5, 15, 45)
 MAKS_FEIL_PA_RAD = 10
+MIN_DELVINDU = timedelta(hours=25)  # funn B: vinduer lengre enn ett døgn ga fullstendige svar
+MAKS_DELINGER = 10                  # vern mot evig deling hvis API-et oppfører seg uventet
+API_FORSKYVNING_MAKS = timedelta(hours=2)  # funn B: +1 t vinter, +2 t sommer
 
 LOGG_KOLONNER = ["tid_utc", "voyageid", "mmsino", "eta_reported", "foresporsel_start",
                  "foresporsel_slutt", "antall_i_svar", "kastet_etter_tak", "antall_6t",
@@ -67,13 +77,35 @@ LOGG_KOLONNER = ["tid_utc", "voyageid", "mmsino", "eta_reported", "foresporsel_s
 
 
 DEKNING_KOLONNER = ["horisont_timer", "gruppe", "split", "n", "hentet", "med_posisjon_24t",
-                    "andel_med_posisjon_24t", "med_posisjon_1t", "andel_med_posisjon_1t"]
+                    "andel_med_posisjon_24t", "med_posisjon_1t", "andel_med_posisjon_1t",
+                    "med_manglende_dag", "manglende_dager"]
 
 
 class HenteFeil(Exception):
     def __init__(self, melding, varig=False):
         super().__init__(melding)
         self.varig = varig
+
+
+class ManglerDag(HenteFeil):
+    """Dagstabellen finnes ikke hos API-et (42P01). Permanent datahull, ikke nedetid."""
+
+    def __init__(self, melding, dag=None):
+        super().__init__(melding, varig=True)
+        self.dag = dag  # datetime.date, eller None hvis dagen ikke kunne leses
+
+
+_MANGLENDE_TABELL = re.compile(r"ais_(\d{8})\b")
+
+
+def manglende_dag(msg):
+    m = _MANGLENDE_TABELL.search(msg)
+    if not m:
+        return None
+    try:
+        return datetime.strptime(m.group(1), "%Y%m%d").date()
+    except ValueError:
+        return None
 
 
 def naive_utc(s):
@@ -186,7 +218,7 @@ def hent_posisjoner(mmsi, start, slutt):
                 if "does not exist" in msg:
                     # Dagstabellen mangler hos Kystdatahuset (sett i piloten 03.11.2026: 42P01,
                     # «relation "ais202410.ais_20241028" does not exist»). Nytt forsøk hjelper ikke.
-                    raise HenteFeil(f"mangler hos API-et: {msg.splitlines()[0]}", varig=True)
+                    raise ManglerDag(f"mangler hos API-et: {msg.splitlines()[0]}", manglende_dag(msg))
                 raise HenteFeil(f"success=false: {msg}")
             data = payload.get("data") or []
             if not isinstance(data, list):
@@ -201,6 +233,80 @@ def hent_posisjoner(mmsi, start, slutt):
             if getattr(exc, "varig", False):
                 raise
     raise HenteFeil(f"{type(siste).__name__}: {siste}")
+
+
+def _midnatt(dag):
+    return datetime(dag.year, dag.month, dag.day)
+
+
+def del_rundt_dag(start, slutt, dag, kjente=()):
+    """Del [start, slutt] (forespørselsklokke) rundt en manglende dag.
+
+    Venstre del slutter 23:59 dagen før, høyre del starter 00:00 dagen etter. Hver del
+    forlenges utover til minst MIN_DELVINDU, men aldri inn i en dag som er kjent manglende.
+    Bare en del som ligger klemt mellom to manglende dager, kan bli kortere. Den slutter
+    da 23:59, ikke like etter midnatt, som var tilfellet funn B gjaldt.
+    """
+    d0 = _midnatt(dag)
+    d1 = d0 + timedelta(days=1)
+    deler = []
+    if start < d0:
+        v_slutt = d0 - timedelta(minutes=1)
+        v_start = min(start, v_slutt - MIN_DELVINDU)
+        for k in kjente:  # ikke forleng inn i en annen kjent manglende dag
+            if _midnatt(k) < d0:
+                v_start = max(v_start, _midnatt(k) + timedelta(days=1))
+        if v_start < v_slutt:
+            deler.append((v_start, v_slutt))
+    if slutt >= d1:
+        h_slutt = max(slutt, d1 + MIN_DELVINDU)
+        for k in kjente:
+            if _midnatt(k) > d0:
+                h_slutt = min(h_slutt, _midnatt(k) - timedelta(minutes=1))
+        if d1 < h_slutt:
+            deler.append((d1, h_slutt))
+    return deler
+
+
+def hent_med_hull(hent, mmsi, start, slutt):
+    """Hent [start, slutt]. Mangler en dagstabell, deles vinduet rundt dagen og resten hentes.
+
+    Returnerer (punkter, sorterte manglende dager). Kaster ManglerDag hvis delingen ikke
+    kommer videre (ukjent dag, dag utenfor vinduet eller for mange delinger).
+    """
+    ko, svar, mangler = [(start, slutt)], [], set()
+    delinger = 0
+    while ko:
+        s, e = ko.pop(0)
+        try:
+            data = hent(mmsi, s, e)
+        except ManglerDag as exc:
+            dag = exc.dag
+            if dag is None or dag in mangler or not (s.date() <= dag <= e.date()) \
+                    or delinger >= MAKS_DELINGER:
+                raise
+            delinger += 1
+            mangler.add(dag)
+            ko = del_rundt_dag(s, e, dag, mangler) + ko
+            continue
+        svar.append(data)
+    if not mangler:
+        return svar[0], []
+    punkter, sett = [], set()
+    for data in svar:
+        for p in data:
+            nokkel = json.dumps(p, sort_keys=True, default=str)
+            if nokkel not in sett:  # forlengede delvinduer kan overlappe
+                sett.add(nokkel)
+                punkter.append(p)
+    return punkter, sorted(mangler)
+
+
+def tapt_intervall(dag):
+    """UTC-tiden som går tapt når dagstabellen for `dag` mangler: hele dagen, pluss
+    forskyvningen inn i dagen etter, siden høyre delvindu starter 00:00 i forespørselsklokka."""
+    d0 = _midnatt(dag)
+    return d0, d0 + timedelta(days=1) + API_FORSKYVNING_MAKS
 
 
 def skriv_atomisk(sti, obj):
@@ -232,8 +338,12 @@ def behandle(rad, cache_dir, hent=hent_posisjoner):
     eta = naive_utc(rad["eta_reported"])
     start, slutt = foresporselsvindu(eta)
     t0 = time.time()
-    svar = hent(rad["mmsino"], start, slutt)
+    svar, mangler = hent_med_hull(hent, rad["mmsino"], start, slutt)
+    if mangler:
+        print(f"  {rad['voyageid']}: dagstabell mangler for {', '.join(map(str, mangler))}, "
+              "vinduet er delt rundt dagen", file=sys.stderr, flush=True)
     innhold = bygg_cache(rad, svar)
+    innhold["manglende_dager"] = [d.isoformat() for d in mangler]
     skriv_atomisk(cache_sti(cache_dir, rad["voyageid"]), innhold)
     return [innhold["hentet_utc"], rad["voyageid"], rad["mmsino"], rad["eta_reported"],
             start.isoformat(), slutt.isoformat(), len(svar), innhold["kastet_etter_tak"],
@@ -247,12 +357,18 @@ def dekning(anlop, cache_dir):
     for rad in anlop:
         c = les_cache(cache_dir, rad["voyageid"])
         for h in HORISONTER:
-            n = tall.setdefault((h, gruppe(rad), rad["split"]), [0, 0, 0, 0])
+            n = tall.setdefault((h, gruppe(rad), rad["split"]), [0, 0, 0, 0, 0, set()])
             n[0] += 1
             if c is None:
                 continue
             n[1] += 1
             v = c["horisonter"][str(h)]
+            fra, til = naive_utc(v["fra_utc"]), naive_utc(v["t_kutt_utc"])
+            hull = [d for d in c.get("manglende_dager", [])
+                    if (iv := tapt_intervall(datetime.fromisoformat(d).date()))[0] <= til and iv[1] > fra]
+            if hull:
+                n[4] += 1
+                n[5].update(hull)
             if v["posisjoner"]:
                 n[2] += 1
                 siste = max(tidsstempel(p) for p in v["posisjoner"])
@@ -260,11 +376,12 @@ def dekning(anlop, cache_dir):
                     n[3] += 1
     rader = []
     for (h, g, s) in sorted(tall, key=lambda k: (k[0], k[1] != "Øvrige", k[2] != "test")):
-        n, hentet, med, med1 = tall[(h, g, s)]
+        n, hentet, med, med1, hull, dager = tall[(h, g, s)]
         andel = lambda x: f"{x / hentet:.3f}" if hentet else ""  # noqa: E731
         rader.append({"horisont_timer": h, "gruppe": g, "split": s, "n": n, "hentet": hentet,
                       "med_posisjon_24t": med, "andel_med_posisjon_24t": andel(med),
-                      "med_posisjon_1t": med1, "andel_med_posisjon_1t": andel(med1)})
+                      "med_posisjon_1t": med1, "andel_med_posisjon_1t": andel(med1),
+                      "med_manglende_dag": hull, "manglende_dager": ";".join(sorted(dager))})
     return rader
 
 
@@ -325,7 +442,8 @@ def main(argv=None, hent=hent_posisjoner):
                 tom += loggrad[-1] == "tom"
             except HenteFeil as exc:
                 feil += 1
-                pa_rad += 1
+                if not isinstance(exc, ManglerDag):
+                    pa_rad += 1  # bare ekte nedetid teller; et permanent datahull gjør ikke det
                 eta = naive_utc(rad["eta_reported"])
                 s, e = foresporselsvindu(eta)
                 loggrad = [datetime.now(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds"),
@@ -342,7 +460,8 @@ def main(argv=None, hent=hent_posisjoner):
                       file=sys.stderr, flush=True)
             if pa_rad >= MAKS_FEIL_PA_RAD:
                 stoppet = True
-                print(f"\nStopper: {MAKS_FEIL_PA_RAD} seilaser på rad feilet. API-et er trolig nede. "
+                print(f"\nStopper: {MAKS_FEIL_PA_RAD} seilaser på rad feilet (manglende dagstabeller "
+                      "ikke medregnet). API-et er trolig nede. "
                       "Kjør samme kommando igjen senere for å fortsette.", file=sys.stderr)
                 break
             time.sleep(args.pause)
