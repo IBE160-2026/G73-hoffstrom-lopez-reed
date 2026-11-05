@@ -27,8 +27,8 @@ Mens E2-hentingen kjører, skulle KAN-storyene E1-S18 (hopp-lenken dekker oversk
 - Fokusrammen er tydelig, og Enter går til `#anlopslista`.
 - G O SARS vises som «Spesialfartøy».
 
-Gruppa har godkjent navnet. UU2-raden i UX §6 er fylt ut, E1-S18 er satt til ✅, og specen er `done`. Det står i commit `fa94e6b`, som er pushet til PR #6.
+Gruppa har godkjent navnet. UU2-raden i UX §6 er fylt ut, E1-S18 er satt til ✅, og specen er `done`. Det står i commit `80eff8b`, som er pushet til PR #6. Theodor styrte denne delen, og forfatteren ble derfor endret fra Felipe til Theodor Gimming. Commiten het først `fa94e6b` og ble skrevet om med `--force-with-lease` på fix-branchen, som ikke er merget. PR #6 merges ikke av oss: Thomas går gjennom og merger den, siden det er dashbordet hans.
 
 ### Åpne punkter
-- PR #6 må gjennomgås og merges inn i `main`.
+- PR #6 skal gjennomgås og merges av Thomas, siden det er dashbordet hans.
 - Worktreen `../G73-fix-e1-s18-s19` kan fjernes med `git worktree remove` når PR-en er merget.
