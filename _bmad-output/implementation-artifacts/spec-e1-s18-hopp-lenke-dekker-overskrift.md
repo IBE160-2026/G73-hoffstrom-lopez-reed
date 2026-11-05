@@ -2,7 +2,7 @@
 title: 'E1-S18 — Hopp-lenken dekker overskriften ved fokus'
 type: 'bugfix'
 created: '2026-11-05'
-status: 'in-review'
+status: 'done'
 route: 'oneshot'
 review_loop_iteration: 0
 context: []
@@ -23,6 +23,7 @@ context: []
 - `app/static/style.css`: `.hopp:focus` is now `position: static; display: inline-block; margin: 0.5rem 1rem 0`. The link takes its own space at the top on focus and pushes the header down. It is unchanged off focus (absolute, `top: -10rem`).
 - `tests/test_uu_struktur.py`: `test_hopplenke_dekker_ikke_overskriften_ved_fokus` guards the chosen CSS. Mutation-checked: putting `top: 0.5rem` back instead of `position: static` fails it.
 - Status stays `in-review` and epics shows ◐ until a human has run the manual UU2 check in UX §6. That check is the story's own test. I could not see the focused state myself: the screenshot script captures the page without focus.
+- 2026-11-05: Theodor Gimming ran the manual UU2 check against `fix/e1-s18-s19`. The skip link no longer covers «ANKOMSTPREDIKSJON» or «Anløp» on focus, the focus ring is clear, and Enter goes to `#anlopslista`. UX §6 is filled in and E1-S18 is ✅.
 
 ## Review Triage Log
 

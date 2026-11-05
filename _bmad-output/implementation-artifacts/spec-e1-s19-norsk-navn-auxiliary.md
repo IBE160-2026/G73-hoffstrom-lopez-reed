@@ -24,6 +24,7 @@ context: []
 - `app/__init__.py`: `_rader` uses `gruppe_visning(inp.ship_group)`. `PrediksjonsInput.ship_group`, `Anlop.gruppe` (Passasjer/Øvrige) and the data are unchanged.
 - `docs/prd.md` glossary and the `docs/ux/dashbord.md` A2 sketch use «Spesialfartøy». The A2 Gruppe column is 3 characters wider.
 - Tests: `test_gruppe_visning` and `test_ingen_rad_viser_auxiliary` (mutation-checked: dropping `gruppe_visning` in `_rader` fails it). `tests/test_dataregresjon.py`, `data/` and `pipeline/` are untouched.
+- 2026-11-05: the group approved the name «Spesialfartøy». Theodor Gimming confirmed in the manual check that G O SARS is shown as «Spesialfartøy».
 
 ## Review Triage Log
 
