@@ -84,3 +84,31 @@ Fortsett ved å kjøre den første kommandoen på nytt. Seilaser som ligger i ca
 - Sammenlign dekningen ved `t_24` for Øvrige/test med ≈ 93 % i beslutning 09, regnet bare på seilaser som hadde AIS i den opprinnelige hentingen. Er den langt lavere, må det undersøkes før E2-S03.
 - Tell seilasene som feilet med `mangler hos API-et` (manglende dagstabeller), og vurder om de skal føres som kjent hull.
 - E2-S01 (én eller to modeller, A1, A2) er ikke startet. Den må godkjennes av hele gruppa i PR-en før E2-S04.
+
+## 2026-11-05 kl. 14:22 — Felipe Knudstad-Lopez
+
+### Oppgave
+Fullkjøringen stoppet 03.11 kl. 19:42 etter 2 185 av 7 826 seilaser. Grunnen var ikke nedetid, men ti 42P01-feil på rad for dagstabellen `ais_20240730`. Felipe ba om to rettelser i `fetch_ais_kutt.py`, med tester. Den første: en manglende dagstabell skal ikke telle mot stoppregelen. Den andre: vinduet skal deles rundt den manglende dagen, slik at bare den dagen går tapt, og delvinduene må være lange nok med tanke på funn B. De manglende dagene skulle føres inn i dekningsloggen. Deretter skulle 42P01-seilasene kjøres på nytt, det skulle committes med Felipe som forfatter og pushes, og fullkjøringen skulle startes igjen. Hendelsen skulle også inn i refleksjonsnotatene.
+
+### Plan
+- Sjekke påstanden mot `ais_kutt_logg.csv`. Det stemte: de ti siste feilene var 42P01 for `ais_20240730`, og i tillegg var det én fra piloten for `ais_20241028`.
+- Seks prøvekall mot API-et rundt 30.07.2024 for å finne ut hvordan dagstabellen velges.
+- Rette koden og legge til tester, med mutasjonssjekk av stoppregelen.
+- Kjøre de 11 seilasene på nytt, committe, pushe og starte fullkjøringen igjen.
+
+### Resultat
+- **Prøvekall:** API-et velger dagstabeller etter datoen i forespørselen. [28.07 00:00, 29.07 23:59] gir data fram til 29.07 23:59:58 UTC. [31.07 00:00, 01.08 06:00] gir data fra 31.07 02:00 UTC. Et vindu som starter 30.07 22:00 eller 23:00, feiler.
+- **Rettelse:**
+  - Ny feiltype `ManglerDag`, som leser dagen fra meldingen. Den teller ikke mot stoppregelen og nullstiller den heller ikke.
+  - Funksjonene `hent_med_hull` og `del_rundt_dag` deler vinduet rundt dagen. Venstre del slutter 23:59 dagen før, og høyre del starter 00:00 dagen etter. Hver del forlenges utover til minst 25 t, men aldri inn i en annen kjent manglende dag.
+  - Er vinduet delt, fjernes duplikater. Uten deling er svaret uendret.
+  - Cachen får feltet `manglende_dager`. `ais_kutt_dekning.csv` får kolonnene `med_manglende_dag` og `manglende_dager`. Det tapte intervallet regnes som hele dagen pluss 2 t inn i dagen etter.
+- **Tester:** 10 nye, og alle 249 i repoet er grønne. Mutasjonssjekket: de to testene for stoppregelen feiler når rettelsen fjernes.
+- **Ny kjøring av 42P01-seilasene:** alle 11 ble hentet, 9 `ok` og 2 `tom`, uten feil. Ingen punkter ligger på den manglende dagen. 2496687 har 0 punkter ved t_6, fordi hele tilbakeblikket ligger i hullet. Det er et ekte tap.
+- **Commits:** `0a85cd4` (rettelsen) og `cf6a8eb` (refleksjonsnotat), begge med Felipe som forfatter. `0a85cd4` er pushet.
+- **Fullkjøring:** startet igjen 05.11 kl. 14:17 med `nohup caffeinate -i .venv/bin/python pipeline/fetch_ais_kutt.py >> pipeline/data/ais_kutt_kjoring.log 2>&1 &`. 5 630 seilaser gjenstår. Etter 4 min er status `[50/5630] ok=45 tom=5 feil=0`, og estimatet er rundt 7,4 t. Mange seilaser rundt 30.07 blir delt som de skal.
+- **Prosess:** endringen ble gjort direkte, ikke gjennom hele bmad-build-ruta. Kvalitetssikringen var tester, mutasjonssjekk og kjøring mot ekte API.
+
+### Åpne punkter
+- Sjekk kjøreloggen i kveld og i morgen tidlig (`tail pipeline/data/ais_kutt_kjoring.log`). Har den stoppet, kjør samme kommando igjen.
+- Når fullkjøringen er ferdig: les `med_manglende_dag` og `manglende_dager` i dekningstabellen, og vurder om hullene skal føres som kjent begrensning i beslutning 09.
