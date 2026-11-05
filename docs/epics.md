@@ -211,18 +211,19 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** manuell. Filene finnes og avvikene er beskrevet.
 
-### E1-S18 — Hopp-lenken dekker overskriften ved fokus ☐ · KAN
+### E1-S18 — Hopp-lenken dekker overskriften ved fokus ◐ · KAN
 **Krav:** UU2 · **Avhenger av:** E1-S06
 - Funn fra UU-sjekken 03.11.2026 (E1-S16): når hopp-lenken har fokus, ligger den over «ANKOMSTPREDIKSJON» og første bokstav i «Anløp».
 - Hopp-lenken er fortsatt første Tab-stopp og synlig ved fokus, men dekker ikke overskriften eller annen tekst.
 
 **Test:** manuell, med punkt UU2 i UX §6. `tests/test_uu_struktur.py` er fortsatt grønn.
 
-### E1-S19 — Norsk visningsnavn for gruppen «Auxiliary» ☐ · KAN
+### E1-S19 — Norsk visningsnavn for gruppen «Auxiliary» ✅ · KAN
 **Krav:** UX §2 · **Avhenger av:** E1-S06
 - Funn fra UU-sjekken 03.11.2026 (E1-S16), ikke et UU-krav: gruppenavnet «Auxiliary» (for eksempel G O SARS) er engelsk midt i norske gruppenavn. Det gjelder 524 anløp i `data/utdrag/anlop.csv`.
 - Dashbordet viser et norsk navn. Hvilket navn, avgjøres av gruppa når storyen startes. Bare visningen endres: `ship_group` i utdraget beholdes slik kilden har det, så sjekksummer og dataregresjonen står urørt.
 - PRD-ordlista og skissen i UX skjerm A2 bruker samme navn.
+- **Valgt navn (Felipe, 05.11.2026):** «Spesialfartøy».
 
 **Test:** test som viser at ingen rad viser «Auxiliary». `tests/test_dataregresjon.py` er uendret og grønn.
 
@@ -428,3 +429,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-10-27** — E1-S05: naiv ETA for Øvrige er 12,8 % (127/996), ikke 12,9 %. Pipelinen avrundet avviket til 0,1 min før ±30-sammenligningen, så seilas 3542899 (+30 min 1 s) ble telt som treff. `NaivPrediktor` er lagt til som referanseprediktor i kontrakttesten.
 - **2026-10-27** — E1-S06: hovedskjermen viser standardvinduet (15 anløp) med UU-minimum og kort under 640 px. Testene er `test_ruter.py`, `test_visning.py`, `test_uu_struktur.py` og `test_kontrast.py`. Skjermbilder ligger i `docs/ux/skjermbilder/` og lages med `scripts/ta_skjermbilder.py` utenfor `pytest`. Avvikene fra skissene står i UX-endringsloggen.
 - **2026-11-03** — E1-S16 er ferdig. Klone-testen tok ca. 4 min (Felipe), og UU-sjekklista i UX §6 er fylt ut (Thomas). E1-S18 (hopp-lenken dekker overskriften) og E1-S19 (norsk navn for «Auxiliary») er lagt til som KAN etter funn i UU-sjekken.
+- **2026-11-05** — E1-S19 er ferdig: «Auxiliary» vises som «Spesialfartøy» (Felipe). Bare visningen er endret, og dataregresjonen står urørt. E1-S18: hopp-lenken går inn i flyten ved fokus. Den står som ◐ til punkt UU2 i UX §6 er sjekket manuelt.
