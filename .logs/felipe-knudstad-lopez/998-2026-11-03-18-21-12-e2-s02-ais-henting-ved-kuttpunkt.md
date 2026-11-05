@@ -119,7 +119,7 @@ Fullkjøringen stoppet 03.11 kl. 19:42 etter 2 185 av 7 826 seilaser. Grunnen va
 - **B1, egen status for permanente hull:** utsatt av Felipe og ført i `_bmad-output/implementation-artifacts/deferred-work.md`.
 - **B2, rettet i `1cee190` (E2-S03):**
   - `lag_tilstand.py` gir status `manglende_dag` når kuttpunktet ligger i hullet og bare har en posisjon fra før. Slike rader går til baselinen.
-  - 4 nye tester, og alle 257 er grønne. Mutasjonssjekken fanger alle fire mutasjonene. Første versjon av grensetesten lot `<=` i slutten av hullet slippe gjennom, og den er strammet inn.
+  - 4 nye tester, og alle 253 er grønne. Mutasjonssjekken fanger alle fire mutasjonene. Første versjon av grensetesten lot `<=` i slutten av hullet slippe gjennom, og den er strammet inn.
   - Mot den ekte cachen fikk 8 kuttpunkter `manglende_dag`.
 - **Seks rettelser i `fetch_ais_kutt.py`:** ført inn i story-fila (`spec-e2-s02-…`, «Review Findings»). De tas når kjøringen er ferdig. Story-statusen er satt til `in-progress`.
 - **Beslutning 09:** et tillegg forklarer hvorfor en manglende dag koster 26 t (`9ecf360`). Høyre del kan tidligst starte kl. 00:00 dagen etter, og med forskyvningen på +2 t kommer første punkt kl. 02:00 UTC. Om vinteren er tapet trolig 25 t.
