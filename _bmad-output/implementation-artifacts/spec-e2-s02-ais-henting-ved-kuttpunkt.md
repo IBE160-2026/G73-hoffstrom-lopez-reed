@@ -2,7 +2,7 @@
 title: 'E2-S02 — Målrettet AIS-henting ved kuttpunktene'
 type: 'feature'
 created: '2026-11-03'
-status: 'done'
+status: 'in-progress'
 baseline_commit: 'f867bf48b3be6c140b02b1177cb910e9166469cb'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -125,3 +125,31 @@ Three layers: Blind Hunter (BH), Edge Case Hunter (ECH), Verification Gap (VG). 
 - ECH: odd-shaped cache JSON raises `KeyError` in `dekning` — false: the only writer is `bygg_cache`.
 - BH: relative default paths; pilot not stratified — low, rejected. Run from the repo root as documented, like the other pipeline scripts. 50 random draws over a 25 % Passasjer share is enough for a time and disk estimate.
 - ECH: interrupt during the post-loop block; log row missing if killed between cache write and log write; negative `--utvalg`; space-separated timestamps — low/false, rejected. The cache is the source of truth, the log is informative, and the pilot shows the `T` format.
+
+### Review Findings (code review of 0a85cd4, 2026-11-05)
+
+Four layers (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor) reviewed the missing-day-table fix. All findings below were checked against the live cache, read-only, on 2026-11-05. 28 voyages had been split, all of them on a single day (30.07 or 28.10). There were 0 failures since the restart. API duplicate rows: 0 in 200 unsplit voyages (1.79 M points). **None of the findings requires re-fetching cached voyages.** Felipe decided: B1 deferred, B2 fixed now. The six patches below wait until the running full fetch finishes, because `fetch_ais_kutt.py` must not change during the run.
+
+- [x] [Review][Decision] Permanent data holes have no status of their own — deferred (Felipe 2026-11-05). See deferred-work.md.
+  - A voyage that cannot be split is never cached, so it is retried on every run and looks like downtime in the coverage table. This happens when the day is unreadable, the day lies outside the window, or `MAKS_DELINGER` is hit.
+  - The opposite case: a voyage with a hole is cached as `ok` and is never refetched, even if Kystdatahuset later adds the table.
+  - Affects cached voyages: no. 0 such failures so far.
+- [x] [Review][Decision] `lag_tilstand.py` ignored `manglende_dager` — fixed (Felipe 2026-11-05, E2-S03 commit).
+  - Cut points inside the lost interval got `ais_status=ok`, with a position from before the hole and an artificially high age.
+  - They now get `manglende_dag` and go to the baseline. The fix is mutation-checked.
+  - Affects cached voyages: yes, 8 cut points in 28 voyages. Solved downstream, with no re-fetch.
+- [ ] [Review][Patch] Stop-rule exemption is too broad. Any "does not exist" message becomes `ManglerDag`, even with no readable day, so a systematic API break would never stop the run. Exempt only a `ManglerDag` with a readable day. Count unsplittable re-raises (repeat day, outside window, `MAKS_DELINGER`) as ordinary failures. [pipeline/fetch_ais_kutt.py: hent_posisjoner, hent_med_hull, main] — medium. Cached voyages: not affected.
+- [ ] [Review][Patch] No test covers the guards against endless splitting: the same day returning after a split, and `MAKS_DELINGER`. Add a stub that always raises the same day: it must raise after one split, with exactly 3 calls. [tests/test_fetch_ais_kutt.py] — medium. Cached voyages: not affected.
+- [ ] [Review][Patch] No 1 s pause between the sub-calls of a split voyage. They run as 3 or more back-to-back calls. [pipeline/fetch_ais_kutt.py: hent_med_hull] — low. Cached voyages: not affected (only load on the API).
+- [ ] [Review][Patch] The dedup in `hent_med_hull` is effectively dead code. Sub-windows cannot overlap by construction, and the API sends no duplicates. It also makes split and unsplit voyages behave differently. Remove it. [pipeline/fetch_ais_kutt.py: hent_med_hull] — low. Cached voyages: not affected (0 duplicates).
+- [ ] [Review][Patch] The windows are extended outward, so `antall_i_svar` and `kastet_etter_tak` count points outside the original request window. Clip the merged answer to `[start, slutt]` before `bygg_cache`. [pipeline/fetch_ais_kutt.py: hent_med_hull/behandle] — low. Cached voyages: metadata in the 28 split files only. Horizon positions are unaffected.
+- [ ] [Review][Patch] Two tests are missing. One should pin the +2 h end of `tapt_intervall` in the coverage count, with a lookback starting 31.07 00:00–02:00. The other should run `dekning` on an old-format cache with no `manglende_dager`. [tests/test_fetch_ais_kutt.py] — low. Cached voyages: not affected.
+- [x] [Review][Defer] The call log still shows the original window. It does not record the sub-windows, the number of calls or the missing days. [pipeline/fetch_ais_kutt.py: behandle, LOGG_KOLONNER] — deferred: changing columns in a CSV that is already half-written during a run. The days are in the cache and in `ais_kutt_dekning.csv`.
+
+**Rejected:**
+- The lost interval should start 2 h before midnight — false. A probe that ends at 23:59 returns data up to 23:59:58 UTC of the day before.
+- The middle part between two missing days can be shorter than 25 h — low. It needs two missing days at most 1 day apart, which has not happened. The fix would add complexity.
+- All sub-windows inside holes are cached as `tom` — low. It would need about 4 missing days within one 90 h window.
+- The outward extension can reach a missing day outside the original window — low. This has not been observed, and the coverage counts are still correct because they test overlap with the lookback.
+- Commit message says "10 nye tester", but there are 9 — low. The commit is pushed, so this is noted in the session log instead.
+- "Only the missing day is lost", but the real loss is 26 h — rejected as a code finding, because the fix is documentation. It is now recorded in decision 09 (addendum 2026-11-05).

@@ -44,9 +44,32 @@ Alt er gjort med `pipeline/sjekk_ais_dekning_kutt.py`, som er reproduserbart med
 
 Gruppa har bestemt at vi **ikke** henter disse på nytt. Datasettet er låst, og 87,1 % føres som en kjent underestimering. Ny henting er videre arbeid. Begrunnelsen står i den korrigerte [beslutning 07](07-manglende-ais-utenlandske-skip.md).
 
+## Tillegg 05.11.2026: manglende dagstabeller koster 26 timer, ikke 24
+
+Kystdatahuset mangler enkelte dagstabeller. Spør vi om et vindu som rører en slik dag, svarer API-et `42P01: relation "ais202407.ais_20240730" does not exist`. Til nå har vi sett at 30.07.2024 og 28.10.2024 mangler. Fullkjøringen i E2-S02 stoppet 03.11 fordi slike feil talte mot stoppregelen. Fra `0a85cd4` deler hentingen vinduet rundt dagen som mangler, og henter resten.
+
+**Hvorfor 26 timer.** Prøvekall 05.11.2026 (MMSI 219347000) viste to ting. API-et velger dagstabeller etter datoen i *forespørselen*, ikke etter UTC-tiden i svaret. Og forskyvningen fra funn B gjelder også her:
+
+| Forespørsel | Svar (UTC) |
+|---|---|
+| [28.07 00:00, 29.07 23:59] | 28.07 02:00 – 29.07 23:59:58 |
+| [31.07 00:00, 01.08 06:00] | 31.07 02:00:06 – 01.08 07:59:56 |
+| [30.07 22:00, 01.08 06:00] | feil: `ais_20240730` finnes ikke |
+
+- Venstre del kan ende kl. 23:59 dagen før, og den mister ingenting. Svaret går helt til 23:59:58 UTC, fordi API-et ikke leser tabellen for neste dag.
+- Høyre del kan tidligst starte kl. 00:00 dagen etter. En start på den manglende datoen, også kl. 22:00 eller 23:00, rører tabellen og feiler. Med forskyvningen på +2 t om sommeren kommer første punkt da først kl. 02:00 UTC dagen etter.
+- Tapet er altså [dag 00:00, dagen etter 02:00) UTC, det vil si 26 timer, ikke de 24 timene i selve dagen. Om vinteren er forskyvningen +1 t (funn B), så tapet er trolig 25 timer. Det er ikke prøvd ut, og koden regner 26 timer hele året (`tapt_intervall` i `pipeline/fetch_ais_kutt.py`).
+
+**Konsekvens.**
+- `ais_kutt_dekning.csv` teller seilaser der tilbakeblikket [`t_H` − 24 t, `t_H`] overlapper de 26 timene (`med_manglende_dag`).
+- Kuttpunkter som ligger innenfor de 26 timene, får `ais_status = manglende_dag` i tilstandsutdraget og går til baselinen. De skal ikke stå som `ok` med en posisjon fra dagen før, siden den alderen ikke er ekte. Unntaket er en gyldig posisjon fra innenfor hullet (om vinteren kan det være data fra kl. 01:00). Den er ekte og gir `ok`.
+- 05.11 gjaldt det 8 kuttpunkter i 28 seilaser i den delvise cachen. Alle var fra train.
+- Hullet er en egenskap ved arkivet, ikke ved skipene. Det føres som en kjent begrensning: posisjonene fantes, men de kan ikke hentes.
+
 ## Konsekvens
 
 - PRD FR9a: tilbakeblikket er nå 24 t, og kravet om filtrering på tidsstemplet i svaret er lagt til.
 - Epics E2-S02 og E2-S03 og arkitektur §4 er oppdatert. E2-S02 bruker ny adresse, vindu med margin og filtrering, med test.
 - Beslutning 08 står. Bare vinduet i konsekvensavsnittet er erstattet av denne beslutningen.
 - Beslutning 07 er korrigert 22.10.2026: flagg- og MMSI-forklaringen holder ikke.
+- Tillegg 05.11.2026: manglende dagstabeller koster 26 timer hver, og kuttpunkter i hullet går til baselinen (`manglende_dag`). Se avsnittet over.
