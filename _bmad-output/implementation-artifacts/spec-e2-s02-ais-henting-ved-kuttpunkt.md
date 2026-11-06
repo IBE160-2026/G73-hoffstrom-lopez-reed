@@ -36,11 +36,11 @@ context:
 - Host: `https://kystdatahuset.kystverket.no/ws/api/ais/positions/for-mmsis-time`.
 - 1.0 s pause after each call. On URLError, HTTP error, timeout, invalid JSON or `success=false`: retry up to 3 times with 5 / 15 / 45 s backoff. After 10 voyages in a row fail, stop with a clear message.
 - Cache files are written atomically (temp file + `os.replace`). A voyage with a cache file is never fetched again. A failed voyage gets no cache file and is retried on the next run. An empty answer is cached with `status: "tom"`, and `--prov-tomme` re-fetches those.
-- Every call is appended to `pipeline/data/ais_kutt_logg.csv`. Coverage per horizon × group × split is written to `pipeline/data/ais_kutt_dekning.csv` after every run, from the cache alone. Columns: n, fetched, with a position in the 24 h lookback, with a position ≤ 1 h before `t_H`, and shares.
+- Every call is appended to `pipeline/data/ais_kutt_logg.csv`. Coverage per horizon × group × split is written to `data/utdrag/ais_kutt_dekning.csv` after every run (moved from `pipeline/data/` on 2026-11-06, see Spec Change Log), from the cache alone. Columns: n, fetched, with a position in the 24 h lookback, with a position ≤ 1 h before `t_H`, and shares.
 - `--utvalg N --seed S` runs a random pilot. Afterwards the script prints elapsed time, s/voyage, cache bytes per voyage, and an estimate of time and disk use for the remaining voyages.
 
 **Never:**
-- Write to `data/`, `pipeline/data/ais_cache/`, `pipeline/data/bergen_eta_avvik.csv`, the other existing `pipeline/data/*` files, or `pipeline/fetch_ais.py`. Only these new paths may be written: `pipeline/data/ais_kutt_cache/`, `ais_kutt_logg.csv` and `ais_kutt_dekning.csv`.
+- Write to `data/` (except `data/utdrag/ais_kutt_dekning.csv`), `pipeline/data/ais_cache/`, `pipeline/data/bergen_eta_avvik.csv`, the other existing `pipeline/data/*` files, or `pipeline/fetch_ais.py`. Only these new paths may be written: `pipeline/data/ais_kutt_cache/`, `pipeline/data/ais_kutt_logg.csv` and `data/utdrag/ais_kutt_dekning.csv`.
 - Read `arrival_in_area_utc`, `status_in_area` or any other arrival field. Network access in tests. Starting the full run before Felipe has seen the pilot estimate.
 - Building the state extract. That is E2-S03.
 
@@ -98,7 +98,7 @@ One call per voyage, not one per horizon, halves the calls (~7 826). The two loo
 - **Pilot finding:** the API answers `success=false`, `42P01: relation "ais202410.ais_20241028" does not exist` for voyage 2690405, because a day table is missing on the server side. Such failures now fail fast and are not retried (`varig=True`, `test_manglende_dagstabell_uten_gjentak`). They stay uncached and are logged as `feil: mangler hos API-et`, and the full run reports how many there are.
 - Pilot coverage, too small to conclude from: within 24 h lookback, Øvrige 68 % (23/34) at both horizons and Passasjer 100 % / 93 %. Decision 09's ≈ 93 % counted only voyages with AIS in the original fetch. The pilot includes 8 empty answers, so the shares are not comparable until the full run.
 
-- **Full run, finished 2026-11-06.** 7 825 of 7 826 voyages were fetched in the main run (03.11–06.11). One voyage, 2713140, failed with a URLError on 05.11, when the machine had no network. It was fetched on 06.11 after the six review patches, so all 7 826 are now in the cache (about 6.0 GB). Missing day tables: 2024-07-30 and 2024-10-28. Coverage table (`pipeline/data/ais_kutt_dekning.csv`, committed separately with `git add -f`, because `pipeline/data/` is gitignored):
+- **Full run, finished 2026-11-06.** 7 825 of 7 826 voyages were fetched in the main run (03.11–06.11). One voyage, 2713140, failed with a URLError on 05.11, when the machine had no network. It was fetched on 06.11 after the six review patches, so all 7 826 are now in the cache (about 6.0 GB). Missing day tables: 2024-07-30 and 2024-10-28. Coverage table (now `data/utdrag/ais_kutt_dekning.csv`, see Spec Change Log):
 
 | H | Group | Split | n | Fetched | Position in 24 h lookback | ≤ 1 h before `t_H` | With missing day |
 |---|---|---|---|---|---|---|---|
@@ -114,6 +114,8 @@ One call per voyage, not one per horizon, halves the calls (~7 826). The two loo
   Acceptance: the 24 h lookback coverage at `t_24` for Øvrige/test is 90.4 % (1 012 / 1 119). That is inside decision 09's 93 % ± 8 pp. See the session log of 06.11 for the comparison.
 
 ## Spec Change Log
+
+- 2026-11-06 (Felipe): the coverage table moves from `pipeline/data/ais_kutt_dekning.csv` to `data/utdrag/ais_kutt_dekning.csv`, next to the other committed extracts. It had been force-added in `46db209` inside the gitignored `pipeline/data/`. The default in `fetch_ais_kutt.py` points to the new path. This is the only file the script writes under `data/`. `data/baseline.json` and `data/utdrag/anlop.csv` are still locked.
 
 ## Review Triage Log
 

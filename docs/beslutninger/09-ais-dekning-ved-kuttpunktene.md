@@ -38,11 +38,13 @@ Alt er gjort med `pipeline/sjekk_ais_dekning_kutt.py`, som er reproduserbart med
 
 **Ankomstetikettene er ikke berørt.** De er regnet ut fra tidsstemplene i svaret, som er UTC, og ikke fra vinduet vi ba om. Tallene i FR8 (46,6 % / 79,6 %) står. Forskyvningen betyr bare at de opprinnelige hentevinduene startet 1–2 t senere enn tiltenkt.
 
-## Ny åpen tråd: «empty»-seilasene
+## Tråd om «empty»-seilasene (lukket 06.11.2026)
 
 7 av 10 tilfeldige `empty`-seilaser fra testperioden, altså seilaser som ga null posisjoner i den opprinnelige hentingen, har i dag posisjoner i sitt opprinnelige hentevindu. Alle 7 har punkter innenfor 15 km fra Bergen. Beslutning 07 foreslo tilgangsbegrensning eller utdatert MMSI som forklaring, men det stemmer ikke for disse. Noe ved den opprinnelige hentingen ga tomme svar. Vi vet ikke hva, men funn B eller midlertidige tomme svar fra API-et er kandidater.
 
 Gruppa har bestemt at vi **ikke** henter disse på nytt. Datasettet er låst, og 87,1 % føres som en kjent underestimering. Ny henting er videre arbeid. Begrunnelsen står i den korrigerte [beslutning 07](07-manglende-ais-utenlandske-skip.md).
+
+**Lukket 06.11.2026 med full henting (E2-S02).** Av de 115 `empty`-anløpene for Øvrige i testperioden har **65,2 %** (75 av 115) en posisjon i tilbakeblikket ved `t_24`. 31 av dem ga tomt svar også nå. Stikkprøven på 7 av 10 holder: de samme 7 har posisjon, og de samme 3 mangler. Tomme svar i den opprinnelige hentingen var altså stort sett ikke skip uten AIS, men noe ved hentingen. Vedtaket over står: ankomstetikettene i det låste datasettet hentes ikke på nytt, og 87,1 % er fortsatt en kjent underestimering. Modellen får tilstand ved kuttet for disse anløpene fra den nye hentingen, uavhengig av etiketten.
 
 ## Tillegg 05.11.2026: manglende dagstabeller koster 26 timer, ikke 24
 
@@ -65,6 +67,19 @@ Kystdatahuset mangler enkelte dagstabeller. Spør vi om et vindu som rører en s
 - Kuttpunkter som ligger innenfor de 26 timene, får `ais_status = manglende_dag` i tilstandsutdraget og går til baselinen. De skal ikke stå som `ok` med en posisjon fra dagen før, siden den alderen ikke er ekte. Unntaket er en gyldig posisjon fra innenfor hullet (om vinteren kan det være data fra kl. 01:00). Den er ekte og gir `ok`.
 - 05.11 gjaldt det 8 kuttpunkter i 28 seilaser i den delvise cachen. Alle var fra train.
 - Hullet er en egenskap ved arkivet, ikke ved skipene. Det føres som en kjent begrensning: posisjonene fantes, men de kan ikke hentes.
+
+## Resultat av full henting (06.11.2026)
+
+E2-S02 hentet alle 7 826 anløp med tilbakeblikk [`t_H` − 24 t, `t_H`]. Dekningstabellen ligger i `data/utdrag/ais_kutt_dekning.csv`. For Øvrige i testperioden, med posisjon i tilbakeblikket ved `t_24`:
+
+| Grunnlag | Med posisjon | Andel |
+|---|---|---|
+| Anløp med fasit (`ok`), samme grunnlag som stikkprøven | 930 / 996 | **93,4 %** (95 % KI 91,7–94,8) |
+| Alle anløp | 1 012 / 1 119 | 90,4 % |
+| `empty`-anløpene | 75 / 115 | 65,2 % |
+
+- Anslaget fra stikkprøven, 37 av 40 (≈ 93 % ± 8 pp), er bekreftet, og intervallet er nå omtrent ±1,5 pp. De samme 40 anløpene gir 37 av 40 også i full henting, og det er de samme 3 som mangler.
+- Totalen er lavere enn 93 % bare fordi `empty`-anløpene er med (se tråden over).
 
 ## Konsekvens
 

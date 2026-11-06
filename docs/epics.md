@@ -251,7 +251,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - `pipeline/fetch_ais_kutt.py` henter AIS for [`t_H` − 24 t, `t_H`] per anløp og H ∈ {6, 24}, med samme caching og pausing som `fetch_ais.py` (beslutning 09).
 - Ny API-adresse (`kystdatahuset.kystverket.no`). Det bes om et vindu med minst én dags margin på hver side, og posisjonene filtreres på tidsstemplet i svaret, siden API-et forskyver vinduet +1/+2 t og kan kutte ved midnatt (beslutning 09, funn B–C).
 - Vinduet regnes bare fra rapportert ETA. Skriptet leser ikke `arrival_in_area`.
-- Dekning per horisont, gruppe og splitt logges i `pipeline/data/ais_kutt_dekning.csv`.
+- Dekning per horisont, gruppe og splitt logges i `data/utdrag/ais_kutt_dekning.csv`, som committes sammen med de andre utdragene.
 
 **Test:** `tests/test_fetch_ais_kutt.py::test_vindu_fra_rapportert_eta` (vinduet endres ikke når faktisk ankomst endres), `::test_filtrerer_bort_punkter_etter_kutt` (et svar med punkter etter `t_H` gir ingen slike i cachen) og en loggført dekningstabell.
 

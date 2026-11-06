@@ -34,9 +34,11 @@ Slik virker skriptet:
   det samme vinduet som for en udelt seilas. Dagene som mangler, lagres i cachen og
   telles i dekningstabellen.
 - Hvert kall logges i pipeline/data/ais_kutt_logg.csv. Dekningen per horisont, gruppe
-  og splitt skrives til pipeline/data/ais_kutt_dekning.csv etter hver kjøring.
+  og splitt skrives til data/utdrag/ais_kutt_dekning.csv etter hver kjøring. Tabellen
+  committes sammen med de andre utdragene (Felipe, 06.11.2026).
 
-Det låste datasettet (data/, pipeline/data/ais_cache/, bergen_eta_avvik.csv) røres ikke.
+Det låste datasettet (data/baseline.json, data/utdrag/anlop.csv, pipeline/data/ais_cache/,
+bergen_eta_avvik.csv) røres ikke. Det eneste skriptet skriver under data/, er dekningstabellen.
 
     caffeinate -i python3 pipeline/fetch_ais_kutt.py --utvalg 50 --seed 2   # pilot
     caffeinate -i python3 pipeline/fetch_ais_kutt.py                        # resten
@@ -63,7 +65,7 @@ API_URL = "https://kystdatahuset.kystverket.no/ws/api/ais/positions/for-mmsis-ti
 KILDE = "data/utdrag/anlop.csv"
 CACHE_DIR = "pipeline/data/ais_kutt_cache"
 LOGG = "pipeline/data/ais_kutt_logg.csv"
-DEKNING = "pipeline/data/ais_kutt_dekning.csv"
+DEKNING = "data/utdrag/ais_kutt_dekning.csv"  # committes, sammen med de andre utdragene
 
 FELTER = ("voyageid", "mmsino", "ship_group", "eta_reported", "split")
 HORISONTER = (6, 24)
