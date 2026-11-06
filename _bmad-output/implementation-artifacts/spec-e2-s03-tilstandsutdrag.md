@@ -79,7 +79,7 @@ context:
 - [x] `scripts/lag_tilstand.py` -- CLI `--cache-dir`, `--anlop`, `--ut`, `--laget` -- builds and writes the extract and `tilstand_ved_kutt.json`.
 - [x] `tests/test_tilstand.py` -- `test_ingen_lekkasje` (injected or moved points after `t_kutt`, and changed arrival → byte-identical output), `test_mangler_posisjon` (empty and missing cache), `test_sentinelverdier`, `test_siste_gyldige_punkt` (ties and invalid last point), `test_kuttavvik_stopper`, `test_deterministisk`, `test_leser_ikke_ankomstfelt`. All use fixtures in `tmp_path` and need no `pipeline/data/`. Mutation-check the re-filter and the arrival-independence.
 - [x] `docs/arkitektur.md` §4, `docs/epics.md` E2-S03/E2-S06, `docs/prd.md` FR9a/FR10 and changelog, `docs/beslutninger/11-…` choice 7 (marked updated 03.11) -- columns, metadata file, and the single F6 definition (decisions 1–3). E2-S03 → ◐.
-- [ ] **After the fetch** (separate commit): run against the full cache and commit `data/utdrag/tilstand_ved_kutt.csv` and `tilstand_ved_kutt.json`. Add `test_committet_tilstand` (15 652 rows, columns, every `ok` row has `posisjon_alder_min` in [0, 1440]). E2-S03 → ✅.
+- [x] **After the fetch** (separate commit, done 2026-11-06): run against the full cache and commit `data/utdrag/tilstand_ved_kutt.csv` and `tilstand_ved_kutt.json`. Add `test_committet_tilstand` (15 652 rows, columns, every `ok` row has `posisjon_alder_min` in [0, 1440]). E2-S03 → ✅.
 
 **Acceptance Criteria:**
 - Given no `pipeline/data/`, when `pytest` runs, then all tests are green in < 1 min, and `test_dataregresjon.py` is unchanged.
@@ -118,6 +118,7 @@ context:
   - Tests: `test_kutt_i_manglende_dag_far_egen_status`, `test_hullgrensene`, `test_gammel_cache_uten_manglende_dager`, and in `test_features.py` `test_manglende_dag_gar_til_baselinen`.
   - Mutation-checked: removing the check, ignoring in-hole positions, and moving either interval bound are all caught. The first boundary test let `<=` at the end survive, and it was tightened.
   - Real cache 05.11 (partial, read-only, output in the scratchpad): 8 cut points get `manglende_dag` (1 at 6 h, 7 at 24 h), which matches the review's count.
+- **Full extract, 2026-11-06** (`--laget 2026-11-06`, full cache of 7 826 files, 551 empty answers): 15 652 rows. H = 6: ok 6 866, ingen_posisjon 959, manglende_dag 1, ikke_hentet 0. H = 24: ok 6 569, ingen_posisjon 1 247, manglende_dag 10, ikke_hentet 0. The run takes about 4 min. `test_committet_tilstand` checks the row count, columns, sha256 against the metadata, the status counts, and the age range for `ok` rows.
 
 ## Spec Change Log
 

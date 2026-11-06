@@ -255,7 +255,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_fetch_ais_kutt.py::test_vindu_fra_rapportert_eta` (vinduet endres ikke når faktisk ankomst endres), `::test_filtrerer_bort_punkter_etter_kutt` (et svar med punkter etter `t_H` gir ingen slike i cachen) og en loggført dekningstabell.
 
-### E2-S03 — Tilstandsutdrag og lekkasjetest ◐
+### E2-S03 — Tilstandsutdrag og lekkasjetest ✅
 **Krav:** FR9a, NFR1 · **Avhenger av:** E2-S02
 - `scripts/lag_tilstand.py` skriver `data/utdrag/tilstand_ved_kutt.csv`: én rad per anløp og H, med `ais_status`, posisjon, gjenstående distanse, fart, kurs og alder på posisjon. Scriptet leser ingen ankomstfelt. Fila committes.
 - Kildens sjekksum står i `data/utdrag/tilstand_ved_kutt.json`, ikke i `data/baseline.json`, som er låst.

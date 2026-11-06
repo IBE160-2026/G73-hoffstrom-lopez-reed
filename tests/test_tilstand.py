@@ -342,3 +342,28 @@ def test_gammel_cache_uten_manglende_dager(tmp_path):
     hullcache(cache, "100", [], [punkt(datetime(2024, 7, 29, 23, 0))], manglende=None)
     _, ut = kjør(tmp_path, cache, hull_anlop(tmp_path, ["100"]))
     assert [r["ais_status"] for r in les(ut)] == ["ingen_posisjon", "ok"]
+
+
+def test_committet_tilstand():
+    """Det committede utdraget fra full henting (06.11.2026): 7 826 anløp × 2 horisonter."""
+    csv_sti = REPO_ROT / "data" / "utdrag" / "tilstand_ved_kutt.csv"
+    meta = json.loads((REPO_ROT / "data" / "utdrag" / "tilstand_ved_kutt.json").read_text(encoding="utf-8"))
+    innhold = csv_sti.read_bytes()
+    assert hashlib.sha256(innhold).hexdigest() == meta["utdrag_sha256"]
+    rader = list(csv.DictReader(innhold.decode("utf-8").splitlines()))
+    assert len(rader) == meta["rader"] == 15652
+    assert list(rader[0]) == ["voyageid", "horisont_timer", "t_kutt_utc", "ais_status", "lat", "lon",
+                              "distanse_km", "fart_knop", "kurs_grader", "posisjon_alder_min"]
+    assert {(r["voyageid"], r["horisont_timer"]) for r in rader} == \
+        {(v, h) for v in {r["voyageid"] for r in rader} for h in ("6", "24")}
+    for h, antall in meta["antall_per_horisont"].items():
+        faktisk = {}
+        for r in rader:
+            if r["horisont_timer"] == h:
+                faktisk[r["ais_status"]] = faktisk.get(r["ais_status"], 0) + 1
+        assert faktisk == {k: v for k, v in antall.items() if v}
+    for r in rader:
+        if r["ais_status"] == "ok":
+            assert 0 <= float(r["posisjon_alder_min"]) <= 1440, r
+        else:
+            assert r["lat"] == r["lon"] == r["posisjon_alder_min"] == "", r
