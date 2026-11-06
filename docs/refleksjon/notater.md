@@ -138,3 +138,20 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
   - En stoppregel må skille mellom «API-et svarer ikke» og «API-et svarer at dataene ikke finnes». Det siste er et permanent datahull, ikke et brudd.
   - Feilen var kjent fra piloten, men ble bare håndtert ett sted (ikke nytt forsøk) og ikke tenkt gjennom for stoppregelen. Et kjent spesialtilfelle må følges gjennom alle steder det påvirker.
   - Meldingen «API-et er trolig nede» var en påstand scriptet ikke hadde grunnlag for, og den kunne fått oss til å vente i stedet for å se etter.
+
+## 2026-11-06 — To tester var lovet i specene, men fantes ikke (E2-S03, E2-S04)
+
+- **Hva:** E2-S03-specen lovet `test_committet_tilstand`, og E2-S04-specen lovet `test_committet_features`. Begge sto som oppgaver «etter hentingen», og E2-S03 sto til og med som `status: 'done'`. Ingen av testene fantes. Hadde utdragene blitt committet uten dem, ville ingenting ha låst radantall, sha256 eller grensen på 10 MB. Det er andre gang mønsteret oppstår: tidsstempeltesten 22.10 var «spesifisert, men aldri implementert» på samme måte.
+- **Hvordan det ble oppdaget:** etter `lag_tilstand.py` søkte Claude etter `def test_committet` i `tests/` og fikk ingen treff. Deretter leste Claude oppgavene i specene, der testene sto beskrevet.
+- **Resultat:** begge testene ble skrevet og committet sammen med utdragene: `910028c` og `47a2c02`.
+- **Lærdom (råt):**
+  - At en test står i specen, er ikke det samme som at den finnes. Sjekk at en lovet test finnes med `pytest --collect-only` eller grep i `tests/`, ikke ved å lese specen.
+  - En spec kan stå som `done` med åpne oppgaver. Sjekk avkrysningene, ikke statusfeltet.
+  - Lærdommen fra 22.10 ble ikke overført av seg selv. Den må inn som et fast steg når en story settes til ✅.
+
+## 2026-11-06 — Review-funnet hadde feil forventet antall kall (E2-S02)
+
+- **Hva:** I review av `0a85cd4` (05.11) sto det at en test der samme dag alltid kommer igjen, skulle gi «exactly 3 calls». Det riktige er 2: hele vinduet, og så første delvindu, som gir samme dag igjen, og da gir koden opp. Claude skrev i tillegg selv feil forventning, 3 kall, i `test_maks_delinger`. Det riktige var 5, fordi delvinduene til venstre lykkes mellom delingene.
+- **Hvordan det ble oppdaget:** testene feilet mot koden, og kallene ble talt opp for hånd.
+- **Resultat:** `8694a48`. Begge forventningene er rettet, med en kommentar som viser kallene. Avviket fra review-funnet er ført i E2-S02-specen.
+- **Lærdom (råt):** Et tall i et review-funn er en påstand, ikke en fasit. Samme mønster som «Feil forventning i en review-rettelse» 22.10. Spor kallene for hånd før forventningen skrives inn.
