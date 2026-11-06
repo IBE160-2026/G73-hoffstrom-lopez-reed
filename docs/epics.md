@@ -264,7 +264,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_tilstand.py::test_ingen_lekkasje` (punkter etter `t_H` lagt til, fjernet eller flyttet, faktisk ankomst endret → byte-identisk utdrag, som i PRD FR9a), `::test_mangler_posisjon`, med flere. Etter genereringen kommer i tillegg `::test_committet_tilstand`.
 
-### E2-S04 — Features og valideringssplitt ◐
+### E2-S04 — Features og valideringssplitt ✅
 **Krav:** FR9a, NFR3 · **Avhenger av:** E2-S03
 - `app/prediksjon/features.py` bygger F1–F16 fra beslutning 11. Historikken (F15–F16) kommer bare fra treningsanløp med faktisk ankomst før `t_H`, og det gjelder også snittet for Øvrige som F15 trekkes mot.
 - Skipstype, lengde, ETD og avgangshavn ligger bare i den gitignorerte seilasfila, og `data/utdrag/anlop.csv` er låst. `scripts/lag_features.py` skriver derfor F1–F16 til en committet `data/utdrag/features.csv`, uten rå ETD og uten noe eget rått utdrag (Felipe). Alt E2 committer under `data/` skal til sammen være under 10 MB (NFR1).

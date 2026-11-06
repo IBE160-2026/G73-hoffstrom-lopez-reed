@@ -1,0 +1,68 @@
+{
+  "anlop_uten_seilasrad": 0,
+  "antall": {
+    "test": {
+      "24": {
+        "med_tilstand": 1447,
+        "uten_tilstand": 119
+      },
+      "6": {
+        "med_tilstand": 1452,
+        "uten_tilstand": 114
+      }
+    },
+    "trening": {
+      "24": {
+        "med_tilstand": 4029,
+        "uten_tilstand": 979
+      },
+      "6": {
+        "med_tilstand": 4271,
+        "uten_tilstand": 737
+      }
+    },
+    "validering": {
+      "24": {
+        "med_tilstand": 1093,
+        "uten_tilstand": 159
+      },
+      "6": {
+        "med_tilstand": 1143,
+        "uten_tilstand": 109
+      }
+    }
+  },
+  "kilder": {
+    "anlop": {
+      "sha256": "8450e8d557b6bc74a8039f24304778f0767b6e52ce20e1d8e72ed9ccc71203ca",
+      "sti": "data/utdrag/anlop.csv"
+    },
+    "baseline": {
+      "sha256": "ac1bdf4aea64c9c1341598b0a212452ab33a41e8da46dd2fba291daa174ab5c1",
+      "sti": "data/baseline.json"
+    },
+    "seilaser": {
+      "sha256": "f6c43aad2288470932d2b83d466dada013f92afc4e4e3150b211fddb3244a300",
+      "sti": "pipeline/data/voyages_bergen_2024-01-01_2026-03-15.csv"
+    },
+    "tilstand": {
+      "sha256": "467d9376d3c2414647e1aa6d20900af83c2bcc69c0da71fba58421ac7bd54428",
+      "sti": "data/utdrag/tilstand_ved_kutt.csv"
+    }
+  },
+  "kode_sha256": {
+    "features.py": "9c453325c1d140361d9140a941db1fe87844c9a180df5d532120805b077caba2",
+    "lag_features.py": "232b35d2de7abb204920eec18335f53640164652ac844dde37cb15353192392f"
+  },
+  "laget": "2026-11-06",
+  "parametre": {
+    "ETD_MAKS_FOR_ETA_DOGN": 14,
+    "MIN_FART_KN": 1.0,
+    "SHRINK_K": 5,
+    "SLAKK_MIN_TIMER": -48.0,
+    "SONE_KM": 15.0,
+    "TRENINGSANDEL": 0.8
+  },
+  "rader": 15652,
+  "utdrag_sha256": "351c707ac282bd38a02826cbffbb75d09bceb3ab4f84bec614dbc179b0cb685b"
+}

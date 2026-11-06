@@ -104,7 +104,7 @@ Run on the partial cache, read-only (605 voyages with state at 6 h and 556 at 24
 - [x] `scripts/lag_features.py` -- CLI with overridable paths and `--laget`. Writes `features.csv` and `features.json` (input sha256s, counts per `del` × H × `har_tilstand`).
 - [x] `tests/test_features.py` -- `test_fartoyhistorikk_bare_fra_trening` (matrix rows 1–3, MMSI 0), `test_historikk_uten_lekkasje`, `test_valideringssplitt_kronologisk`, `test_slakk_ved_lav_fart`, `test_kurs_ugyldig`, `test_etd_etter_kutt_brukes_ikke`, `test_kalender_oslo_sommertid`, `test_grupper_sjeldne`, `test_f6_fra_posisjon`, `test_deterministisk`. Fixtures only. Mutation-check the history filter (train-only, `< t_kutt`, excluding itself) and the ETD rule.
 - [x] `docs/arkitektur.md` §4, `docs/epics.md` E2-S04 -- the extract as decided in question 1. E2-S04 → ◐.
-- [ ] **After E2-S03's extract** (separate commit): generate and commit `features.csv`/`.json`, add `test_committet_features` (rows, `del` counts, and the E2 `data/` total < 10 MB), rerun the long-distance check (25/45 kn) and replace the table above with the full numbers, and run the label check (decision 3) and record the result in decision 03 if it is concentrated on offshore and supply. E2-S04 → ✅.
+- [x] **After E2-S03's extract** (separate commit, extract done 2026-11-06; the two checks follow in their own commit the same day): generate and commit `features.csv`/`.json`, add `test_committet_features` (rows, `del` counts, and the E2 `data/` total < 10 MB), rerun the long-distance check (25/45 kn) and replace the table above with the full numbers, and run the label check (decision 3) and record the result in decision 03 if it is concentrated on offshore and supply. E2-S04 → ✅.
 
 **Acceptance Criteria:**
 - Given no `pipeline/data/`, when `pytest` runs, then everything is green in < 1 min, the AST rule passes for `features.py`, and `test_dataregresjon.py` is unchanged.
@@ -141,6 +141,7 @@ Run on the partial cache, read-only (605 voyages with state at 6 h and 556 at 24
   - At 6 h, 45 % have not yet departed.
   - F16 has median 14, and 19 % of rows have no history.
 - **ETD sanity:** an ETD more than 14 days before ETA counts as missing, the same cap as `fetch_ais.py` (decision 02). It affects 18 of 7 826 rows, including 2 with the placeholder 0001-01-01. All 7 826 voyages have a row in the voyages file, and there are 0 duplicate voyageids.
+- **Full extract, 2026-11-06** (`--laget 2026-11-06`): 15 652 rows, 3.1 MB. Voyages per `del`: trening 5 008, validering 1 252, test 1 566. With state at H = 6 / 24: trening 4 271 / 4 029, validering 1 143 / 1 093, test 1 452 / 1 447. A second run gives a byte-identical file. The E2 files under `data/utdrag/` total 4.2 MB, under the 10 MB budget. `test_committet_features` checks sha256, rows, `del` counts and the budget.
 
 ## Spec Change Log
 

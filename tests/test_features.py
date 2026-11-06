@@ -3,6 +3,7 @@
 Bare fixtures i minnet eller i tmp_path. Ingen test trenger pipeline/data/ eller nett.
 """
 import copy
+import hashlib
 import csv
 import importlib.util
 import json
@@ -396,3 +397,24 @@ def test_valideringshistorikk_frosset_ved_grensen():
     assert (r[siste]["fartoy_antall_tidligere_modellvalg"], r[siste]["fartoy_antall_tidligere"]) == ("8", "9")
     # Testraden: modellvalg ser 8, endelig ser alle 10.
     assert (r[("50", "6")]["fartoy_antall_tidligere_modellvalg"], r[("50", "6")]["fartoy_antall_tidligere"]) == ("8", "10")
+
+
+def test_committet_features():
+    """Den committede featurefila fra full henting (06.11.2026), og NFR1: E2 under data/ < 10 MB."""
+    utdrag = REPO_ROT / "data" / "utdrag"
+    meta = json.loads((utdrag / "features.json").read_text(encoding="utf-8"))
+    innhold = (utdrag / "features.csv").read_bytes()
+    assert hashlib.sha256(innhold).hexdigest() == meta["utdrag_sha256"]
+    rader = list(csv.DictReader(innhold.decode("utf-8").splitlines()))
+    assert len(rader) == meta["rader"] == 15652
+    anlop = {}
+    for r in rader:
+        anlop.setdefault(r["del"], set()).add(r["voyageid"])
+    assert {d: len(v) for d, v in anlop.items()} == {"trening": 5008, "validering": 1252, "test": 1566}
+    assert {h for r in rader for h in [r["horisont_timer"]]} == {"6", "24"}
+    for d, per_h in meta["antall"].items():
+        for h, n in per_h.items():
+            assert sum(1 for r in rader if r["del"] == d and r["horisont_timer"] == h) == sum(n.values())
+    assert "etd" not in {k.lower() for k in rader[0]}  # rå ETD committes ikke (beslutning i S04)
+    e2 = ["ais_kutt_dekning.csv", "tilstand_ved_kutt.csv", "tilstand_ved_kutt.json", "features.csv", "features.json"]
+    assert sum((utdrag / f).stat().st_size for f in e2) < 10_000_000
