@@ -20,13 +20,19 @@ Slik virker skriptet:
   med status «tom», og --prov-tomme henter dem på nytt.
 - Det tar 1 s pause etter hvert kall og prøver opptil 3 ganger på nytt (5/15/45 s)
   ved feil. Feiler 10 seilaser på rad, stopper det. En manglende dagstabell hos API-et
-  (42P01) teller ikke: den er et permanent datahull, ikke nedetid.
+  (42P01) med lesbar dag er et permanent datahull, ikke nedetid: vinduet deles, og
+  seilasen hentes (se under). Kan vinduet ikke deles (dagen kan ikke leses, den ligger
+  utenfor vinduet, kommer igjen etter delingen, eller MAKS_DELINGER er nådd), teller
+  feilen som vanlig, så et systematisk API-brudd fortsatt stopper kjøringen.
 - Mangler en dagstabell, deles vinduet rundt den dagen, og resten hentes. API-et velger
   dagstabeller etter datoen i forespørselen (prøvekall 05.11.2026: [28.07 00:00,
   29.07 23:59] og [31.07 00:00, 01.08 06:00] går, [30.07 22:00, …] feiler). Delvinduene
   slutter derfor kl. 23:59 dagen før og starter kl. 00:00 dagen etter. Hvert delvindu
   forlenges utover til minst 25 t, så midnattskuttet for korte vinduer (funn B) ikke
-  slår til. Dagene som mangler, lagres i cachen og telles i dekningstabellen.
+  slår til. Delkallene har samme pause som vanlige kall. Det sammenslåtte svaret klippes
+  til forespørselsvinduet pluss API-ets forskyvning, slik at tellingene i cachen gjelder
+  det samme vinduet som for en udelt seilas. Dagene som mangler, lagres i cachen og
+  telles i dekningstabellen.
 - Hvert kall logges i pipeline/data/ais_kutt_logg.csv. Dekningen per horisont, gruppe
   og splitt skrives til pipeline/data/ais_kutt_dekning.csv etter hver kjøring.
 
@@ -268,23 +274,29 @@ def del_rundt_dag(start, slutt, dag, kjente=()):
     return deler
 
 
-def hent_med_hull(hent, mmsi, start, slutt):
+def hent_med_hull(hent, mmsi, start, slutt, pause=PAUSE_SEK):
     """Hent [start, slutt]. Mangler en dagstabell, deles vinduet rundt dagen og resten hentes.
 
-    Returnerer (punkter, sorterte manglende dager). Kaster ManglerDag hvis delingen ikke
-    kommer videre (ukjent dag, dag utenfor vinduet eller for mange delinger).
+    Returnerer (punkter, sorterte manglende dager). Delkallene får `pause` sekunder imellom.
+    Kommer delingen ikke videre (ukjent dag, dag utenfor vinduet, samme dag igjen eller for
+    mange delinger), kastes en vanlig HenteFeil, som teller mot stoppregelen.
     """
     ko, svar, mangler = [(start, slutt)], [], set()
     delinger = 0
     while ko:
         s, e = ko.pop(0)
+        if delinger:
+            time.sleep(pause)  # delkall etter en deling: samme pause som mellom seilaser
         try:
             data = hent(mmsi, s, e)
         except ManglerDag as exc:
             dag = exc.dag
-            if dag is None or dag in mangler or not (s.date() <= dag <= e.date()) \
-                    or delinger >= MAKS_DELINGER:
-                raise
+            grunn = ("dagen kan ikke leses" if dag is None else
+                     f"{dag} kom igjen etter deling" if dag in mangler else
+                     f"{dag} ligger utenfor [{s}, {e}]" if not (s.date() <= dag <= e.date()) else
+                     f"mer enn {MAKS_DELINGER} delinger" if delinger >= MAKS_DELINGER else None)
+            if grunn:
+                raise HenteFeil(f"{exc} (kan ikke deles: {grunn})", varig=True) from exc
             delinger += 1
             mangler.add(dag)
             ko = del_rundt_dag(s, e, dag, mangler) + ko
@@ -292,13 +304,13 @@ def hent_med_hull(hent, mmsi, start, slutt):
         svar.append(data)
     if not mangler:
         return svar[0], []
-    punkter, sett = [], set()
-    for data in svar:
-        for p in data:
-            nokkel = json.dumps(p, sort_keys=True, default=str)
-            if nokkel not in sett:  # forlengede delvinduer kan overlappe
-                sett.add(nokkel)
-                punkter.append(p)
+    # Delvinduene overlapper ikke (del_rundt_dag forlenger bare utover og aldri inn i en kjent
+    # manglende dag), så punktene slås sammen uten dedup, som for en udelt seilas.
+    # Forlengelsen utover klippes bort: en udelt seilas får [start, slutt] forskjøvet
+    # med inntil API_FORSKYVNING_MAKS, og tellingene i cachen skal gjelde det samme vinduet.
+    hoyre = slutt + API_FORSKYVNING_MAKS
+    punkter = [p for data in svar for p in data
+               if (t := tidsstempel(p)) is None or start <= t <= hoyre]
     return punkter, sorted(mangler)
 
 
@@ -333,12 +345,12 @@ def les_cache(cache_dir, voyageid):
         return None
 
 
-def behandle(rad, cache_dir, hent=hent_posisjoner):
+def behandle(rad, cache_dir, hent=hent_posisjoner, pause=PAUSE_SEK):
     """Hent, filtrer og cache én seilas. Returnerer en loggrad. Kaster HenteFeil."""
     eta = naive_utc(rad["eta_reported"])
     start, slutt = foresporselsvindu(eta)
     t0 = time.time()
-    svar, mangler = hent_med_hull(hent, rad["mmsino"], start, slutt)
+    svar, mangler = hent_med_hull(hent, rad["mmsino"], start, slutt, pause)
     if mangler:
         print(f"  {rad['voyageid']}: dagstabell mangler for {', '.join(map(str, mangler))}, "
               "vinduet er delt rundt dagen", file=sys.stderr, flush=True)
@@ -436,14 +448,13 @@ def main(argv=None, hent=hent_posisjoner):
     try:
         for i, rad in enumerate(ko, 1):
             try:
-                loggrad = behandle(rad, args.cache_dir, hent)
+                loggrad = behandle(rad, args.cache_dir, hent, args.pause)
                 pa_rad = 0
                 ok += loggrad[-1] == "ok"
                 tom += loggrad[-1] == "tom"
             except HenteFeil as exc:
                 feil += 1
-                if not isinstance(exc, ManglerDag):
-                    pa_rad += 1  # bare ekte nedetid teller; et permanent datahull gjør ikke det
+                pa_rad += 1  # en manglende dag med lesbar dag deles og hentes, og kommer aldri hit
                 eta = naive_utc(rad["eta_reported"])
                 s, e = foresporselsvindu(eta)
                 loggrad = [datetime.now(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds"),
@@ -460,8 +471,8 @@ def main(argv=None, hent=hent_posisjoner):
                       file=sys.stderr, flush=True)
             if pa_rad >= MAKS_FEIL_PA_RAD:
                 stoppet = True
-                print(f"\nStopper: {MAKS_FEIL_PA_RAD} seilaser på rad feilet (manglende dagstabeller "
-                      "ikke medregnet). API-et er trolig nede. "
+                print(f"\nStopper: {MAKS_FEIL_PA_RAD} seilaser på rad feilet. API-et er trolig nede "
+                      "eller har endret seg. "
                       "Kjør samme kommando igjen senere for å fortsette.", file=sys.stderr)
                 break
             time.sleep(args.pause)
