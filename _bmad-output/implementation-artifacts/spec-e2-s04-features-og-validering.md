@@ -72,21 +72,29 @@ context:
 
 </frozen-after-approval>
 
-## Long distances at the cut — first check (Felipe, 03.11)
+## Long distances at the cut and label check — full data (2026-11-06)
 
-Run on the partial cache, read-only (605 voyages with state at 6 h and 556 at 24 h, built with the scratchpad extract and joined to `anlop.csv` and `baseline.json`):
+`scripts/sjekk_avstand_og_etikett.py` runs both checks on the committed files. The script only reads. The required speed is the straight line from the position at `t_kutt` to the port, divided by H. It replaces the first check on the partial cache from 03.11, which had 605/556 voyages with state, 3 rows above 25 kn, and a 9.9 % base rate for both groups together.
 
-| H | Needs > 25 kn | > 30 kn | With ground truth | Late > 120 min | On time | Impossible |
-|---|---|---|---|---|---|---|
-| 6 h | 3 | 2 | 1 | 0 | 1 | 1 |
-| 24 h | 0 | 0 | 0 | — | — | — |
+**Long distances** (rows with state):
 
-- **The only case with ground truth:** 2233024 HALTBAKK STAR (platform supply ship, train).
-  - It is 315 km away at `t_6` and needs 28 kn. Ground truth says it arrived 2 613 min *before* the calibrated ETA, that is 01.02 08:22, before the cut.
-  - Voyage: Stavanger 30.01 → ETA Bergen 03.02. The most likely reading is that it passed through the 15 km zone early and went back out to the field, so the label (first zone entry, decision 03) caught the wrong pass.
-  - **Possible label error in the locked dataset, not a position error.** It is recorded, and the dataset is not changed.
-- Base rate for comparison: among rows needing ≤ 25 kn, with ground truth, 9.9 % are late (6 h) and 9.5 % (24 h). These are partial data across both groups.
-- The sample is far too small to conclude. The check is rerun on the full data (task below), and the numbers replace this table.
+| H | Group | > 25 kn | > 45 kn | With ground truth | Late > 120 min | On time | Impossible | No ground truth |
+|---|---|---|---|---|---|---|---|---|
+| 6 h | Øvrige | 3 | 0 | 2 | 1 | 0 | 1 | 1 |
+| 6 h | Passasjer | 9 | 2 | 2 | 0 | 0 | 2 | 7 |
+| 24 h | Øvrige | 0 | 0 | 0 | — | — | — | — |
+| 24 h | Passasjer | 3 | 0 | 2 | 0 | 1 | 1 | 1 |
+
+- 15 rows out of about 14 000 with state. Nothing is removed.
+- Base rate, late > 120 min among rows needing ≤ 25 kn with ground truth: Øvrige 19.9 % (6 h) and 21.0 % (24 h), Passasjer 1.0 % and 1.1 %.
+- **Impossible**, all in train. In all three the zone entry was before the cut, more than 15 km away. The likely cause is a label error, where the first zone entry (decision 03) caught an earlier pass:
+  - 2233024 HALTBAKK STAR (platform supply ship), 315 km at `t_6`, 2 613 min before the calibrated ETA.
+  - 2444262 NORDKAPP (Hurtigruten), 1 458 km at `t_6`, 10 087 min before.
+  - 2835191 STAVANGERFJORD, 347 km at `t_6`, 1 444 min before.
+- **On time:** 2770419 EMERALD PRINCESS, 1 154 km at `t_24` (26.0 kn), 54 min early. That is plausible for a cruise ship, since 26 kn is just above the threshold.
+- Most of the rows without ground truth are Hurtigruten ships about 430 km away at `t_6`. They are Passasjer, which uses the baseline anyway.
+
+**Label check** (decision 03): 33 of 6 815 voyages with ground truth (0.48 %) have a zone entry more than 24 h before the reported ETA. 29 are Øvrige and 4 Passasjer, and 27 are in train and 6 in test. The median is 35 h before ETA, and the maximum is 296 h. They are spread over 14 ship types. Offshore and supply account for 6 of the 33 (18.2 %), against 15.8 % of all voyages with ground truth. The largest single type is research survey vessels: 6, against 2.0 % of all voyages. Recorded in decision 03 as a known limitation (Felipe, 2026-11-06). The dataset is not changed.
 
 ## Code Map
 
