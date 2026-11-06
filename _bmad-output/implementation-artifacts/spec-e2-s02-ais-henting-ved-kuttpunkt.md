@@ -2,7 +2,7 @@
 title: 'E2-S02 — Målrettet AIS-henting ved kuttpunktene'
 type: 'feature'
 created: '2026-11-03'
-status: 'in-progress'
+status: 'done'
 baseline_commit: 'f867bf48b3be6c140b02b1177cb910e9166469cb'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -71,8 +71,8 @@ context:
 **Execution:**
 - [x] `pipeline/fetch_ais_kutt.py` -- CLI `--utvalg`, `--seed`, `--prov-tomme`, `--kilde`, `--cache-dir`, `--pause` -- the fetcher above. Docstring cites decisions 08/09, the run commands and `caffeinate -i`.
 - [x] `tests/test_fetch_ais_kutt.py` -- `test_vindu_fra_rapportert_eta`, `test_filtrerer_bort_punkter_etter_kutt` (fake fetch through the cache-writing path, checks the file on disk), `test_leser_ikke_ankomstfelt`, `test_hopper_over_cachet`, `test_feil_gir_ingen_cache`, `test_tomt_svar`, `test_ingenting_etter_eta_minus_6t` (mutation-checked), `test_dekningstabell`. All tests use `tmp_path` and a monkeypatched fetch, with no network.
-- [ ] Pilot (done 2026-11-03, see Implementation Notes); full run waiting for Felipe's go: `--utvalg 50 --seed 2`, then report time, disk use and estimate to Felipe. After his go: full run in the background with `caffeinate -i`.
-- [ ] `docs/epics.md` -- E2-S02 → ◐ in the code commit, then → ✅ in the separate coverage commit after the full run. The coverage table goes in the session log and in the Implementation Notes.
+- [x] Pilot (done 2026-11-03, see Implementation Notes); full run waiting for Felipe's go: `--utvalg 50 --seed 2`, then report time, disk use and estimate to Felipe. After his go: full run in the background with `caffeinate -i`.
+- [x] `docs/epics.md` -- E2-S02 → ◐ in the code commit, then → ✅ in the separate coverage commit after the full run. The coverage table goes in the session log and in the Implementation Notes.
 
 **Acceptance Criteria:**
 - Given the full test suite, when `pytest` runs without network and without `pipeline/data/`, then it is green, `test_dataregresjon.py` is unchanged and still passes, and the run takes < 1 min.
@@ -97,6 +97,21 @@ One call per voyage, not one per horizon, halves the calls (~7 826). The two loo
 - **Pilot, 2026-11-03** (`--utvalg 50 --seed 2`): 49 fetched (41 ok, 8 empty) and 1 failure, in 4.3 min. A call takes 2.7 s at the median (max 4.2 s), and an answer has 12 600 points at the median (max 43 000). The cache is 724 kB per voyage, 35 MB in total. Estimate for the remaining 7 777: about 8 h at ~3.8 s per voyage (the script's own figure of 11.3 h includes the failed voyage's 65 s backoff), and about 5.6 GB of disk.
 - **Pilot finding:** the API answers `success=false`, `42P01: relation "ais202410.ais_20241028" does not exist` for voyage 2690405, because a day table is missing on the server side. Such failures now fail fast and are not retried (`varig=True`, `test_manglende_dagstabell_uten_gjentak`). They stay uncached and are logged as `feil: mangler hos API-et`, and the full run reports how many there are.
 - Pilot coverage, too small to conclude from: within 24 h lookback, Øvrige 68 % (23/34) at both horizons and Passasjer 100 % / 93 %. Decision 09's ≈ 93 % counted only voyages with AIS in the original fetch. The pilot includes 8 empty answers, so the shares are not comparable until the full run.
+
+- **Full run, finished 2026-11-06.** 7 825 of 7 826 voyages were fetched in the main run (03.11–06.11). One voyage, 2713140, failed with a URLError on 05.11, when the machine had no network. It was fetched on 06.11 after the six review patches, so all 7 826 are now in the cache (about 6.0 GB). Missing day tables: 2024-07-30 and 2024-10-28. Coverage table (`pipeline/data/ais_kutt_dekning.csv`, committed separately with `git add -f`, because `pipeline/data/` is gitignored):
+
+| H | Group | Split | n | Fetched | Position in 24 h lookback | ≤ 1 h before `t_H` | With missing day |
+|---|---|---|---|---|---|---|---|
+| 6 | Øvrige | test | 1119 | 1119 | 1013 (90.5 %) | 692 (61.8 %) | 0 |
+| 6 | Øvrige | train | 4358 | 4358 | 3636 (83.4 %) | 2474 (56.8 %) | 10 |
+| 6 | Passasjer | test | 447 | 447 | 440 (98.4 %) | 437 (97.8 %) | 0 |
+| 6 | Passasjer | train | 1902 | 1902 | 1840 (96.7 %) | 1804 (94.8 %) | 5 |
+| 24 | Øvrige | test | 1119 | 1119 | 1012 (90.4 %) | 664 (59.3 %) | 0 |
+| 24 | Øvrige | train | 4358 | 4358 | 3453 (79.2 %) | 2232 (51.2 %) | 18 |
+| 24 | Passasjer | test | 447 | 447 | 436 (97.5 %) | 405 (90.6 %) | 0 |
+| 24 | Passasjer | train | 1902 | 1902 | 1735 (91.2 %) | 1555 (81.8 %) | 9 |
+
+  Acceptance: the 24 h lookback coverage at `t_24` for Øvrige/test is 90.4 % (1 012 / 1 119). That is inside decision 09's 93 % ± 8 pp. See the session log of 06.11 for the comparison.
 
 ## Spec Change Log
 

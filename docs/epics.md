@@ -246,7 +246,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** beslutningen er gjennomgått av hele gruppa (godkjent i PR).
 
-### E2-S02 — Målrettet AIS-henting ved kuttpunktene ◐
+### E2-S02 — Målrettet AIS-henting ved kuttpunktene ✅
 **Krav:** FR9a · **Avhenger av:** E2-S01
 - `pipeline/fetch_ais_kutt.py` henter AIS for [`t_H` − 24 t, `t_H`] per anløp og H ∈ {6, 24}, med samme caching og pausing som `fetch_ais.py` (beslutning 09).
 - Ny API-adresse (`kystdatahuset.kystverket.no`). Det bes om et vindu med minst én dags margin på hver side, og posisjonene filtreres på tidsstemplet i svaret, siden API-et forskyver vinduet +1/+2 t og kan kutte ved midnatt (beslutning 09, funn B–C).
