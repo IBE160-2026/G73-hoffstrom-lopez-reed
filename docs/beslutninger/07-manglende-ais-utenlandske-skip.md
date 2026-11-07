@@ -33,3 +33,17 @@
 - **Dekningen på 87,1 % er en underestimering.** Det står der tallet brukes (brief, addendum, status). Hullet rammer mest utenlandske og ikke-rutegående skip. Det betyr at Øvrige er underrepresentert i evalueringen, og at baselinetallene er målt på et utvalg som heller mot norske, mer rutepregede skip.
 - **Ved ny henting senere må `fetch_ais.py` rettes først.** Det gjelder ny API-adresse og vindu som forskyves (beslutning 09, funn A–C). Resultatet skal behandles som et nytt datasett med egen låsing og egne tall, ikke som en stille oppdatering av det gamle.
 - **Beslutning 08 og 09:** AIS ved kuttpunktene (E2-S02) er en ny, separat henting av tilstanden før ankomst, ikke av fasiten. Den berøres ikke av dette valget. Skip som mangler fasit i dag, er fortsatt uten fasit og tas ikke med i evalueringen.
+
+## Oppdatert 03.11.2026: 63 av de tomme seilasene har MMSI 0
+
+Røyktesten i E2-S03 fant at **63 av de 935 tomme seilasene (6,7 %) har MMSI 0** i seilasdataene fra SafeSeaNet. Ingen av dem har fasit. Alle 63 er `empty`: 59 Øvrige i trening, 3 Passasjer i trening og 1 Øvrige i test.
+
+**Det forklarer en del av de tomme svarene.** MMSI 0 er ikke et ekte fartøy. Når API-et blir spurt om MMSI 0, svarer det i dag med posisjoner fra alle fartøy i verden som sender 0. Røyktesten fikk «siste posisjoner» 7 000–17 000 km fra Bergen. Disse seilasene kan aldri få en fasit fra AIS, uansett hvordan de hentes. De er et hull i SafeSeaNet-dataene, ikke i hentingen.
+
+**Det forklarer ikke resten.**
+- **872 av de 935 (93 %) har en gyldig MMSI med 9 sifre** og er fortsatt uforklart. Stikkprøven fra beslutning 09 (7 av 10 har data i dag) gjelder dem.
+- **Skjevheten mot utenlandske skip står.** Tallet på 83 % over regnet MMSI 0 som utenlandsk, fordi den ikke har norsk prefiks (257–259). Uten de 63 er andelen 81,4 % (710 av 872), mot 33,2 % blant seilasene med fasit.
+- **Det sier ingenting om hvorfor den opprinnelige hentingen ga tomme svar** for skip som har data i dag.
+
+**Konsekvens:** dekningen på 87,1 % og 46,6 % er uendret. Datasettet er fortsatt låst. Tilstandsutdraget i E2-S03 regner en posisjon som gyldig bare hvis MMSI-en i punktet er lik seilasens MMSI og har 9 sifre, så MMSI 0-seilasene blir `ingen_posisjon` (Felipe, 03.11.2026). Ved en eventuell ny henting (videre arbeid) bør seilaser med MMSI 0 tas ut før kallet, ikke etterpå.
+

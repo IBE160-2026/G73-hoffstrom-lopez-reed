@@ -20,7 +20,7 @@ bygger_på: docs/prd.md, docs/arkitektur.md, docs/ux/dashbord.md
   Da finner sensor (og vi) koden til en story med `git log --oneline --grep 'E1-S04'`.
 - **Ferdig betyr:** akseptansekriteriene er oppfylt, testen er skrevet og `pytest` er grønn, og statusen under er satt til ✅ *i samme commit*. Avviker oppførselen fra PRD- eller UX-dokumentet, oppdateres det dokumentet i samme commit, med en linje i endringsloggen.
 - **Ny eller endret story underveis** legges til her med neste ledige nummer. Nummer gjenbrukes aldri, og forkastede stories markeres ✗ med begrunnelse.
-- PR-beskrivelsen lister storyene og lenker til promptloggen for øktene (`docs/prompts/`).
+- PR-beskrivelsen lister storyene og lenker til sesjonsloggene for øktene (`.logs/<bruker>/`). `docs/prompts/` er historikk til og med 27.10.
 
 Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 
@@ -237,43 +237,50 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 ### E2-S01 — Gjenstående modellvalg ◐
 **Krav:** PRD §8, §9 · **Avhenger av:** E1-S05
 - Horisonten er avgjort i beslutning 08 (16.10.2026).
-- Gjenstår, og legges til i beslutning 08 eller en ny beslutning:
-  - én eller to modeller (Passasjer/Øvrige)
-  - om rapportert ETA er kjent ved `t_24` (A1). Sjekk Kystdatahuset-dokumentasjonen og rådata.
-  - bekreftelse av suksesskriteriet for varsel (A2)
-- Endres A2 eller A3, oppdateres PRD FR9/FR10 først.
+- Resten er avgjort i [beslutning 11](beslutninger/11-modellvalg-ovrige-og-features.md) (03.11.2026), og PRD FR9/FR10, §7, §8 og §9 er oppdatert først:
+  - én modell, bare for Øvrige, trent per horisont, mens Passasjer beholder baselinen
+  - A1 kan ikke verifiseres og føres som kjent begrensning
+  - A2 er bekreftet
+  - featurelista F1–F16 er låst, med ablasjon uten F13–F14 og rapportering med og uten rader i ankomstsonen (F6)
+- Står som ◐ til gruppa har godkjent beslutningen i PR-en.
 
 **Test:** beslutningen er gjennomgått av hele gruppa (godkjent i PR).
 
-### E2-S02 — Målrettet AIS-henting ved kuttpunktene ☐
+### E2-S02 — Målrettet AIS-henting ved kuttpunktene ✅
 **Krav:** FR9a · **Avhenger av:** E2-S01
 - `pipeline/fetch_ais_kutt.py` henter AIS for [`t_H` − 24 t, `t_H`] per anløp og H ∈ {6, 24}, med samme caching og pausing som `fetch_ais.py` (beslutning 09).
 - Ny API-adresse (`kystdatahuset.kystverket.no`). Det bes om et vindu med minst én dags margin på hver side, og posisjonene filtreres på tidsstemplet i svaret, siden API-et forskyver vinduet +1/+2 t og kan kutte ved midnatt (beslutning 09, funn B–C).
 - Vinduet regnes bare fra rapportert ETA. Skriptet leser ikke `arrival_in_area`.
-- Dekning per horisont, gruppe og splitt logges i `pipeline/data/ais_kutt_dekning.csv`.
+- Dekning per horisont, gruppe og splitt logges i `data/utdrag/ais_kutt_dekning.csv`, som committes sammen med de andre utdragene.
 
 **Test:** `tests/test_fetch_ais_kutt.py::test_vindu_fra_rapportert_eta` (vinduet endres ikke når faktisk ankomst endres), `::test_filtrerer_bort_punkter_etter_kutt` (et svar med punkter etter `t_H` gir ingen slike i cachen) og en loggført dekningstabell.
 
-### E2-S03 — Tilstandsutdrag og lekkasjetest ☐
+### E2-S03 — Tilstandsutdrag og lekkasjetest ✅
 **Krav:** FR9a, NFR1 · **Avhenger av:** E2-S02
-- `scripts/lag_tilstand.py` skriver `data/utdrag/tilstand_ved_kutt.csv`: én rad per anløp og H, med posisjon, gjenstående distanse, fart, kurs, alder på posisjon og flagget `allerede_ankommet`. Fila committes, og kildens sjekksum legges i `data/baseline.json`.
+- `scripts/lag_tilstand.py` skriver `data/utdrag/tilstand_ved_kutt.csv`: én rad per anløp og H, med `ais_status`, posisjon, gjenstående distanse, fart, kurs og alder på posisjon. Scriptet leser ingen ankomstfelt. Fila committes.
+- Kildens sjekksum står i `data/utdrag/tilstand_ved_kutt.json`, ikke i `data/baseline.json`, som er låst.
 - Mangler posisjon i [`t_H` − 24 t, `t_H`], blir feltene tomme, og raden beholdes.
+- Kode og tester committes før utdraget. Utdraget genereres og committes for seg når hentingen i E2-S02 er ferdig, og da settes E2-S03 til ✅.
 
-**Test:** `tests/test_tilstand.py::test_ingen_lekkasje` (punkter etter `t_H` fjernet eller flyttet, faktisk ankomst endret → identisk rad) og `::test_mangler_posisjon`
+**Test:** `tests/test_tilstand.py::test_ingen_lekkasje` (punkter etter `t_H` lagt til, fjernet eller flyttet, faktisk ankomst endret → byte-identisk utdrag, som i PRD FR9a), `::test_mangler_posisjon`, med flere. Etter genereringen kommer i tillegg `::test_committet_tilstand`.
 
-### E2-S04 — Features og valideringssplitt ☐
+### E2-S04 — Features og valideringssplitt ✅
 **Krav:** FR9a, NFR3 · **Avhenger av:** E2-S03
-- `app/prediksjon/features.py` slår sammen tilstand og historikk. Historikken (for eksempel fartøyets tidligere avvik) kommer bare fra treningsanløp med faktisk ankomst før `t_H`.
+- `app/prediksjon/features.py` bygger F1–F16 fra beslutning 11. Historikken (F15–F16) kommer bare fra treningsanløp med faktisk ankomst før `t_H`, og det gjelder også snittet for Øvrige som F15 trekkes mot.
+- Skipstype, lengde, ETD og avgangshavn ligger bare i den gitignorerte seilasfila, og `data/utdrag/anlop.csv` er låst. `scripts/lag_features.py` skriver derfor F1–F16 til en committet `data/utdrag/features.csv`, uten rå ETD og uten noe eget rått utdrag (Felipe). Alt E2 committer under `data/` skal til sammen være under 10 MB (NFR1).
+- Kode og tester committes før featurefila. Fila genereres og committes for seg når tilstandsutdraget fra E2-S03 finnes. Samtidig kjøres sjekken av lange avstander ved kuttet (25/45 kn) og etikettsjekken: soneinngang mer enn 24 t før ETA, fordelt på skipstype (beslutning 03).
 - Valideringsdelen er de siste 20 % av treningsdataene, kronologisk, og testperioden røres ikke.
 
-**Test:** `tests/test_features.py::test_historikk_uten_lekkasje`, `::test_valideringssplitt_kronologisk`
+**Test:** `tests/test_features.py::test_historikk_uten_lekkasje`, `::test_valideringssplitt_kronologisk`, `::test_fartoyhistorikk_bare_fra_trening` (endres alle avvik i testperioden og radens eget, er F15, F16 og snittet det trekkes mot, identiske. Legges testrader til, fjernes de eller flyttes de, er F16 identisk. Endres én treningsrad, endres bare rader med `t_H` etter den radens ankomst), `::test_slakk_ved_lav_fart` (F7 ved fart 0, 0,3, 1,0 og 12 kn og manglende fart), `::test_ugyldig_fart_og_nan` (102,3 kn og NaN) og `::test_kurs_ugyldig` (kurs 360, manglende kurs, fart < 1 kn og distanse 0 gir tom F3) og `::test_valideringshistorikk_frosset_ved_grensen`
 
 ### E2-S05 — Tren 6 t- og 24 t-modell ☐
 **Krav:** FR9, A7 · **Avhenger av:** E2-S04
-- `scripts/tren.py` trener én modell per horisont med fast seed. Modellvalget gjøres på valideringsdelen.
-- Resultatet lagres i `data/modell/modell_6t.joblib` og `modell_24t.joblib`, og scikit-learn legges i `requirements.txt`.
+- `scripts/tren.py` trener én modell per horisont med fast seed, bare på Øvrige. Modellvalget gjøres på valideringsdelen.
+- I tillegg trenes en ablasjon per horisont uten F13–F14 (beslutning 11).
+- Modellvalget på valideringsdelen bruker `fartoy_*_modellvalg`, der historikken er frosset ved grensen. Den endelige treningen bruker `fartoy_*`, med historikk fra trening og validering samlet.
+- Resultatet lagres i `data/modell/modell_6t.joblib` og `modell_24t.joblib`, med ablasjonene ved siden av. scikit-learn legges i `requirements.txt`.
 
-**Test:** `tests/test_tren.py`. Kjøring på fixturen gir samme prediksjon to ganger.
+**Test:** `tests/test_tren.py`. Kjøring på fixturen gir samme prediksjon to ganger, ingen Passasjer-rader er med i treningen, og ablasjonen har ikke F13–F14.
 
 ### E2-S06 — Evalueringsskript ☐
 **Krav:** FR10, NFR3, A6 · **Avhenger av:** E2-S05
@@ -282,15 +289,18 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
   - presisjon, recall og F1 på varsel, mot «varsle alle»
   - MAE og median
   - dekning av tilstand
-  - antall `allerede_ankommet`
+  - antall rader i ankomstsonen ved `t_H`, regnet med F6 (posisjon ved kuttet)
+  - alt over også for ablasjonen uten F13–F14, og både med og uten rader i ankomstsonen ved `t_H`
+  - én definisjon i hele rapporten: «allerede i ankomstsonen» er F6, aldri et flagg regnet fra faktisk ankomst. Flagget regnes i evalueringen fra tilstandsutdraget, ikke fra `anlop.csv`.
+  - Passasjer bare som baseline
 - Skriptet teller kjøringer mot testperioden (`--test`) og lagrer antallet.
 
-**Test:** `tests/test_evaluer.py`. Baselinetallene er lik dataregresjonen fra E1-S05.
+**Test:** `tests/test_evaluer.py`. Baselinetallene er lik dataregresjonen fra E1-S05. `metrikker.json` har nøklene for ablasjonen og for uten F6, og Passasjer har bare baseline.
 
 ### E2-S07 — ModellPrediktor ☐
 **Krav:** FR9, A5 · **Avhenger av:** E2-S06
-- Implementerer kontrakten, med `kan_varsle = True`. Horisonten velges fra `rapportert ETA − nå` (PRD FR2).
-- Varselet er `predikert − kalibrert baseline > 120 min`. Uten tilstand brukes baselinen, merket.
+- Implementerer kontrakten, med `kan_varsle = True`. Delegerte rader får `forventet_forsinket = None`. F1–F16 når prediktoren via `lag_input` eller en søsterfunksjon, aldri ved fillesing i prediktormodulen. Krever det nye felt i `PrediksjonsInput`, tas kontraktendringen i egen PR som Thomas og Felipe godkjenner. Horisonten velges fra `rapportert ETA − nå` (PRD FR2).
+- Varselet er `predikert − kalibrert baseline > 120 min`. Passasjer-rader og rader uten tilstand delegeres til baselinen og merkes med metoden i `forklaring` (beslutning 11).
 
 **Test:** legges til i `PREDIKTORER` i `tests/test_prediktor_kontrakt.py` og må bestå alle kontrakt- og lekkasjetestene der. `::test_kutt_ikke_etter_naa` (`t_H ≤ nå` for alle rader i en avspilling) ble flyttet til E1-S04 og gjelder allerede.
 
@@ -314,7 +324,8 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
   - modell og baseline på testperioden per horisont
   - antall testkjøringer
   - dekning ved kutt
-  - begrensningene: vintervridd test, AIS-hull og A1
+  - ablasjonen uten F13–F14 og tallene med og uten rader i ankomstsonen
+  - begrensningene: vintervridd test, AIS-hull, A1 (rapportert ETA ved `t_H`) og avgangshavn/ETD
   - om målene ble nådd
 - Et negativt resultat rapporteres. README nevner modellen.
 
@@ -343,7 +354,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 **Krav:** FR11, A8 · **Avhenger av:** E3-S02
 - `anthropic_klient.py` leser `ANTHROPIC_API_KEY` og `LLM_MODELL`, og prompten ligger i `app/begrunnelse/prompt.md`.
 - Ved tidsavbrudd eller feil faller den tilbake til testmodus med merket fra UX §5.
-- Den første ekte prompten og et svar logges i `docs/prompts/`.
+- Den første ekte prompten og et svar logges i sesjonsloggen (`.logs/<bruker>/`).
 
 **Test:** `tests/test_begrunnelse.py::test_ekte_med_mock`, `::test_fallback_ved_feil`
 
@@ -428,3 +439,6 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-10-27** — E1-S05: naiv ETA for Øvrige er 12,8 % (127/996), ikke 12,9 %. Pipelinen avrundet avviket til 0,1 min før ±30-sammenligningen, så seilas 3542899 (+30 min 1 s) ble telt som treff. `NaivPrediktor` er lagt til som referanseprediktor i kontrakttesten.
 - **2026-10-27** — E1-S06: hovedskjermen viser standardvinduet (15 anløp) med UU-minimum og kort under 640 px. Testene er `test_ruter.py`, `test_visning.py`, `test_uu_struktur.py` og `test_kontrast.py`. Skjermbilder ligger i `docs/ux/skjermbilder/` og lages med `scripts/ta_skjermbilder.py` utenfor `pytest`. Avvikene fra skissene står i UX-endringsloggen.
 - **2026-11-03** — E1-S16 er ferdig. Klone-testen tok ca. 4 min (Felipe), og UU-sjekklista i UX §6 er fylt ut (Thomas). E1-S18 (hopp-lenken dekker overskriften) og E1-S19 (norsk navn for «Auxiliary») er lagt til som KAN etter funn i UU-sjekken.
+- **2026-11-03** — E2-S01, beslutning 11: én modell for Øvrige, trent per horisont, og Passasjer beholder baselinen. Featurelista F1–F16 er lagt inn i E2-S04 med to nye tester, ablasjonen i E2-S05 og E2-S06, og rapportering med og uten F6 i E2-S06 og E2-S10. E2-S07 delegerer Passasjer til baselinen.
+- **2026-11-03** — E2-S03: tilstandsutdraget får `ais_status` og metadata i `tilstand_ved_kutt.json`, og `allerede_ankommet` er tatt ut. E2-S06 bruker F6 som eneste definisjon av «allerede i ankomstsonen» (Felipe).
+- **2026-11-03** — E2-S04: `features.csv` erstatter det rå statiske utdraget, og rå ETD committes ikke. Sjekken av lange avstander og etikettsjekken kjøres etter hentingen (Felipe).

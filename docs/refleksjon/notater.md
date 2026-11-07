@@ -115,3 +115,43 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
   - Samme mønster som tidsstempeltesten 22.10: et resultat som ser riktig ut, er ikke et bevis før man har sjekket hva som faktisk kjørte.
   - En klone-test må starte i en mappe som garantert ikke finnes fra før, ellers kan et feilet første steg skjules av en gammel kopi.
   - Les hele utskriften, ikke bare siste linje.
+
+## 2026-11-03 — Røyktesten mot ekte data fant søppelposisjoner som alle fixture-testene hadde godkjent (E2-S03)
+
+- **Hva:** `scripts/lag_tilstand.py` hadde 14 grønne tester og en mutasjonssjekk der alle mutasjonene ble fanget. Tre uavhengige reviewere hadde gått gjennom koden. Likevel ville utdraget ha fått rader med status `ok` og «siste posisjon» 7 000–17 000 km fra Bergen, 6 timer før ankomst. Alle seilasene det gjaldt, hadde MMSI 0, og API-et svarer da med posisjoner fra alle fartøy i verden som sender 0. 63 seilaser i datasettet har MMSI 0.
+- **Hvordan det ble oppdaget:** Claude kjørte scriptet mot den delvise AIS-cachen. Cachen ble bare lest, og resultatet ble skrevet til scratchpad. Formålet var å sjekke kolonnerekkefølgen mot ekte API-punkter, etter at en reviewer hadde påpekt at testene og koden delte samme antakelse om kolonnene. Maksdistansen på 15 000 km falt ut i oppsummeringen, og alle de rare radene hadde MMSI 0.
+- **Resultat:** Felipe bestemte at en posisjon er gyldig bare hvis MMSI-en i punktet er lik seilasens MMSI og har 9 sifre. Regelen har en egen test og er mutasjonssjekket. Etter endringen er maksdistansen 645 km ved 24 t. Funnet står i beslutning 07: 63 av de 935 tomme seilasene, og hva det ikke forklarer. Se `git log --oneline --grep E2-S03`.
+- **Lærdom (råt):**
+  - Fixtures tester det vi tenkte på. Ekte data inneholder det vi ikke tenkte på.
+  - Alle testene og mutasjonene var grønne fordi ingen fixture hadde et punkt som tilhørte et annet fartøy.
+  - En mutasjonssjekk viser at testene fanger feil i koden, ikke at koden dekker dataene.
+  - Kjør på ekte data før commit, og se på ytterpunktene (min og maks), ikke bare medianen.
+
+
+## 2026-11-05 — Stoppregelen tolket et permanent datahull som et API-brudd, og hentingen sto stille i nesten to døgn (E2-S02)
+
+- **Hva:** Fullkjøringen av `pipeline/fetch_ais_kutt.py` stoppet 03.11 kl. 19:42 etter 2 185 av 7 826 seilaser. Utskriften sa «API-et er trolig nede». Det var feil. De ti siste feilene var alle `42P01: relation "ais202407.ais_20240730" does not exist`: dagstabellen for 30.07.2024 mangler hos Kystdatahuset. Seilasene hentes i tidsrekkefølge, så ti seilaser på rad hadde vinduer over den samme dagen, og stoppregelen («10 feil på rad») slo til. Scriptet ble skrevet med Claude i E2-S02 (`85021b9`). Der var 42P01 allerede sett i piloten og merket som varig, så det ikke ble prøvd på nytt, men det talte likevel mot stoppregelen. I tillegg ga hver slik feil opp hele seilasen, selv om bare én av fire dager i vinduet manglet.
+- **Hvordan det ble oppdaget:** Felipe leste kjøreloggen 05.11, nesten to døgn senere. I mellomtiden hadde ingen sett at hentingen sto stille.
+- **Resultat:** `0a85cd4`. 42P01 teller ikke lenger mot stoppregelen. Vinduet deles rundt den manglende dagen, og resten hentes. Prøvekall 05.11 viste at API-et velger dagstabeller etter datoen i forespørselen, og delvinduene forlenges til minst 25 t på grunn av midnattskuttet (funn B). De manglende dagene lagres i cachen og telles i `ais_kutt_dekning.csv`. Alle de 11 seilasene som hadde feilet med 42P01, er hentet på nytt uten feil (9 `ok`, 2 `tom`), og fullkjøringen ble startet igjen 05.11 kl. 14:17.
+- **Lærdom (råt):**
+  - Sjekk loggen til en lang kjøring samme kveld eller neste morgen. En stoppet jobb er stille.
+  - En stoppregel må skille mellom «API-et svarer ikke» og «API-et svarer at dataene ikke finnes». Det siste er et permanent datahull, ikke et brudd.
+  - Feilen var kjent fra piloten, men ble bare håndtert ett sted (ikke nytt forsøk) og ikke tenkt gjennom for stoppregelen. Et kjent spesialtilfelle må følges gjennom alle steder det påvirker.
+  - Meldingen «API-et er trolig nede» var en påstand scriptet ikke hadde grunnlag for, og den kunne fått oss til å vente i stedet for å se etter.
+
+## 2026-11-06 — To tester var lovet i specene, men fantes ikke (E2-S03, E2-S04)
+
+- **Hva:** E2-S03-specen lovet `test_committet_tilstand`, og E2-S04-specen lovet `test_committet_features`. Begge sto som oppgaver «etter hentingen», og E2-S03 sto til og med som `status: 'done'`. Ingen av testene fantes. Hadde utdragene blitt committet uten dem, ville ingenting ha låst radantall, sha256 eller grensen på 10 MB. Det er andre gang mønsteret oppstår: tidsstempeltesten 22.10 var «spesifisert, men aldri implementert» på samme måte.
+- **Hvordan det ble oppdaget:** etter `lag_tilstand.py` søkte Claude etter `def test_committet` i `tests/` og fikk ingen treff. Deretter leste Claude oppgavene i specene, der testene sto beskrevet.
+- **Resultat:** begge testene ble skrevet og committet sammen med utdragene: `910028c` og `47a2c02`.
+- **Lærdom (råt):**
+  - At en test står i specen, er ikke det samme som at den finnes. Sjekk at en lovet test finnes med `pytest --collect-only` eller grep i `tests/`, ikke ved å lese specen.
+  - En spec kan stå som `done` med åpne oppgaver. Sjekk avkrysningene, ikke statusfeltet.
+  - Lærdommen fra 22.10 ble ikke overført av seg selv. Den må inn som et fast steg når en story settes til ✅.
+
+## 2026-11-06 — Review-funnet hadde feil forventet antall kall (E2-S02)
+
+- **Hva:** I review av `0a85cd4` (05.11) sto det at en test der samme dag alltid kommer igjen, skulle gi «exactly 3 calls». Det riktige er 2: hele vinduet, og så første delvindu, som gir samme dag igjen, og da gir koden opp. Claude skrev i tillegg selv feil forventning, 3 kall, i `test_maks_delinger`. Det riktige var 5, fordi delvinduene til venstre lykkes mellom delingene.
+- **Hvordan det ble oppdaget:** testene feilet mot koden, og kallene ble talt opp for hånd.
+- **Resultat:** `8694a48`. Begge forventningene er rettet, med en kommentar som viser kallene. Avviket fra review-funnet er ført i E2-S02-specen.
+- **Lærdom (råt):** Et tall i et review-funn er en påstand, ikke en fasit. Samme mønster som «Feil forventning i en review-rettelse» 22.10. Spor kallene for hånd før forventningen skrives inn.
