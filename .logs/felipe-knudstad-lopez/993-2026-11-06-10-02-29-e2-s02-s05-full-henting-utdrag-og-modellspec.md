@@ -151,3 +151,36 @@ Han godkjente og ba om at arbeidet fortsatte. Under reviewen svarte han på to n
 ### Åpne punkter
 - Før testkjøringen i E2-S10 prøvekjøres `--test` på en kopi av `metrikker.json`, så det er sikkert at tallene havner under `test` og at kjøringen telles.
 - Gruppa godkjenner den nye suksessformuleringen i briefen og PRD (modellutvalget avgjør, og varselstreken er lavere) i E2-PR-en.
+
+## 2026-11-09 kl. 17:25 — Felipe Knudstad-Lopez
+
+### Oppgave
+Felipe ba om fire ting:
+- pushe alt
+- skrive tydelig i briefen, resultatnotatet, README og på skjermen at varselet bare kan nå under halvparten av de forsinkede anløpene
+- føre i loggen at baselinetallene på testperioden ble regnet etter at vi sa stopp
+- sette forfattervariablene for git i miljøet og skrive forfatterregelen inn i instruksen til hver subagent
+
+Deretter skulle E2-S07 startes med full BMAD-flyt og stoppe ved godkjenning av specen.
+
+### Plan
+- Teksten føres inn der varselet beskrives. Resultatnotatet finnes ikke ennå, så kravet legges i E2-S10 i `docs/epics.md`.
+- E2-S07: steg 1–2 i BMAD-build. Spec: `_bmad-output/implementation-artifacts/spec-e2-s07-modellprediktor.md` (draft).
+
+### Resultat
+- **Pushet** til og med `ea6d23b`. Alle 8 nye commits har Felipe som forfatter.
+- **`ea6d23b`:** teksten om at varselet når under halvparten står nå flere steder:
+  - Briefen (EN og NO), under tabellen: av 194 forsinkede Øvrige-anløp ligger bare 57 (6 t) og 78 (24 t) i modellutvalget. Systemet kan dermed varsle om under halvparten av de forsinkede anløpene, uansett modellens kvalitet. Resten er turer inne i sonen (F6: 107 og 92) eller anløp uten AIS (30 og 24).
+  - README og forsiden, der varselet forklares. Testen i `tests/test_ruter.py` er utvidet.
+  - E2-S08 og E2-S10 i `docs/epics.md` skal si det samme der varselet forklares.
+  - Skjermbildet `docs/ux/skjermbilder/hovedskjerm-desktop.png` er ikke laget på nytt. Det viser den gamle teksten, og PR #6 endrer det samme bildet.
+- **Baselinetallene på testperioden ble regnet etter at vi sa stopp.** Testkjøringen ble lagt til E2-S10 (beslutning 2 i E2-S06). Etter det regnet `scripts/evaluer.py --bare-baseline` baselinen på testperioden: 433/733 og 418/742 på modellutvalget, modellandelen, grunnratene og fordelingen av de 194 forsinkede anløpene. Tallene inneholder ingen modellvalg, og ingen modell ble kjørt. **Ingenting i E2-S07 til E2-S09 skal endres på grunnlag av dem** (Felipe). Det står også som en grense i E2-S07-specen.
+- **Forfatter:**
+  - `GIT_AUTHOR_NAME` og `GIT_AUTHOR_EMAIL` er satt til Felipe i `.claude/settings.local.json`. Fila er gitignorert og ligger lokalt på Theodors maskin.
+  - Variablene virker først fra neste oppstart av Claude Code, ikke i denne økta. Inntil da brukes `--author` på hver commit.
+  - Instruksen til hver subagent skal si at commits har Felipe som forfatter.
+- **E2-S07:** specen er skrevet med `status: draft`, med ett åpent spørsmål: hvordan F1–F16 når prediktoren (søsterfunksjon i grensen, eller nytt felt i `PrediksjonsInput` med egen PR). Den er omtrent 2 400 tokens.
+
+### Åpne punkter
+- Fjern `env`-blokken i `.claude/settings.local.json` når Felipe ikke lenger styrer. Ellers får Theodors egne commits Felipe som forfatter.
+- Skjermbildet av hovedskjermen må lages på nytt etter PR #6, med den nye varselteksten.
