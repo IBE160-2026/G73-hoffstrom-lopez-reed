@@ -17,3 +17,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-e2-s02-ais-henting-ved-kuttpunkt.md`
   summary: Record the sub-windows, the number of calls and the missing days in `ais_kutt_logg.csv`.
   evidence: The call log shows only the original window and status `ok` for split voyages. The missing days are in the cache (`manglende_dager`) and in `ais_kutt_dekning.csv`. Changing the columns would break a log CSV that is already half-written by the running fetch.
+- source_spec: `_bmad-output/implementation-artifacts/spec-e2-s06-evalueringsskript.md`
+  summary: The `--test` path of `scripts/evaluer.py` (argument mapping and model arm on the test split) is never exercised by a test.
+  evidence: Medium if true, unverified. Settle with a dry run on a copy of `metrikker.json` before the single test run in E2-S10, or a pytest on the synthetic fixture if the group allows it.
