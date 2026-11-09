@@ -98,6 +98,7 @@ def test_prediktor_stripa(dokument):
     tekst = _ren(stripe.tekst())
     assert "Kalibrert baseline" in tekst
     assert "Baselinen kan ikke varsle avvik. Varselkolonnen fylles når modellen kommer." in tekst
+    assert "I testperioden var det under halvparten av de forsinkede anløpene." in tekst
     assert "rapportert ETA justert med median liggetid" in tekst
 
 

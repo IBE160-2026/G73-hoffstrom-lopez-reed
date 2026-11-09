@@ -78,6 +78,7 @@ flask --app app run --port 8000
 - Overskriften sier «15 anløp · ons 08.10 08:00 – tor 09.10 08:00 (norsk tid)».
 - Lista starter med ROTTERDAM og slutter med MSC POESIA. Den er sortert etter predikert ankomst. BERGEN ENERGY har rapportert ETA ons 11:00 og predikert ankomst ons 09:56.
 - Prediktor-stripa viser «Kalibrert baseline». Varselkolonnen viser «–», fordi baselinen ikke kan varsle avvik. Det står forklart på siden.
+- Også når modellen kommer, kan varselet bare nå under halvparten av de forsinkede anløpene, uansett hvor god modellen er. Av 194 forsinkede ikke-rutegående anløp i testperioden ligger bare 57 (6 t) og 78 (24 t) i utvalget modellen brukes på. Resten er turer inne i ankomstsonen ved kuttet eller anløp uten AIS-posisjon, og de får baselinen (beslutning 12, `docs/brief.md`).
 - Under 640 px bredde vises anløpene som kort i stedet for tabell.
 
 ![Hovedskjermen i standardvinduet, 1280 px](docs/ux/skjermbilder/hovedskjerm-desktop.png)
