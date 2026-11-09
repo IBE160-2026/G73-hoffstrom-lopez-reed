@@ -2,7 +2,7 @@
 title: "Product Brief: AIS-basert ankomstprediksjon (working title)"
 status: draft
 created: 2026-09-17
-updated: 2026-10-16
+updated: 2026-11-09
 ---
 
 # Product Brief: AIS-basert ankomstprediksjon (working title)
@@ -50,7 +50,16 @@ Honestly: there is no technical moat here. The advantage is being first to point
 
 **Scoped to non-scheduled traffic alone.** The headline result is reported on non-scheduled (ikke-rutegående) traffic only, with scheduled/liner traffic (Passasjer) kept as a control group, not pooled into the main number. Reason, confirmed on the full dataset: the calibrated baseline already puts scheduled traffic at 79.6% within ±30 minutes, up from a naive 7.4% — that traffic is close to solved by a constant offset alone. Training and reporting against the pooled dataset would let a model largely learn to recognize which voyages are ferries rather than learn to predict genuine arrival uncertainty, and the headline number would be inflated by the easy half of the fleet. Non-scheduled traffic is where the real problem — and the product's value — actually lives.
 
-**The number to beat:** on non-scheduled traffic, the calibrated reported-ETA baseline reaches **46.6% within ±30 minutes** (up from a naive 12.8%), and **19.5% of arrivals still arrive more than 2 hours later than it** even after calibration (signed delay — exactly what the `er_forsinket` flag measures) — calibration corrects the typical case, not the disruptive tail (MAE for this group barely moves, 155→136 minutes). The model's target is to beat both numbers: a higher ±30-minute share, and a materially better precision/recall on flagging that 19.5% delay tail than the baseline can offer (the baseline cannot flag anything by construction). If the model does not clear one or both bars, that is reported as a result, not omitted — an honest negative finding is more useful here than a quiet redefinition of success after the fact.
+**The number to beat:** on all non-scheduled traffic, the calibrated reported-ETA baseline reaches **46.6% within ±30 minutes** (up from a naive 12.8%), and **19.5% of arrivals still arrive more than 2 hours later than it** even after calibration (signed delay — exactly what the `er_forsinket` flag measures) — calibration corrects the typical case, not the disruptive tail (MAE for this group barely moves, 155→136 minutes). Since decision 12 the model is used only on non-scheduled voyages that have an AIS position at the cut and are outside the arrival zone (the **model subset**); every other voyage is delegated to the baseline. Model and baseline are therefore always compared on the same voyages, and **pass/fail is decided on the model subset**. 46.6% stays as the baseline for all non-scheduled traffic; **the number the model must beat is the calibrated baseline on the model subset: 59.1% within ±30 minutes at 6 h and 56.3% at 24 h.** On flagging, the model must reach a higher F1 than the "flag everyone" rule on the same voyages (the baseline cannot flag anything by construction). If the model does not clear one or both bars, that is reported as a result, not omitted — an honest negative finding is more useful here than a quiet redefinition of success after the fact.
+
+Both rows are reported side by side, per horizon (6 h / 24 h), on the test period:
+
+| Row | Test voyages with ground truth | Model share of non-scheduled voyages | Baseline, ±30 min | Model, ±30 min |
+|---|---|---|---|---|
+| **Model subset** (pass/fail) | 733 / 742 | 73.6% / 74.5% | 59.1% (433/733) / 56.3% (418/742) | filled in E2-S10 |
+| **All non-scheduled traffic, with delegation** | 996 / 996 | 73.6% / 74.5% | 46.6% (464/996) / 46.6% (464/996) | filled in E2-S10 |
+
+The model share is the share of non-scheduled test voyages with ground truth that the model is actually used on; the rest get the baseline in the model column too. The baseline cells come from a baseline-only run (`scripts/evaluer.py --bare-baseline`, `data/modell/metrikker.json`), which does not use the model.
 
 The reported-ETA baseline itself is scored the same way, calibrated per vessel-traffic type (scheduled/liner vs. other) rather than compared naively — see the addendum's method notes on why zone-entry-based ground truth needs this calibration to be comparable to ETA at all. The Hong Kong precedent (52.98% MAE reduction vs. self-reported ETA) remains a useful aspirational reference for what "good" looks like with this method, not a number to adopt directly.
 
@@ -108,3 +117,7 @@ In three years, Norwegian ports plan quay use against a shared, data-driven arri
 - Course: IBE160 Programmering med KI, Høgskolen i Molde, group G73 (Theodor Gimming Hoffstrøm, Felipe Knudstad-Lopez, Thomas Kvile-Reed).
 - Self-defined project — not one of the 8 course-suggested proposals.
 - Technical/implementation depth (AIS data-quality contingency plan, security design detail, roadmap detail) lives in `addendum.md`.
+
+## Changelog
+
+- **2026-11-09** — E2-S06, decision 12: the success criterion compares model and baseline on the same voyages, pass/fail is decided on the model subset, and the table above was added. Old wording: "The model's target is to beat both numbers: a higher ±30-minute share, and a materially better precision/recall on flagging that 19.5% delay tail than the baseline can offer (the baseline cannot flag anything by construction)", with 46.6% as the number to beat.

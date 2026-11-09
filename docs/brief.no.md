@@ -2,7 +2,7 @@
 title: "Produktbrief: AIS-basert ankomstprediksjon (arbeidstittel)"
 status: draft
 created: 2026-09-17
-updated: 2026-10-16
+updated: 2026-11-09
 ---
 
 # Produktbrief: AIS-basert ankomstprediksjon (arbeidstittel)
@@ -50,7 +50,16 @@ Den nærmeste nordiske akademiske presedensen, en NTNU-masteroppgave om AIS-base
 
 **Avgrenset til ikke-rutegående trafikk alene.** Hovedresultatet rapporteres kun på ikke-rutegående trafikk, med rutegående trafikk (Passasjer) beholdt som kontrollgruppe, ikke slått sammen med hovedtallet. Begrunnelse, bekreftet på hele datasettet: den kalibrerte baselinen plasserer allerede rutegående trafikk på 79,6 % innenfor ±30 minutter, opp fra en naiv 7,4 % — den trafikken er nær løst av en konstant forskyvning alene. Å trene og rapportere mot det samlede datasettet ville latt en modell i stor grad lære å gjenkjenne hvilke anløp som er ferger fremfor å lære reell ankomstusikkerhet, og hovedtallet ville blitt kunstig høyt av den enkle halvparten av flåten. Ikke-rutegående trafikk er der det reelle problemet — og produktets verdi — faktisk ligger.
 
-**Tallet som skal slås:** på ikke-rutegående trafikk når den kalibrerte rapportert-ETA-baselinen **46,6 % innenfor ±30 minutter** (opp fra en naiv 12,8 %), og **19,5 % av anløpene kommer fortsatt mer enn 2 timer senere enn den** selv etter kalibrering (signert forsinkelse — nøyaktig det `er_forsinket`-flagget måler) — kalibrering retter opp det typiske tilfellet, ikke den forstyrrende halen (MAE for denne gruppen beveger seg knapt, 155→136 minutter). Modellens mål er å slå begge tallene: en høyere ±30-minutters-andel, og en vesentlig bedre presisjon/recall på å flagge den 19,5 %-forsinkelseshalen enn baselinen kan tilby (baselinen kan per konstruksjon ikke flagge noe). Hvis modellen ikke klarer én eller begge barrierene, rapporteres det som et resultat, ikke utelates — et ærlig negativt funn er mer nyttig her enn en stille omdefinering av suksess i etterkant.
+**Tallet som skal slås:** på all ikke-rutegående trafikk når den kalibrerte rapportert-ETA-baselinen **46,6 % innenfor ±30 minutter** (opp fra en naiv 12,8 %), og **19,5 % av anløpene kommer fortsatt mer enn 2 timer senere enn den** selv etter kalibrering (signert forsinkelse — nøyaktig det `er_forsinket`-flagget måler) — kalibrering retter opp det typiske tilfellet, ikke den forstyrrende halen (MAE for denne gruppen beveger seg knapt, 155→136 minutter). Etter beslutning 12 brukes modellen bare på ikke-rutegående anløp som har AIS-posisjon ved kuttet og er utenfor ankomstsonen (**modellutvalget**). Alle andre anløp delegeres til baselinen. Modell og baseline sammenlignes derfor alltid på de samme anløpene, og **bestått/ikke bestått avgjøres på modellutvalget**. 46,6 % står som baselinen for all ikke-rutegående trafikk. **Tallet modellen skal slå, er den kalibrerte baselinen på modellutvalget: 59,1 % innenfor ±30 minutter ved 6 t og 56,3 % ved 24 t.** På varsel skal modellen ha høyere F1 enn regelen «varsle alle» på de samme anløpene (baselinen kan per konstruksjon ikke flagge noe). Hvis modellen ikke klarer én eller begge barrierene, rapporteres det som et resultat, ikke utelates — et ærlig negativt funn er mer nyttig her enn en stille omdefinering av suksess i etterkant.
+
+Begge radene rapporteres side om side, per horisont (6 t / 24 t), på testperioden:
+
+| Rad | Testanløp med fasit | Modellandel av ikke-rutegående anløp | Baseline, ±30 min | Modell, ±30 min |
+|---|---|---|---|---|
+| **Modellutvalget** (bestått/ikke bestått) | 733 / 742 | 73,6 % / 74,5 % | 59,1 % (433/733) / 56,3 % (418/742) | fylles inn i E2-S10 |
+| **All ikke-rutegående trafikk, med delegering** | 996 / 996 | 73,6 % / 74,5 % | 46,6 % (464/996) / 46,6 % (464/996) | fylles inn i E2-S10 |
+
+Modellandelen er andelen av ikke-rutegående testanløp med fasit som modellen faktisk brukes på. Resten får baselinen også i modellkolonnen. Baselinecellene kommer fra en kjøring med bare baseline (`scripts/evaluer.py --bare-baseline`, `data/modell/metrikker.json`), som ikke bruker modellen.
 
 Rapportert-ETA-baselinen selv skåres på samme måte, kalibrert per fartøystrafikktype (rutegående/annen) fremfor sammenlignet naivt — se tilleggets metodenotater om hvorfor soneinngang-basert fasit trenger denne kalibreringen for i det hele tatt å være sammenlignbar med ETA. Hong Kong-presedensen (52,98 % MAE-reduksjon mot selvrapportert ETA) forblir et nyttig ambisjonsreferansepunkt for hva "bra" ser ut som med denne metoden, ikke et tall å adoptere direkte.
 
@@ -108,3 +117,7 @@ Om tre år planlegger norske havner kaibruk mot et felles, datadrevet ankomstans
 - Kurs: IBE160 Programmering med KI, Høgskolen i Molde, gruppe G73 (Theodor Gimming Hoffstrøm, Felipe Knudstad-Lopez, Thomas Kvile-Reed).
 - Selvdefinert prosjekt — ikke ett av de 8 kursforslagene.
 - Teknisk/implementasjonsdybde (AIS-datakvalitets-reserveplan, sikkerhetsdesign-detaljer, veikart-detaljer) ligger i `addendum.md`.
+
+## Endringslogg
+
+- **2026-11-09** — E2-S06, beslutning 12: suksesskriteriet sammenligner modell og baseline på de samme anløpene, bestått/ikke bestått avgjøres på modellutvalget, og tabellen over er lagt til. Gammel ordlyd: «Modellens mål er å slå begge tallene: en høyere ±30-minutters-andel, og en vesentlig bedre presisjon/recall på å flagge den 19,5 %-forsinkelseshalen enn baselinen kan tilby (baselinen kan per konstruksjon ikke flagge noe)», med 46,6 % som tallet som skulle slås.

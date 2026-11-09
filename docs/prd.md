@@ -2,7 +2,7 @@
 title: "PRD: AIS-basert ankomstprediksjon"
 status: aktiv
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-11-09
 bygger_på: docs/brief.md
 validert: _bmad-output/planning-artifacts/prds/prd-G73-hoffstrom-lopez-reed-2026-10-16/validation-report.md
 ---
@@ -98,11 +98,12 @@ ID-ene brukes i stories (`docs/epics.md`) og i tester.
   - Hvilken horisont som brukes for en rad, bestemmes av bøtta i FR2.
   - Varsel = `predikert ankomst − kalibrert baseline > 120 min`, altså samme terskel og retning som fasitetiketten. `[ASSUMPTION]`
 - **FR10 — Modell mot baseline.** Panelet og `metrikker.json` viser modell og kalibrert baseline side om side, **per horisont og per gruppe**, på nøyaktig samme anløp. Det betyr at tallet for «ingen AIS-tilstand» regnes med som baseline-prediksjoner, og at et tall bare for rader med tilstand rapporteres i tillegg.
-  - **±30 min:** modellen lykkes hvis den har høyere andel innenfor ±30 min enn baselinen på Øvrige, separat for hver horisont.
-  - **Varsel:** grunnraten er **19,5 %** forsinket blant Øvrige i testperioden (signert, n = 996 med fasit). Briefen, statusnotatet og addendumet bruker det samme tallet (rettet 22.10.2026). Baselinen kan ikke varsle, så referansen er regelen «varsle alle»: presisjon 19,5 %, recall 100 %, F1 ≈ 0,33. Modellen lykkes på varsel hvis F1 er høyere enn referansen (bekreftet i beslutning 11).
+  - **Bestått/ikke bestått avgjøres på modellutvalget** (beslutning 12, E2-S06): Øvrige-anløp med AIS-tilstand ved kuttet og F6 = 0, der modellen faktisk brukes. Modell og baseline sammenlignes alltid på nøyaktig de samme radene. Tallene for all Øvrige-trafikk med delegering (rader utenfor modellutvalget får baselinen også i modellarmen) står i samme tabell, ikke som kontekst eller fotnote, sammen med modellandelen av Øvrige-anløpene.
+  - **±30 min:** modellen lykkes hvis den har høyere andel innenfor ±30 min enn baselinen på modellutvalget, separat for hver horisont. Baselinen på modellutvalget i testperioden er **59,1 %** (433/733) ved 6 t og **56,3 %** (418/742) ved 24 t. Det er tallet modellen skal slå. **46,6 %** (464/996) står som baselinen for all Øvrige-trafikk.
+  - **Varsel:** grunnraten er **19,5 %** forsinket blant all Øvrige-trafikk i testperioden (signert, n = 996 med fasit). Briefen, statusnotatet og addendumet bruker det samme tallet (rettet 22.10.2026). Baselinen kan ikke varsle, så referansen er regelen «varsle alle» på de samme radene. For all Øvrige-trafikk er den presisjon 19,5 %, recall 100 %, F1 ≈ 0,33. På modellutvalget er grunnraten 7,8 % (57/733) ved 6 t og 10,5 % (78/742) ved 24 t, som gir F1 ≈ 0,14 og 0,19. Modellen lykkes på varsel hvis F1 er høyere enn referansen på modellutvalget (bekreftet i beslutning 11).
   - **Passasjer** rapporteres bare som baseline, fordi det ikke finnes noen modell for gruppen.
   - **Ablasjon:** modellen trenes også uten avgangshavn og ETD (F13–F14), og begge resultatene rapporteres. Det viser hvor mye modellen hviler på felt vi ikke kan verifisere.
-  - **Rader i ankomstsonen ved `t_H`** (F6, samme definisjon som i FR9a) gir modellen en fordel baselinen ikke har. Alle tall for modell mot baseline rapporteres både med og uten disse radene.
+  - **Rader i ankomstsonen ved `t_H`** (F6, samme definisjon som i FR9a) går til baselinen (beslutning 12). Antallet rapporteres, og de er med i tallene for all Øvrige-trafikk, med baselinen i begge armene.
   - Presisjon, recall og F1 vises alltid sammen, og et tap vises like tydelig som en seier.
 
 ### Generativt AI-lag (E3)
@@ -204,3 +205,4 @@ A1 og A2 ble avgjort i beslutning 11 (03.11.2026). A1 er nå en kjent begrensnin
 - **2026-11-03** — NFR4: PR-beskrivelsen lenker til sesjonsloggene i `.logs/<bruker>/`, ikke til `docs/prompts/`. Det har vært praksis siden 27.10 (E0-S16), og logg føres bare ett sted.
 - **2026-11-03** — E2-S03: «allerede i ankomstsonen ved `t_H`» har én definisjon i FR9a og FR10, nemlig F6 (posisjon ved kuttet, beslutning 11), og ikke et flagg regnet fra faktisk ankomst. Tilstandsutdraget har ikke lenger `allerede_ankommet`.
 - **2026-11-09** — E2-S05, beslutning 12: modellen brukes bare for anløp utenfor ankomstsonen ved kuttet. F6-rader går til baselinen (FR9), fordi etiketten ikke måler en ankomst for trafikk inne i sonen (beslutning 03).
+- **2026-11-09** — E2-S06, beslutning 12: FR10 sammenligner modell og baseline på de samme radene, og bestått/ikke bestått avgjøres på modellutvalget (F6 = 0, med tilstand). Baselinen på modellutvalget (59,1 % ved 6 t, 56,3 % ved 24 t) er tallet modellen skal slå, og 46,6 % står som baselinen for all Øvrige-trafikk. Varselreferansen er «varsle alle» på modellutvalget. Gammel ordlyd: «modellen lykkes hvis den har høyere andel innenfor ±30 min enn baselinen på Øvrige, separat for hver horisont», med referansen presisjon 19,5 %, recall 100 %, F1 ≈ 0,33, og «Alle tall for modell mot baseline rapporteres både med og uten disse radene» om F6.

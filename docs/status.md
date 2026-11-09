@@ -40,7 +40,7 @@ Modellarbeidet starter. To ting bør være avklart i gruppa *før* det:
 1. **Featureliste.** Hva skal modellen faktisk trene på utover historisk avvik (værdata? sesong? skipstype/-lengde? tid på døgnet?). Ikke bestemt ennå.
 2. **Arbeidsdeling.** Det ligger et forslag i [`docs/plan.md`](plan.md) — det er kun et forslag, juster det dere tre imellom.
 
-Målet modellen skal slå står i `docs/brief.md` under Success Criteria: 46,6 % innenfor ±30 min og bedre presisjon/recall på 19,5 %-halen (forsinket over 2 t), målt på ikke-rutegående trafikk.
+Målet modellen skal slå står i `docs/brief.md` under Success Criteria. Modell og baseline sammenlignes på de samme anløpene, og bestått/ikke bestått avgjøres på modellutvalget (ikke-rutegående anløp med AIS-tilstand, utenfor ankomstsonen ved kuttet, beslutning 12): baselinen der er 59,1 % innenfor ±30 min ved 6 t og 56,3 % ved 24 t, og modellen skal også ha høyere F1 på varsel enn «varsle alle» på de samme anløpene. 46,6 % står som baselinen for all ikke-rutegående trafikk. *(Endret 09.11.2026, E2-S06. Før: «46,6 % innenfor ±30 min og bedre presisjon/recall på 19,5 %-halen (forsinket over 2 t), målt på ikke-rutegående trafikk.»)*
 
 ## Kjøre pipelinen fra bunn (hvis cachen mistes)
 
