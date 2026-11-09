@@ -184,3 +184,23 @@ Deretter skulle E2-S07 startes med full BMAD-flyt og stoppe ved godkjenning av s
 ### Åpne punkter
 - Fjern `env`-blokken i `.claude/settings.local.json` når Felipe ikke lenger styrer. Ellers får Theodors egne commits Felipe som forfatter.
 - Skjermbildet av hovedskjermen må lages på nytt etter PR #6, med den nye varselteksten.
+
+## 2026-11-09 kl. 17:27 — Felipe Knudstad-Lopez
+
+### Oppgave
+Felipe svarte 1A på spørsmålet i E2-S07-specen og ville ha en test som viser at `featurer_ved_kutt` bare kan returnere modellens featurekolonner. Forfattervariablene skulle fjernes igjen, og han valgte «Godkjenn og stopp».
+
+### Plan
+- Svaret føres inn i specen som beslutning 1–4, og specen settes til `ready-for-dev`.
+- `.claude/settings.local.json` fjernes. Spec og logg committes med `--author` og pushes.
+
+### Resultat
+- **E2-S07-specen** (`_bmad-output/implementation-artifacts/spec-e2-s07-modellprediktor.md`) er committet med status `ready-for-dev`. Den er ikke implementert. Beslutningene:
+  1. Featurene F1–F16 når prediktoren gjennom `featurer_ved_kutt(inp)` i grensen. Det er ingen kontraktendring og ingen egen PR.
+  2. En test viser at funksjonen bare returnerer modellens featurekolonner, aldri etikett- eller ankomstfelt. Den har også fått en egen rad i matrisen.
+  3. Specen holdes samlet, selv om den er over 1 600 tokens.
+  4. Alle commits skal ha Felipe som forfatter.
+- **`.claude/settings.local.json` er fjernet.** Fila fantes ikke før økta og inneholdt bare de to variablene. Den har aldri vært sporet i git (`git ls-files` finner den ikke, og den står i `.gitignore:52`). Fremover brukes `--author` på hver commit, og forfatterregelen står i instruksen til subagentene. Punktet i `issues.md` er lukket.
+
+### Åpne punkter
+- E2-S07 implementeres i en ny økt fra specen (`ready-for-dev`). Forfatterregelen står i instruksen til subagenten.
