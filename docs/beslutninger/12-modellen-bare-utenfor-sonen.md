@@ -41,6 +41,13 @@ Testperioden er ikke rørt. Modellene er fra modellvalget, trent bare på trenin
 
 Baselinen varsler aldri, så F1 for baselinen er 0. Referansen for varsel er «varsle alle» (FR10).
 
+Tabellen lages med `scripts/sammenlign_f6.py`.
+
+**Vi beholder den nye modellen (c)** (Felipe, 09.11.2026).
+- På de samme radene ga den gamle modellen (b) høyere F1 for varsel: 0,67 mot 0,58 ved 6 t, og 0,67 mot 0,60 ved 24 t. På andel innenfor ±30 min er den også litt bedre (1,5 og 0,6 pp), men det er innenfor standardfeilen på omtrent 2 pp.
+- Vi bytter likevel ikke. Den gamle modellen er trent på rader der etiketten ikke er en ankomst (beslutning 03), og det den har lært derfra, er et mønster i etiketten, ikke i trafikken.
+- Et bytte nå ville også vært et valg tatt i etterkant av resultatene. Beslutningen om utvalget ble tatt før tallene for (c) forelå, og den står.
+
 ## Konsekvens
 
 - **PRD FR9:** prediktoren delegerer også F6-rader til baselinen.
