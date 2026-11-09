@@ -134,7 +134,7 @@ def velg_prediktor(verdi: Optional[str] = None) -> Prediktor:
 
 **Tidssoner:** all lagring og beregning skjer i UTC. `arrival_in_area_utc` mangler tidssonesuffiks i kilden og normaliseres ved innlasting. Visning skjer i `Europe/Oslo` via `zoneinfo`. `tzdata` ligger i `requirements.txt` fordi Windows ikke har tidssonedatabasen.
 
-**`data/modell/`** (E2): `modell_6t.joblib` og `modell_24t.joblib` (bare Øvrige), ablasjonene uten F13–F14 ved siden av, og `metrikker.json`. Alt committes innenfor den samlede grensen på 10 MB, så sensor slipper å trene.
+**`data/modell/`** (E2): `modell_6t.joblib` og `modell_24t.joblib` (bare Øvrige), ablasjonene uten F13–F14 ved siden av (`modell_{6,24}t_uten_f13_f14.joblib`), `modellvalg.json` (kandidatene, valgregelen og valget per horisont, laget av `scripts/tren.py` i E2-S05) og `metrikker.json`. Alt committes innenfor den samlede grensen på 10 MB, så sensor slipper å trene.
 
 ## 5. Mappestruktur
 
