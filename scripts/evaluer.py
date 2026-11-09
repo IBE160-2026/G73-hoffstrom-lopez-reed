@@ -16,7 +16,11 @@ F6 og tilstand leses fra ``features.csv`` (regnet fra tilstandsutdraget ved kutt
 
 Kjøringer:
 - standard: valideringsdelen (``del == "validering"`` i ``features.csv``). Skriver blokken ``validering``.
-- ``--test``: testperioden. Skriver blokken ``test``, øker ``testkjoringer`` og logger datoen.
+  Modell- og ablasjonsarmen er her holdt ute (spec-beslutning 4): konfigurasjonen fra artefaktet (lik ``valgt_config``
+  i ``modellvalg.json``) fittes på nytt i minnet, bare på treningsradene, med ``fartoy_*_modellvalg``, som ved
+  modellvalget i ``tren.py``. Ingenting av dette lagres.
+- ``--test``: testperioden, med de committede endelige artefaktene. Skriver blokken ``test``, øker ``testkjoringer``
+  og logger datoen. Finnes det allerede en testkjøring, stopper skriptet, med mindre ``--ny-testkjoring`` er gitt.
 - ``--bare-baseline``: bare baselinen på testperioden, uten å laste noen modell og uten å røre ``testkjoringer``.
   Gir baselinecellene og modellandelen til tabellen i briefen. Skriver blokken ``test_bare_baseline``.
 
@@ -57,9 +61,10 @@ ARMER = {"modell": "hoved", "ablasjon_uten_f13_f14": "uten_f13_f14"}
 VARSEL_MIN = T.VARSEL_MIN
 TREFF_MIN = T.TREFF_MIN
 MERKNAD_VALIDERING = (
-    "Artefaktene er trent på trening + validering (E2-S05, endelig fit), og F15–F16 er den endelige historikken. "
-    "Modelltallene på valideringsdelen er derfor målt på rader modellen er trent på, ikke på holdt-ut data. "
-    "Baselinetallene og antallene påvirkes ikke. Holdt-ut-tallene for modellvalget står i modellvalg.json.")
+    "Modell- og ablasjonsarmen på valideringsdelen er den valgte konfigurasjonen (valgt_config i modellvalg.json) "
+    "fittet på nytt i minnet, bare på treningsdelen, med fartoy_*_modellvalg-historikken, som ved modellvalget i "
+    "E2-S05. Valideringsradene er altså holdt ute. De committede endelige artefaktene (trent på trening + validering) "
+    "brukes bare i testkjøringen.")
 
 
 class Avvik(Exception):
@@ -82,16 +87,20 @@ def anlop_i_split(anlop, features, split):
     for (vid, _), r in features.items():
         if deler.setdefault(vid, r["del"]) != r["del"]:
             raise Avvik(f"seilas {vid} har ulik del i features.csv ved de to horisontene")
+    if split not in ("test", "validering"):
+        raise ValueError(f"ukjent split {split!r}")
     if split == "test":
         ut = [a for a in anlop if a.split == "test"]
-        feil = [a.voyageid for a in ut if deler.get(a.voyageid, "test") != "test"]
-    elif split == "validering":
+        feil = [a.voyageid for a in ut if deler.get(a.voyageid) != "test"]
+    else:
         ut = [a for a in anlop if deler.get(a.voyageid) == "validering"]
         feil = [a.voyageid for a in ut if a.split != "train"]
-    else:
-        raise ValueError(f"ukjent split {split!r}")
+    # Andre veien: hver featurerad med del == split må ha et anløp i splitten.
+    i_split = {a.voyageid for a in ut}
+    feil += [vid for vid, d in deler.items() if d == split and vid not in i_split]
     if feil:
-        raise Avvik(f"split i features.csv og anlop.csv er uenige for {split}: voyageid {sorted(feil)[:10]}")
+        raise Avvik(f"split i features.csv og anlop.csv er uenige for {split} (eller mangler featurerader): "
+                    f"voyageid {sorted(set(feil))[:10]}")
     return sorted(ut, key=lambda a: a.voyageid)
 
 
@@ -138,7 +147,14 @@ def modell_prediksjoner(artefakt, anlop, features, h, baseline):
     if artefakt["horisont"] != h:
         raise Avvik(f"artefaktet er for {artefakt['horisont']} t, ikke {h} t")
     utvalg = [a for a in anlop if i_modellutvalg(a, features.get((a.voyageid, h)))]
-    avvik = T.prediker(artefakt, [features[(a.voyageid, h)] for a in utvalg]) if utvalg else []
+    rader = [features[(a.voyageid, h)] for a in utvalg]
+    if not utvalg:
+        avvik = []
+    elif artefakt.get("historikk", "endelig") == "endelig":
+        avvik = T.prediker(artefakt, rader)
+    else:
+        avvik = artefakt["modell"].predict(
+            T.matrise(rader, artefakt["features"], artefakt["kategorier"], artefakt["historikk"]))
     ut = dict(baseline)
     offset_min = artefakt["offset_ovrige_min"]
     for a, avvik_min in zip(utvalg, avvik):
@@ -245,6 +261,33 @@ def last_artefakter(modell_dir, features_sti, anlop_sti):
     return ut, dict(sha, artefakter_sha256=filer)
 
 
+def refit_modellvalg(artefakter, modellvalg, features_sti, anlop_sti):
+    """Spec-beslutning 4: {H: {arm: artefakt}} for valideringskjøringen, holdt ute.
+
+    Konfigurasjonen fra artefaktet (må være lik ``valgt_config`` i ``modellvalg.json``) fittes i minnet på
+    treningsradene alene, med kategorier fra de radene og ``fartoy_*_modellvalg``, som i ``tren.tren_horisont``.
+    Ingenting lagres.
+    """
+    ut = {}
+    for h, armer in artefakter.items():
+        offset = armer["modell"]["offset_ovrige_min"]
+        rader = T.treningsrader(T.les_features(Path(features_sti).read_bytes()), T.les_csv(anlop_sti), offset)
+        tr = [r for r in rader if r["horisont_timer"] == str(h) and r["del"] == "trening"]
+        y = [r["avvik_min"] for r in tr]
+        valgt = modellvalg["horisonter"][str(h)]["valgt_config"]
+        ut[h] = {}
+        for arm, art in armer.items():
+            config = {k: v for k, v in art["config"].items() if k != "random_state"}
+            if config != valgt:
+                raise Avvik(f"{h} t / {arm}: artefaktets config {config} ≠ valgt_config {valgt} i modellvalg.json")
+            kat = T.lag_kategorier(tr, art["features"])
+            modell = T.lag_modell(config, art["features"], art["config"]["random_state"])
+            modell.fit(T.matrise(tr, art["features"], kat, "modellvalg"), y)
+            ut[h][arm] = {"modell": modell, "features": list(art["features"]), "kategorier": kat, "horisont": h,
+                          "variant": art["variant"], "offset_ovrige_min": offset, "historikk": "modellvalg"}
+    return ut
+
+
 def evaluer(anlop, features, split, artefakter=None):
     """{"split": .., "horisonter": {"6": blokk, "24": blokk}}."""
     rader = anlop_i_split(anlop, features, split)
@@ -253,7 +296,7 @@ def evaluer(anlop, features, split, artefakter=None):
                            for h in HORISONTER}}
 
 
-def oppdater(gammel, nokkel, blokk, dato=None):
+def oppdater(gammel, nokkel, blokk, dato=None, ny_testkjoring=False):
     """Ny ``metrikker.json`` fra den gamle. Bare ``nokkel`` byttes. ``nokkel == "test"`` øker telleren og logger ``dato``."""
     ny = dict(gammel or {})
     ny.setdefault("testkjoringer", 0)
@@ -265,6 +308,9 @@ def oppdater(gammel, nokkel, blokk, dato=None):
     if nokkel == "test":
         if dato is None:
             raise ValueError("en testkjøring må ha dato")
+        if ny["testkjoringer"] >= 1 and not ny_testkjoring:
+            raise Avvik(f"testperioden er allerede kjørt {ny['testkjoringer']} gang(er). En ny testkjøring må "
+                        "begrunnes i resultatnotatet; gi --ny-testkjoring for å kjøre likevel.")
         ny["testkjoringer"] = ny["testkjoringer"] + 1
         ny["testkjoringer_logg"] = list(ny["testkjoringer_logg"]) + [{"nr": ny["testkjoringer"], "dato": dato}]
     return ny
@@ -311,6 +357,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     modus = ap.add_mutually_exclusive_group()
     modus.add_argument("--test", action="store_true", help="evaluer testperioden (teller testkjøringen)")
+    ap.add_argument("--ny-testkjoring", action="store_true",
+                    help="tillat --test selv om testperioden er kjørt før (teller videre)")
     modus.add_argument("--bare-baseline", action="store_true",
                        help="bare baselinen på testperioden, uten modell og uten å telle en testkjøring")
     for k, v in STANDARD.items():
@@ -330,17 +378,27 @@ def main(argv=None):
         else:
             artefakter, kilder = last_artefakter(args.modell_dir, args.features, args.anlop)
             split, nokkel = ("test", "test") if args.test else ("validering", "validering")
+        gammel = json.loads(args.ut.read_text(encoding="utf-8")) if args.ut.is_file() else None
+        if nokkel == "test":
+            oppdater(gammel, "test", {}, "sjekk", args.ny_testkjoring)  # stopp før noe predikeres
+        if nokkel == "validering":
+            modellvalg_sti = Path(args.modell_dir) / "modellvalg.json"
+            if not modellvalg_sti.is_file():
+                raise Avvik(f"fant ikke {modellvalg_sti}")
+            artefakter = refit_modellvalg(artefakter, json.loads(modellvalg_sti.read_text(encoding="utf-8")),
+                                          args.features, args.anlop)
+            kilder = dict(kilder, modellvalg_sha256=sha256_fil(modellvalg_sti))
         resultat = evaluer(last_utdrag(args.anlop), les_features(args.features), split, artefakter)
-    except Avvik as exc:
+        blokk = dict(resultat, kilder=kilder)
+        if nokkel == "validering":
+            blokk["merknad"] = MERKNAD_VALIDERING
+        dato = dt.date.today().isoformat() if nokkel == "test" else None
+        ny = oppdater(gammel, nokkel, blokk, dato, args.ny_testkjoring)
+    except (Avvik, T.Inkonsistens) as exc:
         print(f"Stopper, ingenting er skrevet: {exc}", file=sys.stderr)
         return 2
 
-    blokk = dict(resultat, kilder=kilder)
-    if nokkel == "validering":
-        blokk["merknad"] = MERKNAD_VALIDERING
-    gammel = json.loads(args.ut.read_text(encoding="utf-8")) if args.ut.is_file() else None
-    dato = dt.date.today().isoformat() if nokkel == "test" else None
-    skriv_json(args.ut, oppdater(gammel, nokkel, blokk, dato))
+    skriv_json(args.ut, ny)
     skriv_tabell(resultat)
     print(f"\nSkrev blokken «{nokkel}» til {args.ut}")
     return 0

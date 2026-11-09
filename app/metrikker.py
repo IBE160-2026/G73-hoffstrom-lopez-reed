@@ -155,7 +155,10 @@ def varselmetrikker(
 def varsle_alle(
     anlop: Iterable[Anlop], kalibrert: Iterable[Prediksjon], terskel_min: float = VARSEL_TERSKEL_MIN
 ) -> Varselmetrikker:
-    """Referansen «varsle alle» (PRD FR10) på de samme anløpene: presisjon = grunnraten, recall = 1."""
+    """Referansen «varsle alle» (PRD FR10) på de samme anløpene: presisjon = grunnraten, recall = 1,0.
+
+    Er ingen anløp forsinket, er presisjon, recall og F1 0,0.
+    """
     fasit = _forsinket(kalibrert, anlop, terskel_min)
     return _varselmetrikker([(True, f) for f in fasit.values()], True)
 

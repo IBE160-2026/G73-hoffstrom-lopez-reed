@@ -324,7 +324,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
   - modell og baseline på testperioden per horisont
   - antall testkjøringer
   - dekning ved kutt
-  - ablasjonen uten F13–F14 og tallene med og uten rader i ankomstsonen
+  - ablasjonen uten F13–F14, og tabellen med modellutvalget og all Øvrige-trafikk med delegering side om side
   - begrensningene: vintervridd test, AIS-hull, A1 (rapportert ETA ved `t_H`) og avgangshavn/ETD
   - om målene ble nådd
 - Notatet har én tabell med to rader side om side, modellutvalget og all Øvrige-trafikk med delegering, med antall testanløp med fasit, modellandelen av Øvrige-anløpene, baseline ±30 min og modell ±30 min (samme tabell som i briefen). Bestått/ikke bestått avgjøres på modellutvalget (E2-S06, beslutning 1).
