@@ -70,3 +70,38 @@ Felipe svarte på de tre spørsmålene i E2-S05-specen: 1A med en tilleggsregel,
 ### Åpne punkter
 - Felipe avgjør hva som gjøres med turene inne i sonen før E2-S06. Alternativene er å holde seg til splitten med og uten F6 som planlagt, å gjøre dem til egen kategori, å holde dem utenfor modellen, eller å føre dem som kjent begrensning i beslutning 03.
 - Toleransen på 1 pp er mindre enn utvalgsstøyen (n = 634/621, standardfeil ≈ 2 pp), så enkelhetsregelen slo aldri inn. Felipe vurderer om toleransen skal opp.
+
+## 2026-11-09 kl. 14:34 — Felipe Knudstad-Lopez
+
+### Oppgave
+Felipe ba om fire ting:
+- Pushe de seks E2-S05-commitene.
+- Funn 1 (trafikk inne i sonen): føre det inn i beslutning 03 som en begrensning ved etiketten, lage beslutning 12 (modellen brukes bare utenfor sonen ved kuttet, og F6-rader går til baselinen), trene en variant uten F6-rader og vise en tabell med (a), (b) og (c).
+- Funn 2 (toleransen): ikke endre den, men skrive i modellvalg.json at regelen ikke slo inn, og hvorfor.
+- Stoppe før E2-S06.
+
+### Plan
+- Push. Filtrere F6 i `treningsrader` og teste filteret med en mutasjon.
+- Lage sammenligningstabellen på valideringsdelen med modellene fra modellvalget. Testperioden røres ikke.
+- Trene på nytt og oppdatere beslutning 03 og 12, PRD FR9, epics og specen.
+
+### Resultat
+- Pushet til og med `e5a66d2`.
+- **`e68bdc5`:**
+  - Beslutning 12 er ny, og beslutning 03 har fått et tillegg.
+  - `tren.py` utelater F6-rader. `modellvalg.json` har fått `utvalg`, `enkelhetsregel_endret_valget`, standardfeil og `toleranse_merknad`.
+  - PRD FR9 og epics (E2-S06/S07 og endringsloggen) er oppdatert, og specen har fått en linje i endringsloggen.
+- **`54ff298`:** artefaktene er trent på nytt. Det ble 15 blad ved 6 t og 31 ved 24 t, og E2-dataene er 7,5 MB.
+- Testene er grønne: 276 passed.
+- Tabellen på valideringsdelen (± 30 min, modell mot baseline på de samme radene):
+  - (a) gammel modell på alle rader: 62,8 / 41,5 ved 6 t, og 56,2 / 39,6 ved 24 t
+  - (b) gammel modell uten F6-rader: 70,6 / 56,9, og 60,4 / 51,8
+  - (c) ny modell uten F6-rader: 69,1 / 56,9, og 59,8 / 51,8
+
+  F1 for (c) er 0,58 og 0,60, mot 0,19 og 0,28 for «varsle alle». Hele tabellen står i beslutning 12.
+- Enkelhetsregelen endret ikke valget ved noen av horisontene. Ved 6 t lå 3 konfigurasjoner innenfor toleransen, men den beste var også den enkleste.
+- Skriptet som lager tabellen, ligger bare i scratchpad. Tallene står i beslutning 12.
+- Ikke pushet: `e68bdc5`, `54ff298` og denne loggen.
+
+### Åpne punkter
+- Beslutning 12 godkjennes av gruppa i E2-PR-en, og Thomas ser på E2-S07, der F6-rader delegeres.
