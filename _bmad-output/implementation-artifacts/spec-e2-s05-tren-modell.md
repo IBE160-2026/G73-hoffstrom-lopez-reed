@@ -91,6 +91,8 @@ context:
 
 ## Spec Change Log
 
+- 2026-11-09 (Felipe, after the review): **decision 12**. The model is used only for rows that are outside the arrival zone at the cut (F6 = 0). `treningsrader` skips F6 rows (`utelat_i_sonen=True`; `False` is kept only for comparison). The artifacts and `modellvalg.json` are retrained. `modellvalg.json` gains `utvalg`, `enkelhetsregel_endret_valget` and `standardfeil_beste_andel_pp` per horizon, and `toleranse_merknad`. The tolerance is unchanged (Felipe: it was set before the results, and adjusting it now would be fitting after the fact). The rule did not change the choice at either horizon. The new selection is 15 leaves at 6 h and 31 leaves at 24 h. Rows: 2 190 / 459 at 6 h and 2 119 / 450 at 24 h. Validation within ±30 min: 69.1 % against 56.9 % at 6 h, and 59.8 % against 51.8 % at 24 h. E2 data is 7.5 MB in total. `test_ingen_passasjer_i_trening` now also changes F6 rows, and the mutation that removes the filter is caught. The comparison table is in decision 12.
+
 ## Review Triage Log
 
 Three layers ran in parallel on 2026-11-09: Blind Hunter (BH), Edge Case Hunter (ECH) and Verification Gap (VG). The five VG gaps were confirmed by mutation runs.

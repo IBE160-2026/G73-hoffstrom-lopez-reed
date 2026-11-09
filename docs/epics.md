@@ -290,7 +290,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
   - MAE og median
   - dekning av tilstand
   - antall rader i ankomstsonen ved `t_H`, regnet med F6 (posisjon ved kuttet)
-  - alt over også for ablasjonen uten F13–F14, og både med og uten rader i ankomstsonen ved `t_H`
+  - alt over også for ablasjonen uten F13–F14. Hovedtallene gjelder anløp utenfor sonen ved kuttet (beslutning 12), og totalen for alle rader, med F6-rader som baseline, rapporteres i tillegg
   - én definisjon i hele rapporten: «allerede i ankomstsonen» er F6, aldri et flagg regnet fra faktisk ankomst. Flagget regnes i evalueringen fra tilstandsutdraget, ikke fra `anlop.csv`.
   - Passasjer bare som baseline
 - Skriptet teller kjøringer mot testperioden (`--test`) og lagrer antallet.
@@ -300,7 +300,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 ### E2-S07 — ModellPrediktor ☐
 **Krav:** FR9, A5 · **Avhenger av:** E2-S06
 - Implementerer kontrakten, med `kan_varsle = True`. Delegerte rader får `forventet_forsinket = None`. F1–F16 når prediktoren via `lag_input` eller en søsterfunksjon, aldri ved fillesing i prediktormodulen. Krever det nye felt i `PrediksjonsInput`, tas kontraktendringen i egen PR som Thomas og Felipe godkjenner. Horisonten velges fra `rapportert ETA − nå` (PRD FR2).
-- Varselet er `predikert − kalibrert baseline > 120 min`. Passasjer-rader og rader uten tilstand delegeres til baselinen og merkes med metoden i `forklaring` (beslutning 11).
+- Varselet er `predikert − kalibrert baseline > 120 min`. Passasjer-rader, rader uten tilstand og rader som er i sonen ved kuttet (F6) delegeres til baselinen og merkes med metoden i `forklaring` (beslutning 11 og 12).
 
 **Test:** legges til i `PREDIKTORER` i `tests/test_prediktor_kontrakt.py` og må bestå alle kontrakt- og lekkasjetestene der. `::test_kutt_ikke_etter_naa` (`t_H ≤ nå` for alle rader i en avspilling) ble flyttet til E1-S04 og gjelder allerede.
 
@@ -442,3 +442,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-03** — E2-S01, beslutning 11: én modell for Øvrige, trent per horisont, og Passasjer beholder baselinen. Featurelista F1–F16 er lagt inn i E2-S04 med to nye tester, ablasjonen i E2-S05 og E2-S06, og rapportering med og uten F6 i E2-S06 og E2-S10. E2-S07 delegerer Passasjer til baselinen.
 - **2026-11-03** — E2-S03: tilstandsutdraget får `ais_status` og metadata i `tilstand_ved_kutt.json`, og `allerede_ankommet` er tatt ut. E2-S06 bruker F6 som eneste definisjon av «allerede i ankomstsonen» (Felipe).
 - **2026-11-03** — E2-S04: `features.csv` erstatter det rå statiske utdraget, og rå ETD committes ikke. Sjekken av lange avstander og etikettsjekken kjøres etter hentingen (Felipe).
+- **2026-11-09** — E2-S05, beslutning 12: modellen brukes bare utenfor ankomstsonen ved kuttet, og F6-rader går til baselinen. Det påvirker E2-S06 og E2-S07 (Felipe).

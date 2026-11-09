@@ -129,7 +129,8 @@ def _forventet_antall(anlop, features, h):
     n = {"trening": 0, "validering": 0}
     for r in features:
         if (r["horisont_timer"] == str(h) and r["del"] in n and r["gruppe"] == "Øvrige"
-                and r["har_tilstand"] == "1" and a[r["voyageid"]]["status_in_area"] == "ok"):
+                and r["har_tilstand"] == "1" and r["i_sonen_ved_kutt"] != "1"
+                and a[r["voyageid"]]["status_in_area"] == "ok"):
             n[r["del"]] += 1
     return n
 
@@ -155,12 +156,19 @@ def test_ingen_passasjer_i_trening(kjort, tmp_path):
     mappe, anlop, features = kjort
     for navn, art in _artefakter(mappe / "modell").items():
         assert art["trent_paa"] == _forventet_antall(anlop, features, art["horisont"]), navn
-    # Passasjer-rader og Øvrige-rader uten tilstand eller fasit endres kraftig: ingenting endres.
+    # Passasjer-rader, Øvrige-rader uten tilstand eller fasit, og Øvrige-rader i sonen ved kuttet
+    # (F6, beslutning 12) endres kraftig: ingenting endres.
     uten_fasit = {a["voyageid"] for a in anlop if a["status_in_area"] != "ok"}
-    endret_f = [dict(r, distanse_km="999.000", skipstype="Tanker", fart_knop="0.1")
-                if r["gruppe"] == "Passasjer" or r["har_tilstand"] != "1" or r["voyageid"] in uten_fasit else r
+    i_sonen = {r["voyageid"] for r in features if r["i_sonen_ved_kutt"] == "1"}
+    # Ankomsten kan bare endres for seilaser som er i sonen ved begge horisontene.
+    alltid_i_sonen = i_sonen - {r["voyageid"] for r in features if r["i_sonen_ved_kutt"] != "1"}
+    assert i_sonen and alltid_i_sonen, "fixturen må ha F6-rader for at testen skal bety noe"
+    endret_f = [dict(r, distanse_km="999.000", skipstype="Tanker", fart_knop="0.1", slakk_timer="-40.000")
+                if r["gruppe"] == "Passasjer" or r["har_tilstand"] != "1" or r["voyageid"] in uten_fasit
+                or r["i_sonen_ved_kutt"] == "1" else r
                 for r in features]
-    endret_a = [dict(a, arrival_in_area_utc="2030-01-01T00:00:00") if a["ship_group"] == "Passasjer" else a
+    endret_a = [dict(a, arrival_in_area_utc="2030-01-01T00:00:00")
+                if a["ship_group"] == "Passasjer" or a["voyageid"] in alltid_i_sonen else a
                 for a in anlop]
     _skriv(tmp_path, endret_a, endret_f)
     assert _kjor(tmp_path) == 0

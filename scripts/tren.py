@@ -10,6 +10,10 @@ Leser (bare lesing):
 - ``data/utdrag/anlop.csv``: bare til å bygge målet. Ingen ankomstfelt går inn i en feature.
 - ``data/baseline.json``: offseten for Øvrige.
 
+Utvalget er Øvrige-rader med tilstand og fasit som er **utenfor ankomstsonen ved kuttet** (F6 = 0,
+beslutning 12). For trafikk som allerede er i sonen ved kuttet, måler etiketten ikke en ankomst
+(beslutning 03). Slike rader går til baselinen, som rader uten tilstand.
+
 Per horisont:
 1. Modellvalg: 8 konfigurasjoner av ``HistGradientBoostingRegressor`` fittes på ``trening`` med
    ``fartoy_*_modellvalg`` og scores på ``validering``. Valgkriteriet er andel innenfor ±30 min, med
@@ -75,6 +79,8 @@ KANDIDATER = [
     for lr in (0.05, 0.1)
     for blad in (15, 31)
 ]
+UTVALG = ("Øvrige-rader med AIS-tilstand og fasit som er utenfor ankomstsonen ved kuttet (F6 = 0). "
+          "F6-rader går til baselinen, som rader uten tilstand (beslutning 12).")
 REGEL = ("Høyest andel innenfor ±30 min på validering. Konfigurasjoner innenfor 1 prosentpoeng av beste "
          "andel regnes som like gode; blant dem velges færrest max_iter, så færrest max_leaf_nodes, så lavest "
          "MAE. F1 for varsel rapporteres, men avgjør ikke. Referansen «avvik = 0» velges aldri.")
@@ -103,8 +109,10 @@ def les_csv(sti):
         return list(csv.DictReader(f))
 
 
-def treningsrader(features, anlop, offset):
-    """Øvrige-rader med tilstand og fasit, med målet ``avvik_min`` lagt til. Kaster Inkonsistens."""
+def treningsrader(features, anlop, offset, utelat_i_sonen=True):
+    """Øvrige-rader med tilstand og fasit, utenfor sonen ved kuttet (beslutning 12), med målet
+    ``avvik_min`` lagt til. ``utelat_i_sonen=False`` gir utvalget fra før beslutning 12, bare til
+    sammenligning. Kaster Inkonsistens."""
     idx = {}
     for a in anlop:
         if a["voyageid"] in idx:
@@ -121,6 +129,8 @@ def treningsrader(features, anlop, offset):
             raise Inkonsistens(f"seilas {r['voyageid']} er {r['del']} i features.csv, men {a['split']} i anlop.csv")
         if r["gruppe"] != TRENGRUPPE or r["har_tilstand"] != "1":
             continue
+        if utelat_i_sonen and r["i_sonen_ved_kutt"] == "1":
+            continue  # beslutning 12: F6-rader går til baselinen
         if a["status_in_area"] != "ok" or not a["arrival_in_area_utc"]:
             continue
         kalibrert_eta = naive_utc(a["eta_reported"]) - dt.timedelta(minutes=offset)
@@ -202,7 +212,11 @@ def tren_horisont(rader, h, seed):
         resultater.append(dict(score(y_va, m.predict(X_va)), config=config))
     valgt, beste, innenfor = velg(resultater)
     config = resultater[valgt]["config"]
+    std_feil_pp = round(100 * float(np.sqrt(beste * (1 - beste) / len(va))), 2)
     rapport = {
+        "enkelhetsregel_endret_valget": valgt != max(range(len(resultater)),
+                                                     key=lambda i: (resultater[i]["andel_30"], -i)),
+        "standardfeil_beste_andel_pp": std_feil_pp,
         "antall": {"trening": len(tr), "validering": len(va)},
         "kandidater": resultater,
         "referanse_avvik_0": score(y_va, np.zeros(len(va))),
@@ -222,8 +236,24 @@ def tren_horisont(rader, h, seed):
             "variant": variant, "sklearn_versjon": sklearn.__version__,
             "trent_paa": {"trening": len(tr), "validering": len(va)}, "config": dict(config, random_state=seed),
             "maal": "kalibrert avvik i minutter: arrival_in_area − (eta_reported − offset_Øvrige)",
+            "utvalg": UTVALG,
         }
     return rapport, artefakter
+
+
+def toleranse_merknad(valg):
+    """Beslutning 1 og Felipe 09.11.2026: toleransen justeres ikke i etterkant, men det skal stå om regelen slo inn."""
+    slo_inn = [h for h, v in valg.items() if v["enkelhetsregel_endret_valget"]]
+    se = ", ".join(f"{v['standardfeil_beste_andel_pp']} pp ved {h} t" for h, v in sorted(valg.items(), key=lambda x: int(x[0])))
+    if slo_inn:
+        return f"Enkelhetsregelen endret valget ved {', '.join(sorted(slo_inn, key=int))} t."
+    flere = ", ".join(f"{len(v['innenfor_toleranse'])} ved {h} t" for h, v in sorted(valg.items(), key=lambda x: int(x[0])))
+    return (f"Enkelhetsregelen endret ikke valget ved noen horisont: den valgte konfigurasjonen har også høyest "
+            f"andel innenfor ±30 min. Antall konfigurasjoner innenfor {TOLERANSE_PP:g} prosentpoeng av den beste: "
+            f"{flere}, og den beste var der også den enkleste. "
+            f"Toleransen er mindre enn utvalgsstøyen (standardfeil for beste andel: "
+            f"{se}). Den ble satt før resultatene forelå (Felipe, 09.11.2026), og den justeres ikke i etterkant, "
+            "fordi det ville vært tilpasning til resultatet.")
 
 
 def filnavn(h, variant):
@@ -281,7 +311,8 @@ def main(argv=None):
         "regel": REGEL, "toleranse_pp": TOLERANSE_PP, "treff_min": TREFF_MIN, "varsel_min": VARSEL_MIN,
         "seed": args.seed, "sklearn_versjon": sklearn.__version__, "offset_ovrige_min": offset,
         "features": FEATURES, "features_uten_f13_f14": FEATURES_UTEN_F13_F14,
-        "kandidater": KANDIDATER, "horisonter": valg,
+        "kandidater": KANDIDATER, "horisonter": valg, "utvalg": UTVALG,
+        "toleranse_merknad": toleranse_merknad(valg),
     }
     tekst = json.dumps(rapport, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
 

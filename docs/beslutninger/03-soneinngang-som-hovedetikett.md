@@ -48,3 +48,10 @@ Etiketten er *første* AIS-posisjon innenfor sonen. Et skip som passerer gjennom
 
   De 6 er 0,4 % av testperioden, og de kan gjøre evalueringen litt strengere for modell og baseline likt.
 - **Datasettet endres ikke.** Det er låst, og etiketten er den samme for modell og baseline. Begrensningen nevnes i resultatnotatet.
+
+## Kjent begrensning: trafikk som allerede er i sonen ved kuttet (09.11.2026)
+
+For anløp som allerede er i ankomstsonen ved kuttet, måler etiketten ikke en ankomst. Det gjelder lokale turer fra havner inne i 15-km-sonen, som Kleppestø, Ågotnes, Skålevik og Bergen. «Første posisjon i sonen» blir da et punkt etter avgang, ikke en ankomst.
+- Ved `t_6` er 947 Øvrige-anløp med fasit allerede i sonen (F6), og 569 av dem er merket sene.
+- F6 alene gir F1 0,82 for varsel på valideringsdelen.
+- Datasettet endres ikke. Modellen brukes bare for anløp som er utenfor sonen ved kuttet ([beslutning 12](12-modellen-bare-utenfor-sonen.md)).
