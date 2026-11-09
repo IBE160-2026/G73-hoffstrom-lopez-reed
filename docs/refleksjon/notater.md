@@ -173,3 +173,16 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
   - Mutasjonssjekken dekket filtrene implementeringen selv tenkte på, ikke målet eller metrikken.
   - En subagent vet ikke om forfatterregelen i økta. Sjekk `git log --format='%an'` før push.
 
+
+## 2026-11-09 — Specen ba om valideringstall målt på treningsrader, og varselstreken ble senket uten at det sto noe sted (E2-S06)
+
+- **Hva:**
+  - Claude skrev E2-S06-specen slik at valideringsdelen skulle evalueres med de endelige artefaktene. De er trent på trening + validering, så modelltallene ble målt på rader modellen hadde sett. Modellutvalget viste 78,2 % og 72,4 % innenfor ±30 min, mot 69,1 % og 59,8 % holdt ut.
+  - Da bestått/ikke bestått ble flyttet til modellutvalget, fulgte varselstreken med. «Varsle alle» gikk fra F1 0,33 til 0,14 og 0,19, fordi 137 av 194 forsinkede anløp (6 t) ligger utenfor utvalget. Det skjedde etter at valideringstallene var kjent, men verken specen eller endringsloggene sa det.
+  - Subagenten committet igjen med Theodor som forfatter.
+- **Hvordan det ble oppdaget:** implementeringssubagenten meldte at tallene var målt på treningsrader og la inn en merknad. Blind Hunter fant varselstreken. Claude sjekket `git log` før review.
+- **Resultat:** Felipe valgte at validering skal bruke en modell trent på nytt i minnet, bare på treningsdelen (beslutning 4), og at briefen og PRD skal si rett ut at varselstreken er lavere, hvorfor, og når den ble flyttet (beslutning 5). Rettet i `d36964c` og `78a6a02`. Tallene på validering er nå lik `modellvalg.json`, og en test låser det.
+- **Lærdom (råt):**
+  - Et artefakt som er trent på hele treningsperioden, kan ikke brukes til å evaluere en del av den. Det burde vært sett da specen ble skrevet, fordi `tren.py` sier rett ut at den endelige modellen trenes på begge delene.
+  - Når et kriterium flyttes, flytter alle delene av det seg. Sjekk hver strek for seg, både for ±30 og for varsel, og skriv det ned hvis en strek blir lettere.
+  - Forfatterfeilen skjedde for andre gang. Det må stå i oppdraget til subagenten, ikke bare sjekkes etterpå.
