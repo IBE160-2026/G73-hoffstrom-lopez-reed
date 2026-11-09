@@ -228,19 +228,19 @@
         },
         "ovrige_alle": {
           "ablasjon_uten_f13_f14": {
-            "andel_30": 0.525038,
-            "mae_min": 149.5662,
-            "median_min": 24.2833,
+            "andel_30": 0.433991,
+            "mae_min": 159.3915,
+            "median_min": 44.8416,
             "n": 659,
-            "treff_30": 346,
+            "treff_30": 286,
             "varsel": {
-              "f1": 0.20155,
+              "f1": 0.138211,
               "forsinket": 228,
               "n": 659,
-              "presisjon": 0.866667,
-              "recall": 0.114035,
-              "treff": 26,
-              "varsler": 30
+              "presisjon": 0.944444,
+              "recall": 0.074561,
+              "treff": 17,
+              "varsler": 18
             }
           },
           "baseline": {
@@ -260,19 +260,19 @@
             }
           },
           "modell": {
-            "andel_30": 0.54173,
-            "mae_min": 145.9633,
-            "median_min": 21.8,
+            "andel_30": 0.455235,
+            "mae_min": 156.4573,
+            "median_min": 36.501,
             "n": 659,
-            "treff_30": 357,
+            "treff_30": 300,
             "varsel": {
-              "f1": 0.277154,
+              "f1": 0.244275,
               "forsinket": 228,
               "n": 659,
-              "presisjon": 0.948718,
-              "recall": 0.162281,
-              "treff": 37,
-              "varsler": 39
+              "presisjon": 0.941176,
+              "recall": 0.140351,
+              "treff": 32,
+              "varsler": 34
             }
           },
           "varsle_alle": {
@@ -287,19 +287,19 @@
         },
         "ovrige_modellutvalg": {
           "ablasjon_uten_f13_f14": {
-            "andel_30": 0.7,
-            "mae_min": 96.9079,
-            "median_min": 9.8777,
+            "andel_30": 0.566667,
+            "mae_min": 111.2965,
+            "median_min": 23.9136,
             "n": 450,
-            "treff_30": 315,
+            "treff_30": 255,
             "varsel": {
-              "f1": 0.504854,
+              "f1": 0.373626,
               "forsinket": 73,
               "n": 450,
-              "presisjon": 0.866667,
-              "recall": 0.356164,
-              "treff": 26,
-              "varsler": 30
+              "presisjon": 0.944444,
+              "recall": 0.232877,
+              "treff": 17,
+              "varsler": 18
             }
           },
           "baseline": {
@@ -319,19 +319,19 @@
             }
           },
           "modell": {
-            "andel_30": 0.724444,
-            "mae_min": 91.6316,
-            "median_min": 7.7673,
+            "andel_30": 0.597778,
+            "mae_min": 106.9995,
+            "median_min": 25.0787,
             "n": 450,
-            "treff_30": 326,
+            "treff_30": 269,
             "varsel": {
-              "f1": 0.660714,
+              "f1": 0.598131,
               "forsinket": 73,
               "n": 450,
-              "presisjon": 0.948718,
-              "recall": 0.506849,
-              "treff": 37,
-              "varsler": 39
+              "presisjon": 0.941176,
+              "recall": 0.438356,
+              "treff": 32,
+              "varsler": 34
             }
           },
           "varsle_alle": {
@@ -386,19 +386,19 @@
         },
         "ovrige_alle": {
           "ablasjon_uten_f13_f14": {
-            "andel_30": 0.525038,
-            "mae_min": 151.909,
-            "median_min": 22.0048,
+            "andel_30": 0.477997,
+            "mae_min": 158.2936,
+            "median_min": 32.7142,
             "n": 659,
-            "treff_30": 346,
+            "treff_30": 315,
             "varsel": {
-              "f1": 0.091667,
+              "f1": 0.051282,
               "forsinket": 228,
               "n": 659,
-              "presisjon": 0.916667,
-              "recall": 0.048246,
-              "treff": 11,
-              "varsler": 12
+              "presisjon": 1.0,
+              "recall": 0.026316,
+              "treff": 6,
+              "varsler": 6
             }
           },
           "baseline": {
@@ -418,19 +418,19 @@
             }
           },
           "modell": {
-            "andel_30": 0.549317,
-            "mae_min": 146.3718,
-            "median_min": 20.8669,
+            "andel_30": 0.485584,
+            "mae_min": 152.7731,
+            "median_min": 32.0978,
             "n": 659,
-            "treff_30": 362,
+            "treff_30": 320,
             "varsel": {
-              "f1": 0.174603,
+              "f1": 0.167331,
               "forsinket": 228,
               "n": 659,
-              "presisjon": 0.916667,
-              "recall": 0.096491,
-              "treff": 22,
-              "varsler": 24
+              "presisjon": 0.913043,
+              "recall": 0.092105,
+              "treff": 21,
+              "varsler": 23
             }
           },
           "varsle_alle": {
@@ -445,19 +445,19 @@
         },
         "ovrige_modellutvalg": {
           "ablasjon_uten_f13_f14": {
-            "andel_30": 0.747277,
-            "mae_min": 80.8749,
-            "median_min": 7.1977,
+            "andel_30": 0.679739,
+            "mae_min": 90.0415,
+            "median_min": 15.9704,
             "n": 459,
-            "treff_30": 343,
+            "treff_30": 312,
             "varsel": {
-              "f1": 0.360656,
+              "f1": 0.218182,
               "forsinket": 49,
               "n": 459,
-              "presisjon": 0.916667,
-              "recall": 0.22449,
-              "treff": 11,
-              "varsler": 12
+              "presisjon": 1.0,
+              "recall": 0.122449,
+              "treff": 6,
+              "varsler": 6
             }
           },
           "baseline": {
@@ -477,19 +477,19 @@
             }
           },
           "modell": {
-            "andel_30": 0.782135,
-            "mae_min": 72.9249,
-            "median_min": 7.9298,
+            "andel_30": 0.690632,
+            "mae_min": 82.1155,
+            "median_min": 15.9439,
             "n": 459,
-            "treff_30": 359,
+            "treff_30": 317,
             "varsel": {
-              "f1": 0.60274,
+              "f1": 0.583333,
               "forsinket": 49,
               "n": 459,
-              "presisjon": 0.916667,
-              "recall": 0.44898,
-              "treff": 22,
-              "varsler": 24
+              "presisjon": 0.913043,
+              "recall": 0.428571,
+              "treff": 21,
+              "varsler": 23
             }
           },
           "varsle_alle": {
@@ -531,9 +531,10 @@
         "modell_6t_uten_f13_f14.joblib": "2fa15e8b9a2737edb453915b5fd6bbefecb7960ed78e98701013f4ea9bb79877"
       },
       "baseline_sha256": "ac1bdf4aea64c9c1341598b0a212452ab33a41e8da46dd2fba291daa174ab5c1",
-      "features_sha256": "351c707ac282bd38a02826cbffbb75d09bceb3ab4f84bec614dbc179b0cb685b"
+      "features_sha256": "351c707ac282bd38a02826cbffbb75d09bceb3ab4f84bec614dbc179b0cb685b",
+      "modellvalg_sha256": "b154638488c61d7cb5388772a3ff47740fb1466f3414fe351d5725b3e0240305"
     },
-    "merknad": "Artefaktene er trent på trening + validering (E2-S05, endelig fit), og F15–F16 er den endelige historikken. Modelltallene på valideringsdelen er derfor målt på rader modellen er trent på, ikke på holdt-ut data. Baselinetallene og antallene påvirkes ikke. Holdt-ut-tallene for modellvalget står i modellvalg.json.",
+    "merknad": "Modell- og ablasjonsarmen på valideringsdelen er den valgte konfigurasjonen (valgt_config i modellvalg.json) fittet på nytt i minnet, bare på treningsdelen, med fartoy_*_modellvalg-historikken, som ved modellvalget i E2-S05. Valideringsradene er altså holdt ute. De committede endelige artefaktene (trent på trening + validering) brukes bare i testkjøringen.",
     "split": "validering"
   },
   "varsel_min": 120.0
