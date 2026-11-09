@@ -1,0 +1,363 @@
+{
+  "beslutning": "docs/beslutninger/11-modellvalg-ovrige-og-features.md",
+  "features": [
+    "distanse_km",
+    "fart_knop",
+    "kurs_mot_havn",
+    "posisjon_alder_min",
+    "lat",
+    "lon",
+    "i_sonen_ved_kutt",
+    "slakk_timer",
+    "skipstype",
+    "lengde_m",
+    "eta_time_sin",
+    "eta_time_cos",
+    "eta_ukedag",
+    "eta_maned_sin",
+    "eta_maned_cos",
+    "avgangshavn",
+    "avgatt_for_kutt",
+    "timer_siden_avgang",
+    "fartoy_snittavvik_min",
+    "fartoy_antall_tidligere"
+  ],
+  "features_uten_f13_f14": [
+    "distanse_km",
+    "fart_knop",
+    "kurs_mot_havn",
+    "posisjon_alder_min",
+    "lat",
+    "lon",
+    "i_sonen_ved_kutt",
+    "slakk_timer",
+    "skipstype",
+    "lengde_m",
+    "eta_time_sin",
+    "eta_time_cos",
+    "eta_ukedag",
+    "eta_maned_sin",
+    "eta_maned_cos",
+    "fartoy_snittavvik_min",
+    "fartoy_antall_tidligere"
+  ],
+  "horisonter": {
+    "24": {
+      "antall": {
+        "trening": 2608,
+        "validering": 621
+      },
+      "beste_andel_30": 0.561997,
+      "innenfor_toleranse": [
+        0
+      ],
+      "kandidater": [
+        {
+          "andel_30": 0.561997,
+          "config": {
+            "learning_rate": 0.05,
+            "loss": "absolute_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 15
+          },
+          "mae": 115.9389,
+          "varsel_f1": 0.809278,
+          "varsel_presisjon": 0.907514,
+          "varsel_recall": 0.730233
+        },
+        {
+          "andel_30": 0.536232,
+          "config": {
+            "learning_rate": 0.05,
+            "loss": "absolute_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 31
+          },
+          "mae": 115.7059,
+          "varsel_f1": 0.812339,
+          "varsel_presisjon": 0.908046,
+          "varsel_recall": 0.734884
+        },
+        {
+          "andel_30": 0.529791,
+          "config": {
+            "learning_rate": 0.1,
+            "loss": "absolute_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 15
+          },
+          "mae": 117.3452,
+          "varsel_f1": 0.807198,
+          "varsel_presisjon": 0.902299,
+          "varsel_recall": 0.730233
+        },
+        {
+          "andel_30": 0.520129,
+          "config": {
+            "learning_rate": 0.1,
+            "loss": "absolute_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 31
+          },
+          "mae": 117.0011,
+          "varsel_f1": 0.810256,
+          "varsel_presisjon": 0.902857,
+          "varsel_recall": 0.734884
+        },
+        {
+          "andel_30": 0.320451,
+          "config": {
+            "learning_rate": 0.05,
+            "loss": "squared_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 15
+          },
+          "mae": 158.6377,
+          "varsel_f1": 0.756152,
+          "varsel_presisjon": 0.728448,
+          "varsel_recall": 0.786047
+        },
+        {
+          "andel_30": 0.289855,
+          "config": {
+            "learning_rate": 0.05,
+            "loss": "squared_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 31
+          },
+          "mae": 167.8753,
+          "varsel_f1": 0.767184,
+          "varsel_presisjon": 0.733051,
+          "varsel_recall": 0.804651
+        },
+        {
+          "andel_30": 0.272142,
+          "config": {
+            "learning_rate": 0.1,
+            "loss": "squared_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 15
+          },
+          "mae": 177.376,
+          "varsel_f1": 0.73913,
+          "varsel_presisjon": 0.693878,
+          "varsel_recall": 0.790698
+        },
+        {
+          "andel_30": 0.249597,
+          "config": {
+            "learning_rate": 0.1,
+            "loss": "squared_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 31
+          },
+          "mae": 188.8026,
+          "varsel_f1": 0.728448,
+          "varsel_presisjon": 0.678715,
+          "varsel_recall": 0.786047
+        }
+      ],
+      "referanse_avvik_0": {
+        "andel_30": 0.396135,
+        "mae": 160.9358,
+        "varsel_f1": 0.0,
+        "varsel_presisjon": 0.0,
+        "varsel_recall": 0.0
+      },
+      "valgt": 0,
+      "valgt_config": {
+        "learning_rate": 0.05,
+        "loss": "absolute_error",
+        "max_iter": 300,
+        "max_leaf_nodes": 15
+      }
+    },
+    "6": {
+      "antall": {
+        "trening": 2767,
+        "validering": 634
+      },
+      "beste_andel_30": 0.62776,
+      "innenfor_toleranse": [
+        0
+      ],
+      "kandidater": [
+        {
+          "andel_30": 0.62776,
+          "config": {
+            "learning_rate": 0.05,
+            "loss": "absolute_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 15
+          },
+          "mae": 96.1925,
+          "varsel_f1": 0.860825,
+          "varsel_presisjon": 0.917582,
+          "varsel_recall": 0.81068
+        },
+        {
+          "andel_30": 0.589905,
+          "config": {
+            "learning_rate": 0.05,
+            "loss": "absolute_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 31
+          },
+          "mae": 97.7708,
+          "varsel_f1": 0.871795,
+          "varsel_presisjon": 0.923913,
+          "varsel_recall": 0.825243
+        },
+        {
+          "andel_30": 0.613565,
+          "config": {
+            "learning_rate": 0.1,
+            "loss": "absolute_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 15
+          },
+          "mae": 95.9155,
+          "varsel_f1": 0.863753,
+          "varsel_presisjon": 0.918033,
+          "varsel_recall": 0.815534
+        },
+        {
+          "andel_30": 0.613565,
+          "config": {
+            "learning_rate": 0.1,
+            "loss": "absolute_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 31
+          },
+          "mae": 96.9396,
+          "varsel_f1": 0.875318,
+          "varsel_presisjon": 0.919786,
+          "varsel_recall": 0.834951
+        },
+        {
+          "andel_30": 0.326498,
+          "config": {
+            "learning_rate": 0.05,
+            "loss": "squared_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 15
+          },
+          "mae": 138.1083,
+          "varsel_f1": 0.797327,
+          "varsel_presisjon": 0.736626,
+          "varsel_recall": 0.868932
+        },
+        {
+          "andel_30": 0.345426,
+          "config": {
+            "learning_rate": 0.05,
+            "loss": "squared_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 31
+          },
+          "mae": 143.2485,
+          "varsel_f1": 0.782222,
+          "varsel_presisjon": 0.721311,
+          "varsel_recall": 0.854369
+        },
+        {
+          "andel_30": 0.320189,
+          "config": {
+            "learning_rate": 0.1,
+            "loss": "squared_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 15
+          },
+          "mae": 149.1165,
+          "varsel_f1": 0.784922,
+          "varsel_presisjon": 0.722449,
+          "varsel_recall": 0.859223
+        },
+        {
+          "andel_30": 0.332808,
+          "config": {
+            "learning_rate": 0.1,
+            "loss": "squared_error",
+            "max_iter": 300,
+            "max_leaf_nodes": 31
+          },
+          "mae": 154.5594,
+          "varsel_f1": 0.768212,
+          "varsel_presisjon": 0.704453,
+          "varsel_recall": 0.84466
+        }
+      ],
+      "referanse_avvik_0": {
+        "andel_30": 0.414826,
+        "mae": 153.8509,
+        "varsel_f1": 0.0,
+        "varsel_presisjon": 0.0,
+        "varsel_recall": 0.0
+      },
+      "valgt": 0,
+      "valgt_config": {
+        "learning_rate": 0.05,
+        "loss": "absolute_error",
+        "max_iter": 300,
+        "max_leaf_nodes": 15
+      }
+    }
+  },
+  "kandidater": [
+    {
+      "learning_rate": 0.05,
+      "loss": "absolute_error",
+      "max_iter": 300,
+      "max_leaf_nodes": 15
+    },
+    {
+      "learning_rate": 0.05,
+      "loss": "absolute_error",
+      "max_iter": 300,
+      "max_leaf_nodes": 31
+    },
+    {
+      "learning_rate": 0.1,
+      "loss": "absolute_error",
+      "max_iter": 300,
+      "max_leaf_nodes": 15
+    },
+    {
+      "learning_rate": 0.1,
+      "loss": "absolute_error",
+      "max_iter": 300,
+      "max_leaf_nodes": 31
+    },
+    {
+      "learning_rate": 0.05,
+      "loss": "squared_error",
+      "max_iter": 300,
+      "max_leaf_nodes": 15
+    },
+    {
+      "learning_rate": 0.05,
+      "loss": "squared_error",
+      "max_iter": 300,
+      "max_leaf_nodes": 31
+    },
+    {
+      "learning_rate": 0.1,
+      "loss": "squared_error",
+      "max_iter": 300,
+      "max_leaf_nodes": 15
+    },
+    {
+      "learning_rate": 0.1,
+      "loss": "squared_error",
+      "max_iter": 300,
+      "max_leaf_nodes": 31
+    }
+  ],
+  "offset_ovrige_min": 64.2,
+  "regel": "Høyest andel innenfor ±30 min på validering. Konfigurasjoner innenfor 1 prosentpoeng av beste andel regnes som like gode; blant dem velges færrest max_iter, så færrest max_leaf_nodes, så lavest MAE. F1 for varsel rapporteres, men avgjør ikke. Referansen «avvik = 0» velges aldri.",
+  "seed": 20261109,
+  "sklearn_versjon": "1.6.1",
+  "toleranse_pp": 1.0,
+  "treff_min": 30.0,
+  "varsel_min": 120.0
+}

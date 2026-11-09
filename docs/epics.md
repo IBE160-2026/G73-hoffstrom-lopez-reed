@@ -273,7 +273,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_features.py::test_historikk_uten_lekkasje`, `::test_valideringssplitt_kronologisk`, `::test_fartoyhistorikk_bare_fra_trening` (endres alle avvik i testperioden og radens eget, er F15, F16 og snittet det trekkes mot, identiske. Legges testrader til, fjernes de eller flyttes de, er F16 identisk. Endres én treningsrad, endres bare rader med `t_H` etter den radens ankomst), `::test_slakk_ved_lav_fart` (F7 ved fart 0, 0,3, 1,0 og 12 kn og manglende fart), `::test_ugyldig_fart_og_nan` (102,3 kn og NaN) og `::test_kurs_ugyldig` (kurs 360, manglende kurs, fart < 1 kn og distanse 0 gir tom F3) og `::test_valideringshistorikk_frosset_ved_grensen`
 
-### E2-S05 — Tren 6 t- og 24 t-modell ☐
+### E2-S05 — Tren 6 t- og 24 t-modell ✅
 **Krav:** FR9, A7 · **Avhenger av:** E2-S04
 - `scripts/tren.py` trener én modell per horisont med fast seed, bare på Øvrige. Modellvalget gjøres på valideringsdelen.
 - I tillegg trenes en ablasjon per horisont uten F13–F14 (beslutning 11).
