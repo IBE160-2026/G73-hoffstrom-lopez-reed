@@ -15,6 +15,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pytest
+import sklearn
 
 REPO_ROT = Path(__file__).resolve().parent.parent
 _spec = importlib.util.spec_from_file_location("lag_features", REPO_ROT / "scripts" / "lag_features.py")
@@ -28,11 +29,11 @@ OFFSET = {"Passasjer": 44.75, "Øvrige": 64.2}
 START = dt.datetime(2024, 1, 1, 6, 0)
 
 
-def _fixture(n=100, seed=1):
+def _fixture(n=100, seed=1, med_avvik=False):
     """n anløp (to horisonter hver): 60 % trening, 20 % validering, 20 % test; hvert femte er Passasjer.
     Hvert tiende Øvrige-anløp mangler tilstand eller fasit. Avviket avhenger av slakk og skipstype."""
     rng = random.Random(seed)
-    anlop, features = [], []
+    anlop, features, generert = [], [], {}
     for i in range(n):
         vid = str(1000 + i)
         eta = START + dt.timedelta(hours=7 * i)
@@ -44,6 +45,7 @@ def _fixture(n=100, seed=1):
         fart = rng.uniform(0, 15)
         avvik = 3 * max(0.0, km / 1.852 / max(fart, 1.0) - 6) + (40 if skipstype == "Tanker" else 0) + rng.gauss(0, 10)
         ank = eta - dt.timedelta(minutes=OFFSET[gruppe]) + dt.timedelta(minutes=avvik)
+        generert[vid] = avvik
         anlop.append({"voyageid": vid, "mmsino": str(257000000 + i % 7), "shipname": "X",
                       "ship_group": "Passasjer" if gruppe == "Passasjer" else "Last",
                       "eta_reported": eta.isoformat() + "+00:00",
@@ -69,7 +71,7 @@ def _fixture(n=100, seed=1):
                             "lat": "60.5", "lon": "5.0", "i_sonen_ved_kutt": str(int(km <= 15)),
                             "slakk_timer": "" if mangler_fart else f"{h - km / 1.852 / max(fart, 1.0):.3f}"})
             features.append(rad)
-    return anlop, features
+    return (anlop, features, generert) if med_avvik else (anlop, features)
 
 
 def _skriv(mappe, anlop, features):
@@ -230,3 +232,67 @@ def test_inkonsistent_input_skriver_ingenting(tmp_path, feil):
         (tmp_path / "features.json").write_text(json.dumps({"utdrag_sha256": "0" * 64}), encoding="utf-8")
     assert _kjor(tmp_path) == 2
     assert not (tmp_path / "modell").exists()
+
+
+def test_maal_er_kalibrert_avvik():
+    anlop, features, generert = _fixture(med_avvik=True)
+    rader = tren.treningsrader([r for r in features if r["del"] != "test"], anlop, OFFSET["Øvrige"])
+    assert rader
+    for r in rader:
+        assert r["avvik_min"] == pytest.approx(generert[r["voyageid"]], abs=1e-3), r["voyageid"]
+
+
+def test_velg_toleranse_og_enkelhet():
+    def res(andel, mae, blad):
+        return {"andel_30": andel, "mae": mae, "config": {"max_iter": 300, "max_leaf_nodes": blad}}
+    resultater = [
+        res(0.600, 90.0, 31),    # 0: beste andel, men 31 blad
+        res(0.595, 100.0, 15),   # 1: innenfor 1 pp, 15 blad
+        res(0.585, 50.0, 15),    # 2: 1,5 pp under: utenfor, selv med lavest MAE
+        res(0.592, 95.0, 15),    # 3: innenfor, 15 blad, lavere MAE enn 1 → valgt
+        res(0.600, 10.0, 31),    # 4: lavest MAE innenfor, men 31 blad: MAE avgjør først etter blad
+    ]
+    valgt, beste, innenfor = tren.velg(resultater)
+    assert beste == 0.600
+    assert innenfor == [0, 1, 3, 4]
+    assert valgt == 3
+
+
+def test_matrise_historikkvariant():
+    _, features = _fixture(n=30)
+    rad = next(r for r in features if r["del"] == "trening" and r["har_tilstand"] == "1")
+    kat = tren.lag_kategorier([rad], tren.FEATURES)
+    j15, j16 = tren.FEATURES.index("fartoy_snittavvik_min"), tren.FEATURES.index("fartoy_antall_tidligere")
+    mv = tren.matrise([rad], tren.FEATURES, kat, historikk="modellvalg")
+    endelig = tren.matrise([rad], tren.FEATURES, kat)
+    assert (mv[0, j15], mv[0, j16]) == (5.0, 1.0)
+    assert (endelig[0, j15], endelig[0, j16]) == (10.0, 2.0)
+
+
+def test_score_kjente_tall():
+    y = [0, 30, 200, 150]
+    pred = [30, -1, 130, 100]           # feil 30 (treff, inklusiv), 31, 70, 50
+    s = tren.score(y, pred)
+    assert s["andel_30"] == 0.25
+    assert s["mae"] == 45.25
+    assert s["varsel_presisjon"] == 1.0  # ett varsel (130), og det er riktig
+    assert s["varsel_recall"] == 0.5     # to faktiske > 120 (200, 150)
+    assert s["varsel_f1"] == pytest.approx(2 / 3, abs=1e-6)
+    ingen = tren.score(y, [0, 0, 0, 0])
+    assert ingen["varsel_presisjon"] == ingen["varsel_recall"] == ingen["varsel_f1"] == 0.0
+
+
+def test_committede_modeller():
+    """De committede artefaktene (E2-S05) laster, og NFR1: E2 under data/ inkludert data/modell < 10 MB."""
+    modell = REPO_ROT / "data" / "modell"
+    utdrag = REPO_ROT / "data" / "utdrag"
+    filer = sorted(modell.glob("*.joblib"))
+    assert len(filer) == 4
+    features_sha = hashlib.sha256((utdrag / "features.csv").read_bytes()).hexdigest()
+    for f in filer:
+        art = joblib.load(f)
+        assert art["sklearn_versjon"] == sklearn.__version__, f.name
+        assert art["features_sha256"] == features_sha, f.name
+    e2 = ([utdrag / "ais_kutt_dekning.csv"] + sorted(utdrag.glob("tilstand_ved_kutt.*"))
+          + sorted(utdrag.glob("features.*")) + sorted(p for p in modell.iterdir() if p.is_file()))
+    assert sum(p.stat().st_size for p in e2) < 10_000_000

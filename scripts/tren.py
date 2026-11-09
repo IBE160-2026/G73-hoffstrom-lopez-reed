@@ -274,7 +274,8 @@ def main(argv=None):
         print(f"Stopper, ingenting er skrevet: {exc}", file=sys.stderr)
         return 2
 
-    sha = {"features_sha256": _sha256_bytes(innhold), "anlop_sha256": _sha256_bytes(anlop_bytes)}
+    sha = {"features_sha256": _sha256_bytes(innhold), "anlop_sha256": _sha256_bytes(anlop_bytes),
+           "baseline_sha256": _sha256_bytes(args.baseline.read_bytes()), "offset_ovrige_min": offset}
     rapport = {
         "beslutning": "docs/beslutninger/11-modellvalg-ovrige-og-features.md",
         "regel": REGEL, "toleranse_pp": TOLERANSE_PP, "treff_min": TREFF_MIN, "varsel_min": VARSEL_MIN,
