@@ -105,3 +105,49 @@ Felipe ba om fire ting:
 
 ### Åpne punkter
 - Beslutning 12 godkjennes av gruppa i E2-PR-en, og Thomas ser på E2-S07, der F6-rader delegeres.
+
+## 2026-11-09 kl. 17:20 — Felipe Knudstad-Lopez
+
+### Oppgave
+Felipe svarte på spørsmålene i E2-S06-specen:
+- **1A:** bestått/ikke bestått avgjøres på modellutvalget. All Øvrige-trafikk med delegering skal stå i samme tabell, både i briefen og i resultatnotatet, sammen med hvor stor andel av anløpene modellen brukes på.
+- **2B:** testkjøringen gjøres i E2-S10. Modell, konfigurasjon og valgregler er låst før den kjøringen.
+
+Han godkjente og ba om at arbeidet fortsatte. Under reviewen svarte han på to nye spørsmål:
+- valideringstallene skal komme fra en modell trent på nytt i minnet, bare på treningsdelen
+- varselstreken skal ligge på modellutvalget, og dokumentene skal si rett ut at den er lavere
+
+### Plan
+- Svarene føres inn i specen som beslutning 1–3. En subagent implementerer, og tre reviewere går gjennom resultatet. De to nye spørsmålene går til Felipe og føres inn som beslutning 4–5, og implementøren retter funnene.
+- Spec: `_bmad-output/implementation-artifacts/spec-e2-s06-evalueringsskript.md`, med status `done`.
+
+### Resultat
+- **`79ea662` og `73bc453`:**
+  - `scripts/evaluer.py`, nye mål i `app/metrikker.py` og nye tester.
+  - Briefen (EN og NO), PRD FR10 og `status.md` sier at bestått/ikke bestått avgjøres på modellutvalget.
+  - E2-S10 har fått låsen og tabellen med begge radene.
+  - `metrikker.json` er committet. Subagenten committet som Theodor, og forfatteren ble skrevet om til Felipe.
+- **Review:** 19 funn.
+  - To krevde svar fra Felipe:
+    - De endelige artefaktene er trent på trening + validering, så valideringstallene var målt på rader modellen hadde sett. Modellutvalget viste 78,2 % og 72,4 % mot 69,1 % og 59,8 % holdt ut.
+    - Varselstreken ble senket fra F1 0,33 til 0,14 og 0,19 uten at det sto noe sted.
+  - Sju ble rettet.
+  - Én ble utsatt: `--test`-stien er ikke testet. Den skal prøvekjøres på en kopi før E2-S10 (`deferred-work.md`).
+  - Resten ble avvist med begrunnelse i specens triage-logg.
+- **`d36964c` og `78a6a02`:**
+  - Valideringen trener modellen på nytt i minnet, bare på treningsdelen. Tallene er nå lik `modellvalg.json`: 69,1 % ved 6 t og 59,8 % ved 24 t, med F1 0,58 og 0,60. En test låser dette.
+  - Briefen og PRD sier at varselstreken er lavere, hvorfor, og at den ble flyttet etter valideringstallene.
+  - Grensene på testperioden (433/733 og 418/742) er låst i en test.
+  - Splitten sjekkes begge veier.
+  - `--test` nekter å kjøre en gang til uten `--ny-testkjoring`.
+- **Testperioden, bare baseline:**
+  - Baselinen på modellutvalget er 59,1 % ved 6 t og 56,3 % ved 24 t. Modellen brukes på 73,6 % og 74,5 % av Øvrige-anløpene med fasit.
+  - Av 194 forsinkede Øvrige-anløp er 57 og 78 i utvalget, 107 og 92 er F6-rader, og 30 og 24 har ingen tilstand.
+- **`286dd20`:** specen med beslutninger, endringslogg og triage-logg.
+- **`88e395f`:** refleksjonsnotat.
+- `testkjoringer` = 0. Testene er grønne: 300 passed. En ny kjøring gir en byte-identisk `metrikker.json`.
+- Ikke pushet.
+
+### Åpne punkter
+- Før testkjøringen i E2-S10 prøvekjøres `--test` på en kopi av `metrikker.json`, så det er sikkert at tallene havner under `test` og at kjøringen telles.
+- Gruppa godkjenner den nye suksessformuleringen i briefen og PRD (modellutvalget avgjør, og varselstreken er lavere) i E2-PR-en.
