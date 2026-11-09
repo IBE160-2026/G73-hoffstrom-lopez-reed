@@ -155,3 +155,21 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Hvordan det ble oppdaget:** testene feilet mot koden, og kallene ble talt opp for hånd.
 - **Resultat:** `8694a48`. Begge forventningene er rettet, med en kommentar som viser kallene. Avviket fra review-funnet er ført i E2-S02-specen.
 - **Lærdom (råt):** Et tall i et review-funn er en påstand, ikke en fasit. Samme mønster som «Feil forventning i en review-rettelse» 22.10. Spor kallene for hånd før forventningen skrives inn.
+
+## 2026-11-09 — Fem testhull i treningsskriptet, og commits med feil forfatter (E2-S05)
+
+- **Hva:** implementeringssubagenten skrev `scripts/tren.py` med 8 grønne tester og meldte at mutasjonssjekken var gjort. Verification Gap-revieweren fant likevel fem endringer som ingen test fanget:
+  - fortegnet på målet snudd, og offseten lagt til i stedet for trukket fra
+  - valgregelen sortert på MAE først
+  - historikken i modellvalget slått av, som ville lekket valideringshistorikk inn i valget
+  - treffgrensen endret fra 30 til 60 min
+  - ingen sjekk av de committede artefaktene
+
+  I tillegg committet subagenten med Theodor som forfatter, selv om økta skulle ha Felipe.
+- **Hvordan det ble oppdaget:** reviewen etter implementeringen, med tre lag i parallell, og Claude som kontrollerte `git log` før push.
+- **Resultat:** `36eebb0` har fem nye tester, og artefaktene har fått offset og sha for baseline. Forfatteren ble skrevet om med rebase før push.
+- **Lærdom (råt):**
+  - Testene sjekket at to kjøringer ga samme resultat og at strukturen stemte, men ikke at verdiene var riktige. Et program kan være feil på samme måte to ganger.
+  - Mutasjonssjekken dekket filtrene implementeringen selv tenkte på, ikke målet eller metrikken.
+  - En subagent vet ikke om forfatterregelen i økta. Sjekk `git log --format='%an'` før push.
+
