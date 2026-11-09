@@ -44,3 +44,29 @@ Alle commits har Felipe som forfatter.
 ### Åpne punkter
 - E2-S05: Felipe svarer på de tre åpne spørsmålene i specen og avgjør om specen kan være over 1 600 tokens. Deretter godkjennes den, og implementeringen starter.
 - Seilas 3353948 HALTBAKK STAR i testdelen har soneinngang 89 t før ETA (beslutning 03). Den tas med i resultatnotatet (E2-S10) som en mulig etikettfeil i testperioden.
+
+## 2026-11-09 kl. 14:26 — Felipe Knudstad-Lopez
+
+### Oppgave
+Felipe svarte på de tre spørsmålene i E2-S05-specen: 1A med en tilleggsregel, 2B og 3A. Tilleggsregelen er at konfigurasjoner innenfor 1 pp av den beste andelen innenfor ±30 min regnes som like gode, og at den enkleste av dem velges. Specen skulle holdes samlet, og implementeringen skulle starte («Godkjenn og fortsett»).
+
+### Plan
+- Svarene føres inn som beslutninger i specen. Deretter implementerer en subagent fra specen, tre reviewere går gjennom resultatet parallelt, og rettelsene tas inn.
+- Spec: `_bmad-output/implementation-artifacts/spec-e2-s05-tren-modell.md`, med status `done`.
+
+### Resultat
+- **`aa66a2b`:** `scripts/tren.py` og `tests/test_tren.py`, og `scikit-learn==1.6.1` lagt til i `requirements.txt`.
+- **`9a52b9d`:** de fire artefaktene og `modellvalg.json`, og E2-S05 står til ✅.
+- Subagenten committet med Theodor som forfatter. Forfatteren er skrevet om til Felipe før push.
+- **Review:** tre lag fant fem testhull, alle bekreftet med mutasjoner, og to feil i innholdet:
+  - artefaktene manglet offset og sha for baseline
+  - numpy og joblib var ikke låst
+- **`36eebb0` og `f5418ad`:** rettelsene, med fem nye tester og artefaktene trent på nytt. `modellvalg.json` er byte-identisk.
+- Testene er grønne: 276 passed på omtrent 10 s. E2-dataene er 6,4 MB.
+- **Valideringsresultat:** begge horisontene valgte `absolute_error`, læringsrate 0,05 og 15 blad. Innenfor ±30 min: 62,8 % mot 41,5 % for referansen ved 6 t, og 56,2 % mot 39,6 % ved 24 t.
+- **Funn:** 947 Øvrige-anløp med fasit er allerede i sonen ved t_6, og 569 av dem er merket sene. Det er lokale turer der avgangshavna ligger inne i 15-km-sonen (Kleppestø, Ågotnes, Skålevik, Bergen). Etiketten er da ikke en ankomst. F6 alene gir F1 0,82 på valideringsdelen.
+- **Ikke pushet:** de fire E2-S05-commitene og denne loggen.
+
+### Åpne punkter
+- Felipe avgjør hva som gjøres med turene inne i sonen før E2-S06. Alternativene er å holde seg til splitten med og uten F6 som planlagt, å gjøre dem til egen kategori, å holde dem utenfor modellen, eller å føre dem som kjent begrensning i beslutning 03.
+- Toleransen på 1 pp er mindre enn utvalgsstøyen (n = 634/621, standardfeil ≈ 2 pp), så enkelhetsregelen slo aldri inn. Felipe vurderer om toleransen skal opp.
