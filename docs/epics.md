@@ -282,7 +282,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_tren.py`. Kjøring på fixturen gir samme prediksjon to ganger, ingen Passasjer-rader er med i treningen, og ablasjonen har ikke F13–F14.
 
-### E2-S06 — Evalueringsskript ☐
+### E2-S06 — Evalueringsskript ✅
 **Krav:** FR10, NFR3, A6 · **Avhenger av:** E2-S05
 - `scripts/evaluer.py` bruker `app/metrikker.py` og skriver `data/modell/metrikker.json`, med følgende per horisont og gruppe, for modell og baseline på samme anløp:
   - andel innenfor ±30 min
@@ -327,7 +327,9 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
   - ablasjonen uten F13–F14 og tallene med og uten rader i ankomstsonen
   - begrensningene: vintervridd test, AIS-hull, A1 (rapportert ETA ved `t_H`) og avgangshavn/ETD
   - om målene ble nådd
+- Notatet har én tabell med to rader side om side, modellutvalget og all Øvrige-trafikk med delegering, med antall testanløp med fasit, modellandelen av Øvrige-anløpene, baseline ±30 min og modell ±30 min (samme tabell som i briefen). Bestått/ikke bestått avgjøres på modellutvalget (E2-S06, beslutning 1).
 - Et negativt resultat rapporteres. README nevner modellen.
+- **Lås før testkjøringen** (E2-S06, beslutning 2): modell, konfigurasjon og valgregler er låst før den ene kjøringen av `scripts/evaluer.py --test`, og ingenting endres etterpå. Endres noe likevel, står det i resultatnotatet. Testkjøringen gjøres i denne storyen, ikke før.
 
 **Test:** tallene i notatet er lik `metrikker.json` (sjekkes i PR).
 
@@ -443,3 +445,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-03** — E2-S03: tilstandsutdraget får `ais_status` og metadata i `tilstand_ved_kutt.json`, og `allerede_ankommet` er tatt ut. E2-S06 bruker F6 som eneste definisjon av «allerede i ankomstsonen» (Felipe).
 - **2026-11-03** — E2-S04: `features.csv` erstatter det rå statiske utdraget, og rå ETD committes ikke. Sjekken av lange avstander og etikettsjekken kjøres etter hentingen (Felipe).
 - **2026-11-09** — E2-S05, beslutning 12: modellen brukes bare utenfor ankomstsonen ved kuttet, og F6-rader går til baselinen. Det påvirker E2-S06 og E2-S07 (Felipe).
+- **2026-11-09** — E2-S06 er ferdig: `scripts/evaluer.py` skriver valideringstallene til `metrikker.json`, og baselinen på testperioden (uten modell) ligger under `test_bare_baseline`. Bestått/ikke bestått avgjøres på modellutvalget, og all Øvrige-trafikk med delegering står i samme tabell (brief, PRD FR10). E2-S10 har fått låsen før den ene testkjøringen og tabellen med begge radene og modellandelen (Felipe).
