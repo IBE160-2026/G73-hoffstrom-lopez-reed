@@ -5,13 +5,22 @@ bare det som er kjent ved prediksjonstidspunktet (identitet, gruppe, rapportert 
 horisont og kuttpunkt). Den har ingen felt eller referanse som fører til fasiten
 (``faktisk_ankomst``, ``status_in_area``, ``split``). ``lag_input`` er den eneste
 koden i prediksjonslaget som rører datalaget.
+
+Featurene F1–F16 ved kuttet når modellen gjennom søsterfunksjonen ``featurer_ved_kutt`` (E2-S07,
+beslutning 1A i specen). Den leser ``data/utdrag/features.csv`` og gir bare modellens featurekolonner.
 """
 from __future__ import annotations
 
+import csv
 import datetime as dt
+import hashlib
+import io
 import os
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List, Optional, Protocol, Sequence
+from functools import lru_cache
+from pathlib import Path
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Dict, List, Mapping, Optional, Protocol, Sequence, Tuple
 
 if TYPE_CHECKING:
     from app.data import Anlop
@@ -19,6 +28,7 @@ if TYPE_CHECKING:
 HORISONT_KORT = 6
 HORISONT_LANG = 24
 GYLDIGE_PREDIKTOR = ("auto", "baseline", "modell")
+FEATURES_FIL = Path(__file__).resolve().parents[2] / "data" / "utdrag" / "features.csv"
 
 
 @dataclass(frozen=True)
@@ -79,6 +89,48 @@ def lag_input(anlop: "Anlop", naa: dt.datetime) -> PrediksjonsInput:
         horisont_timer=horisont,
         t_kutt=t_kutt,
     )
+
+
+def _featureverdi(kolonne: str, verdi: str, kategoriske: Sequence[str]):
+    """Tom celle blir None. Kategoriene (F8, F13) står som tekst, alt annet som float."""
+    if verdi == "":
+        return None
+    return verdi if kolonne in kategoriske else float(verdi)
+
+
+@lru_cache(maxsize=None)
+def _featurefil(sti: Path = FEATURES_FIL) -> Tuple[str, Dict[Tuple[int, int], Tuple[dt.datetime, Mapping]]]:
+    """(sha256, {(voyageid, H): (t_kutt, featurer)}). Lest én gang. Bare modellens featurekolonner beholdes;
+    ``del``, ``gruppe``, ``har_tilstand``, ``_modellvalg``-historikken og alt annet kastes her."""
+    from app.prediksjon.koding import FEATURES, KATEGORISKE
+
+    innhold = Path(sti).read_bytes()
+    rader = {}
+    for r in csv.DictReader(io.StringIO(innhold.decode("utf-8"))):
+        t_kutt = _til_utc(dt.datetime.fromisoformat(r["t_kutt_utc"].replace("Z", "+00:00")), "t_kutt_utc")
+        featurer = MappingProxyType({k: _featureverdi(k, r[k], KATEGORISKE) for k in FEATURES})
+        rader[(int(r["voyageid"]), int(r["horisont_timer"]))] = (t_kutt, featurer)
+    return hashlib.sha256(innhold).hexdigest(), rader
+
+
+def features_sha256() -> str:
+    """sha256 for featurefila ``featurer_ved_kutt`` svarer fra. ``ModellPrediktor`` sjekker den mot artefaktet."""
+    return _featurefil()[0]
+
+
+def featurer_ved_kutt(inp: PrediksjonsInput) -> Optional[Mapping]:
+    """F1–F16 for anløpet og horisonten, som en frossen mapping med bare modellens featurekolonner.
+
+    Gir None hvis det ikke finnes en featurerad, eller hvis radens kuttpunkt ikke er lik ``inp.t_kutt``
+    (for eksempel når ``lag_input`` har klemt kuttet mot «nå»: den committede raden er da fra etter «nå»).
+    Uten AIS-tilstand ved kuttet er F1–F7 None (også F6). Ingen fasit eller ankomstfelt går ut herfra.
+    """
+    if not isinstance(inp, PrediksjonsInput):
+        raise TypeError(f"featurer_ved_kutt() tar PrediksjonsInput, ikke {type(inp).__name__}")
+    treff = _featurefil()[1].get((inp.voyageid, inp.horisont_timer))
+    if treff is None or treff[0] != inp.t_kutt:
+        return None
+    return treff[1]
 
 
 def velg_prediktor(verdi: Optional[str] = None) -> Prediktor:

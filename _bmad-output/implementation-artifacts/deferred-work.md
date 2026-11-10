@@ -20,3 +20,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-e2-s06-evalueringsskript.md`
   summary: The `--test` path of `scripts/evaluer.py` (argument mapping and model arm on the test split) is never exercised by a test.
   evidence: Medium if true, unverified. Settle with a dry run on a copy of `metrikker.json` before the single test run in E2-S10, or a pytest on the synthetic fixture if the group allows it.
+- source_spec: `_bmad-output/implementation-artifacts/spec-e2-s07-modellprediktor.md`
+  summary: The `velg_prediktor` docstring in `app/prediksjon/__init__.py` still says no model artifact exists; update it when E2-S08 wires `ModellPrediktor` into `velg_prediktor`.
+  evidence: E2-S07 review finding 10; E2-S07 was not allowed to change `velg_prediktor`.

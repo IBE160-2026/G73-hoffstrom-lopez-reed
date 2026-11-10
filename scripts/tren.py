@@ -46,6 +46,7 @@ from sklearn.ensemble import HistGradientBoostingRegressor
 REPO_ROT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROT))
 from app.prediksjon import features as F  # noqa: E402
+from app.prediksjon.koding import FEATURES, HISTORIKK, KATEGORISKE, matrise  # noqa: E402,F401
 
 STANDARD = {
     "features": Path("data/utdrag/features.csv"),
@@ -60,17 +61,8 @@ TREFF_MIN = 30.0
 VARSEL_MIN = 120.0             # PRD A3: terskelen tunes ikke
 TOLERANSE_PP = 1.0             # beslutning 1 (Felipe, 09.11.2026)
 
-FEATURES = [
-    "distanse_km", "fart_knop", "kurs_mot_havn", "posisjon_alder_min", "lat", "lon",   # F1–F5
-    "i_sonen_ved_kutt", "slakk_timer",                                                 # F6–F7
-    "skipstype", "lengde_m",                                                           # F8–F9
-    "eta_time_sin", "eta_time_cos", "eta_ukedag", "eta_maned_sin", "eta_maned_cos",    # F10–F12
-    "avgangshavn", "avgatt_for_kutt", "timer_siden_avgang",                            # F13–F14
-    "fartoy_snittavvik_min", "fartoy_antall_tidligere",                                # F15–F16
-]
-KATEGORISKE = ("skipstype", "avgangshavn")                                             # F8, F13
+# FEATURES, KATEGORISKE, HISTORIKK og matrise står i app/prediksjon/koding.py (E2-S07): én definisjon av modellarmen.
 ABLASJON_UT = ("avgangshavn", "avgatt_for_kutt", "timer_siden_avgang")                 # F13–F14
-HISTORIKK = ("fartoy_snittavvik_min", "fartoy_antall_tidligere")
 FEATURES_UTEN_F13_F14 = [f for f in FEATURES if f not in ABLASJON_UT]
 
 KANDIDATER = [
@@ -139,29 +131,9 @@ def treningsrader(features, anlop, offset, utelat_i_sonen=True):
     return ut
 
 
-def _tall(s):
-    return float("nan") if s is None or s == "" else float(s)
-
-
 def lag_kategorier(rader, features):
     """F8/F13-kartene, fittet på radene som fittes (beslutning 11). Koden er indeksen i lista."""
     return {k: sorted(F.lag_kategorikart(r[k] for r in rader) | {F.ANNET}) for k in KATEGORISKE if k in features}
-
-
-def matrise(rader, features, kategorier, historikk="endelig"):
-    """X som float-matrise. Kategorier kodes som indeks i kartet; ukjent og manglende blir ``annet``.
-    ``historikk="modellvalg"`` henter F15–F16 fra ``fartoy_*_modellvalg``."""
-    kode = {k: {v: i for i, v in enumerate(liste)} for k, liste in kategorier.items()}
-    X = np.empty((len(rader), len(features)), dtype=float)
-    for i, r in enumerate(rader):
-        for j, f in enumerate(features):
-            if f in kode:
-                X[i, j] = kode[f][F.grupper_sjeldne(r.get(f), frozenset(kode[f]))]
-            elif f in HISTORIKK and historikk == "modellvalg":
-                X[i, j] = _tall(r[f + "_modellvalg"])
-            else:
-                X[i, j] = _tall(r.get(f))
-    return X
 
 
 def lag_modell(config, features, seed):

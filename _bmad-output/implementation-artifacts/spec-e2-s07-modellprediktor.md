@@ -2,7 +2,8 @@
 title: 'E2-S07 — ModellPrediktor'
 type: 'feature'
 created: '2026-11-09'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: '5898ff601b502a3eb9620c700714c9910e3fb335'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -74,12 +75,12 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `app/prediksjon/` -- move the feature encoding out of `scripts/tren.py` into a pure function; `tren.py` imports it. `tests/test_tren.py::test_committede_modeller` stays green, and the artifacts are not rewritten.
-- [ ] `app/prediksjon/__init__.py` -- `featurer_ved_kutt(inp)` (Decision 1), with the `t_kutt` equality rule and the features-file sha.
-- [ ] `app/prediksjon/modell.py` -- `ModellPrediktor` (`navn = "Modell v1"`, `kan_varsle = True`), artifacts loaded once, delegation, the artifact check.
-- [ ] `tests/test_prediktor_kontrakt.py` -- add `ModellPrediktor` to `PREDIKTORER`.
-- [ ] `tests/test_modellprediktor.py` -- one test per matrix row (including the boundary-output test, Decision 2), the equivalence with `evaluer.modell_prediksjoner` on validation rows, and that a row's prediction does not change when another row's features or ground truth change.
-- [ ] `docs/arkitektur.md` §3, `docs/epics.md` -- the chosen feature path, E2-S07 ✅ and a changelog line.
+- [x] `app/prediksjon/` -- move the feature encoding out of `scripts/tren.py` into a pure function; `tren.py` imports it. `tests/test_tren.py::test_committede_modeller` stays green, and the artifacts are not rewritten.
+- [x] `app/prediksjon/__init__.py` -- `featurer_ved_kutt(inp)` (Decision 1), with the `t_kutt` equality rule and the features-file sha.
+- [x] `app/prediksjon/modell.py` -- `ModellPrediktor` (`navn = "Modell v1"`, `kan_varsle = True`), artifacts loaded once, delegation, the artifact check.
+- [x] `tests/test_prediktor_kontrakt.py` -- add `ModellPrediktor` to `PREDIKTORER`.
+- [x] `tests/test_modellprediktor.py` -- one test per matrix row (including the boundary-output test, Decision 2), the equivalence with `evaluer.modell_prediksjoner` on validation rows, and that a row's prediction does not change when another row's features or ground truth change.
+- [x] `docs/arkitektur.md` §3, `docs/epics.md` -- the chosen feature path, E2-S07 ✅ and a changelog line.
 
 **Acceptance Criteria:**
 - Given no `pipeline/data/`, when `pytest` runs, then it is green in < 1 min, and the AST rule and `test_dataregresjon.py` are unchanged.
@@ -88,9 +89,42 @@ context:
 
 ## Implementation Notes
 
+- The encoding lives in a new pure module `app/prediksjon/koding.py` (`FEATURES`, `KATEGORISKE`, `HISTORIKK`, `tall`, `matrise`), so `features.py` stays stdlib-only. `scripts/tren.py` imports and re-exports these names, so `tren.matrise`/`tren.FEATURES` (used by `evaluer.py`, `sammenlign_f6.py` and `test_tren.py`) are unchanged. Retraining into a scratch directory gave a byte-identical `modellvalg.json` and identical predictions for all four artifacts.
+- `featurer_ved_kutt` returns typed values (float, category string, or None for an empty cell). `matrise` encodes them exactly as the CSV strings (`""`/None → NaN or `annet`).
+- The boundary does not hand over `har_tilstand` (it is not an artifact feature). `ModellPrediktor` reads "no state" as F6 = None. `test_tilstand_er_lik_definert_f6` shows `har_tilstand == 1` ⇔ F6 is defined for every row of `features.csv`, so this matches `evaluer.har_tilstand`.
+- `ModellPrediktor(modell_dir=MODELL_DIR)` takes an optional directory (used by the mismatch test). It also checks horizon, variant and that the artifact's feature list equals the boundary's.
+- Delegated rows keep the baseline's `forklaring` (`metode: "kalibrert_baseline"`) plus `delegert`. Model rows carry `gruppe` too, which the contract test requires.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Layer | Finding | Verdict | Evidence | Route |
+|---|-------|---------|---------|----------|-------|
+| 1 | verification-gap | No test sends a mixed 6 h/24 h batch with model rows; `self._artefakter[min(per_h)]` mutation survives | medium | pre-verified by mutation (17/17 green) | patch |
+| 2 | verification-gap, blind | Horizon/variant and feature-list checks in `_sjekk` untested | medium | pre-verified by deleting both checks (17/17 green) | patch |
+| 3 | edge-case, verification-gap | Artifact `historikk` key ignored; `evaluer` honours it | low | committed artifacts lack the key, but a `modellvalg` artifact would load silently and diverge from `evaluer` | patch |
+| 4 | edge-case, blind | Missing artifact raises `FileNotFoundError`, not `ValueError`, so an E2-S08 fallback on `ValueError` misses it | medium | `_last_artefakter` raises `FileNotFoundError` | patch |
+| 5 | blind | `test_modellrad` hardcodes offset 64.2 | low | recalibrating `baseline.json` breaks the test for an unrelated reason; direct fix | patch |
+| 6 | blind | `passasjer`/`ingen_tilstand` delegation tested only at H = 6 | low | parametrize lists only h=6 for them; direct fix | patch |
+| 7 | blind | `test_prediktormoduler_finnes` does not assert `modell.py`, `koding.py` are scanned by the AST rule | low | asserts only `{baseline.py, naiv.py}`; direct fix | patch |
+| 8 | blind | Isolation test does not assert the changed row's prediction moved | low | only `featurer` compared; one assertion | patch |
+| 9 | blind | `arkitektur.md` §5 `__init__.py` line omits `featurer_ved_kutt`, `features_sha256` | low | stale tree line; direct correction | patch |
+| 10 | blind | `velg_prediktor` docstring says no model artifact exists | low | stale, but spec forbids touching `velg_prediktor` here | defer (E2-S08) |
+| 11 | edge-case | Generator input is exhausted by the type loop | low | contract is `Sequence`; all callers pass lists; `BaselinePrediktor` has the same shape | reject |
+| 12 | edge-case | Hand-built naive `t_kutt` silently delegates | low | only `lag_input` builds inputs and it normalises to UTC | reject |
+| 13 | edge-case | Duplicate `(voyageid, H)` in `features.csv` | low | not reachable with the committed, validated extract | reject |
+| 14 | edge-case | Artifact without `modell`/`kategorier` key fails at predict time | low | committed artifacts have both; needs extra guards | reject |
+| 15 | blind | `epics.md` story body says "merkes med metoden" | false | delegated rows do carry `metode` (`kalibrert_baseline`) plus `delegert` | reject |
+| 16 | blind | Narrower artifact check than `evaluer.last_artefakter` | false | spec sets the check to `features_sha256` + offset; the predictor reads neither `anlop.csv` nor anything else `baseline_sha256` guards beyond the offset, which is compared by value | reject |
+| 17 | blind | Served feature values never checked against raw CSV | false | `test_lik_modellarmen_i_evaluer` compares with `evaluer`, which encodes the raw strings; a parsing bug changes predictions | reject |
+| 18 | blind | Non-Øvrige groups all labelled `passasjer` | false | `BaselinePrediktor.prediker` runs first and raises `KeyError` on an unknown group | reject |
+| 19 | blind | Contract test does not check alert type for `kan_varsle = True` | low | model returns `bool` by construction; contract change is out of proportion | reject |
+| 20 | blind | Equivalence test does not assert horizon | false | `evaluer.baseline_prediksjoner` raises on a horizon mismatch | reject |
+| 21 | blind | Retrain claim and `--author` not evidenced in diff | low | process claims; the fix would edit this spec | reject |
+| 22 | blind | F15–F16 leakage checked only by column name | false | pre-existing E2-S04 guarantee, tested in `tests/test_features.py` | reject |
+| 23 | blind | Unbounded caches, shared mutable artifact dicts | low | nothing mutates them; fix adds complexity | reject |
+| 24 | mutation check | `avvik_min > VARSEL_MIN` → `>= VARSEL_MIN + 1` survived: no validation row predicts 120–121 min | medium | 1 of 17 mutants survived | patch: `test_varselterskelen_er_strengt_over_120` with a stub model; rerun 18/18 killed |
 
 ## Design Notes
 

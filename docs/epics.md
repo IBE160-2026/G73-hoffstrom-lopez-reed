@@ -297,7 +297,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_evaluer.py`. Baselinetallene er lik dataregresjonen fra E1-S05. `metrikker.json` har nøklene for ablasjonen og for uten F6, og Passasjer har bare baseline.
 
-### E2-S07 — ModellPrediktor ☐
+### E2-S07 — ModellPrediktor ✅
 **Krav:** FR9, A5 · **Avhenger av:** E2-S06
 - Implementerer kontrakten, med `kan_varsle = True`. Delegerte rader får `forventet_forsinket = None`. F1–F16 når prediktoren via `lag_input` eller en søsterfunksjon, aldri ved fillesing i prediktormodulen. Krever det nye felt i `PrediksjonsInput`, tas kontraktendringen i egen PR som Thomas og Felipe godkjenner. Horisonten velges fra `rapportert ETA − nå` (PRD FR2).
 - Varselet er `predikert − kalibrert baseline > 120 min`. Passasjer-rader, rader uten tilstand og rader som er i sonen ved kuttet (F6) delegeres til baselinen og merkes med metoden i `forklaring` (beslutning 11 og 12).
@@ -449,3 +449,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-09** — E2-S05, beslutning 12: modellen brukes bare utenfor ankomstsonen ved kuttet, og F6-rader går til baselinen. Det påvirker E2-S06 og E2-S07 (Felipe).
 - **2026-11-09** — E2-S06 er ferdig: `scripts/evaluer.py` skriver valideringstallene til `metrikker.json`, og baselinen på testperioden (uten modell) ligger under `test_bare_baseline`. Bestått/ikke bestått avgjøres på modellutvalget, og all Øvrige-trafikk med delegering står i samme tabell (brief, PRD FR10). E2-S10 har fått låsen før den ene testkjøringen og tabellen med begge radene og modellandelen (Felipe).
 - **2026-11-09** — Etter E2-S06: varselet kan bare nå under halvparten av de forsinkede Øvrige-anløpene (57 og 78 av 194 i modellutvalget). Det står i briefen, README og på skjermen, og E2-S08 og E2-S10 skal si det der varselet forklares (Felipe).
+- **2026-11-10** — E2-S07 er ferdig: `ModellPrediktor` (`app/prediksjon/modell.py`) får F1–F16 gjennom `featurer_ved_kutt` i `app/prediksjon/__init__.py`, uten nye felt i `PrediksjonsInput`. Den delegerer Passasjer, rader uten tilstand, F6-rader og rader uten featurerad ved kuttet til baselinen, og gir samme tider og varsel som modellarmen i `scripts/evaluer.py` på valideringsradene. Dashbordet bruker fortsatt baselinen (byttet er E2-S08). Testen er `tests/test_modellprediktor.py` (Felipe).

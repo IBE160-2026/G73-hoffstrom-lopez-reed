@@ -16,6 +16,7 @@ import pytest
 from app.data import Anlop, anlop_i_vindu, last_utdrag
 from app.prediksjon import Prediksjon, PrediksjonsInput, lag_input
 from app.prediksjon.baseline import BaselinePrediktor
+from app.prediksjon.modell import ModellPrediktor
 from app.prediksjon.naiv import NaivPrediktor
 
 UTC = dt.timezone.utc
@@ -31,8 +32,7 @@ INPUTFELT = (
     "eta_reported", "horisont_timer", "t_kutt",
 )
 
-# E2-S07 legger til ModellPrediktor her.
-PREDIKTORER = [BaselinePrediktor, NaivPrediktor]
+PREDIKTORER = [BaselinePrediktor, NaivPrediktor, ModellPrediktor]
 
 
 @pytest.fixture(params=PREDIKTORER, ids=lambda k: k.__name__)
@@ -215,7 +215,7 @@ def _forbudte_referanser(kilde: str):
 
 
 def test_prediktormoduler_finnes():
-    assert {"baseline.py", "naiv.py"} <= {p.name for p in _prediktormoduler()}
+    assert {"baseline.py", "naiv.py", "modell.py", "koding.py"} <= {p.name for p in _prediktormoduler()}
 
 
 def _prediktorklasser():
