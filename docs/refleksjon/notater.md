@@ -186,3 +186,22 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
   - Et artefakt som er trent på hele treningsperioden, kan ikke brukes til å evaluere en del av den. Det burde vært sett da specen ble skrevet, fordi `tren.py` sier rett ut at den endelige modellen trenes på begge delene.
   - Når et kriterium flyttes, flytter alle delene av det seg. Sjekk hver strek for seg, både for ±30 og for varsel, og skriv det ned hvis en strek blir lettere.
   - Forfatterfeilen skjedde for andre gang. Det må stå i oppdraget til subagenten, ikke bare sjekkes etterpå.
+
+## 2026-11-10 — Implementeringsagenten kjørte modellen på testradene utover den avtalte grensen (E2-S07)
+
+- **Hva:** Felipe hadde satt grensen at modellens treff i testperioden er låst til E2-S10, og at kontrakttestene kan kjøre på testanløp bare for å sjekke kontrakt og lekkasje. For å vise at artefaktene var uendret etter at kodingen (`matrise`) ble flyttet til `app/prediksjon/koding.py`, trente implementeringssubagenten likevel modellen på nytt i en midlertidig mappe og kjørte de rå modellene på alle radene i `features.csv`, også testradene. Den sammenlignet bare prediksjon mot prediksjon med de committede artefaktene og leste ikke fasiten, så modellens treff i testperioden er fortsatt ukjent.
+- **Hvordan det ble oppdaget:** subagenten skrev det selv i rapporten. Claude (orkestratoren) løftet det til Felipe før commit, og ba om en vurdering.
+- **Resultat:** ingen endring i repoet (`git diff --quiet data/`). Felipe bestemte at agenten fremover skal stoppe og spørre før den bruker testrader til noe annet enn det som er avtalt. Regelen står nå i E2-S08, E2-S09 og E2-S10 i `docs/epics.md`, så specene arver den. Se `git log --oneline --grep E2-S07`.
+- **Lærdom (råt):**
+  - Grensen ble tolket av agenten i stedet for å bli spurt om. «Bare prediksjon mot prediksjon» virket uskyldig, men det var ikke blant de tillatte formålene.
+  - En sjekk av at artefaktene er uendret kan gjøres på valideringsrader. Det var ingen grunn til å bruke testradene.
+  - Grenser for testdata må stå som en uttømmende liste over hva som er lov, ikke som et forbud mot én ting (scoring).
+
+## 2026-11-10 — Fjerde grensefeil: varselterskelen `> 120` mot `>= 121` overlevde første mutasjonssjekk (E2-S07)
+
+- **Hva:** `ModellPrediktor` varsler når predikert avvik er `> 120` min (beslutning 06). En mutant som gjorde det om til `>= 121` overlevde alle testene. Ingen valideringsrad har predikert avvik mellom 120 og 121 min, så ekvivalenstesten mot `evaluer.py` kunne ikke skille dem. Tre reviewere hadde gått gjennom koden før uten å melde det.
+- **Hvordan det ble oppdaget:** Claudes mutasjonssjekk etter reviewen. 16 av 17 mutanter ble fanget, og denne overlevde.
+- **Resultat:** ny test `test_varselterskelen_er_strengt_over_120` med en stub-modell som predikerer nøyaktig 120,0 og 120,001 min. Ny kjøring med en ekstra mutant (`>=`): 18 av 18 fanget.
+- **Lærdom (råt):**
+  - Samlet så langt: tidsstempeltesten (22.10), hullgrensen (`<=` mot `<`), og nå varselterskelen. Mutasjonssjekken har fanget alle, ikke reviewerne.
+  - En test mot ekte data dekker bare grenser som dataene tilfeldigvis treffer. En terskel trenger en egen test med verdier rett på og rett over grensen.

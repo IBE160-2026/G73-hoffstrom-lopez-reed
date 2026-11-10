@@ -310,12 +310,14 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - Mangler artefaktet, faller appen tilbake til baseline med melding.
 - Malene endres ikke utover stripa, varselkolonnen og prediksjonsfeil. Det er testen på at A5 holdt.
 - Forklaringen av varselet sier at modellen bare varsler for anløp utenfor ankomstsonen med AIS-posisjon ved kuttet, og at det i testperioden var under halvparten av de forsinkede anløpene (57 og 78 av 194).
+- **Testrader** (Felipe, 10.11.2026): testrader brukes bare til det som står eksplisitt i denne storyen eller specen. Alt annet, også prediksjon uten fasit, krever at agenten stopper og spør først.
 
 **Test:** `tests/test_ruter.py::test_modell_standard`, `::test_fallback_baseline`, og `::test_fasit_uavhengig_av_prediktor` (avvik og FORSINKET er like med `PREDIKTOR=baseline` og `PREDIKTOR=modell`)
 
 ### E2-S09 — Panel: modell mot baseline ☐
 **Krav:** FR10 · **Avhenger av:** E2-S08
 - Panelet viser modell og baseline side om side per horisont, pluss presisjon, recall og F1 mot referansen, lest fra `metrikker.json`. Taper modellen, vises det med samme tydelighet.
+- **Testrader** (Felipe, 10.11.2026): testrader brukes bare til det som står eksplisitt i denne storyen eller specen. Alt annet, også prediksjon uten fasit, krever at agenten stopper og spør først.
 
 **Test:** `tests/test_ruter.py::test_panel_modell_mot_baseline`
 
@@ -332,6 +334,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - Der varselkolonnen beskrives, står det tydelig at systemet bare kan varsle for under halvparten av de forsinkede anløpene, uansett modellens kvalitet: av 194 forsinkede Øvrige-anløp ligger bare 57 (6 t) og 78 (24 t) i modellutvalget. Resten er turer inne i sonen (F6) eller anløp uten AIS (Felipe, 09.11.2026).
 - Et negativt resultat rapporteres. README nevner modellen.
 - **Lås før testkjøringen** (E2-S06, beslutning 2): modell, konfigurasjon og valgregler er låst før den ene kjøringen av `scripts/evaluer.py --test`, og ingenting endres etterpå. Endres noe likevel, står det i resultatnotatet. Testkjøringen gjøres i denne storyen, ikke før.
+- **Testrader** (Felipe, 10.11.2026): testrader brukes bare til det som står eksplisitt i denne storyen eller specen. Alt annet, også prediksjon uten fasit, krever at agenten stopper og spør først.
 
 **Test:** tallene i notatet er lik `metrikker.json` (sjekkes i PR).
 
@@ -450,3 +453,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-09** — E2-S06 er ferdig: `scripts/evaluer.py` skriver valideringstallene til `metrikker.json`, og baselinen på testperioden (uten modell) ligger under `test_bare_baseline`. Bestått/ikke bestått avgjøres på modellutvalget, og all Øvrige-trafikk med delegering står i samme tabell (brief, PRD FR10). E2-S10 har fått låsen før den ene testkjøringen og tabellen med begge radene og modellandelen (Felipe).
 - **2026-11-09** — Etter E2-S06: varselet kan bare nå under halvparten av de forsinkede Øvrige-anløpene (57 og 78 av 194 i modellutvalget). Det står i briefen, README og på skjermen, og E2-S08 og E2-S10 skal si det der varselet forklares (Felipe).
 - **2026-11-10** — E2-S07 er ferdig: `ModellPrediktor` (`app/prediksjon/modell.py`) får F1–F16 gjennom `featurer_ved_kutt` i `app/prediksjon/__init__.py`, uten nye felt i `PrediksjonsInput`. Den delegerer Passasjer, rader uten tilstand, F6-rader og rader uten featurerad ved kuttet til baselinen, og gir samme tider og varsel som modellarmen i `scripts/evaluer.py` på valideringsradene. Dashbordet bruker fortsatt baselinen (byttet er E2-S08). Testen er `tests/test_modellprediktor.py` (Felipe).
+- **2026-11-10** — Etter E2-S07: E2-S08, E2-S09 og E2-S10 har fått regelen om at testrader bare brukes til det som står eksplisitt, og at agenten ellers stopper og spør først. Specene for de tre storyene skal ha den med (Felipe).
