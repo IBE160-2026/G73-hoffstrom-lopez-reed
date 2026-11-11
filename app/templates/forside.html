@@ -22,6 +22,7 @@
   {% endif %}
 </section>
 
+<div class="hovedrad">
 <section id="anlopslista" class="liste" aria-labelledby="vindu-tittel" tabindex="-1">
   <h2 id="vindu-tittel">{{ rader|length }} anløp · {{ vindu_fra }} – {{ vindu_til }} (norsk tid)</h2>
   {% if rader %}
@@ -66,4 +67,66 @@
   <p class="tomt">Ingen anløp med rapportert ETA i dette vinduet. Prøv et annet tidspunkt.</p>
   {% endif %}
 </section>
+
+<section id="treffsikkerhet" class="panel" aria-labelledby="panel-tittel">
+  <h2 id="panel-tittel">Treffsikkerhet: modell mot baseline</h2>
+  <p class="panel-periode">{{ panel.periode }}</p>
+  {% if panel.mangler %}
+  <p class="panel-mangler">Tall mangler. Modell- og baselinetallene for denne perioden kunne ikke leses.</p>
+  {% else %}
+  <p class="panel-hjelp">{{ panel.antall_anlop }} anløp i perioden. Tallene gjelder hele perioden, ikke vinduet i lista.{% if not panel.etter_test %} Bestått eller ikke bestått avgjøres først på testperioden (E2-S10).{% endif %}</p>
+  {% for h in panel.horisonter %}
+  <h3>Horisont {{ h.etikett }}</h3>
+  <p class="panel-hjelp">Med fasit: Øvrige {{ h.fasit_ovrige }}, Passasjer {{ h.fasit_passasjer }}.
+    Modellandel av Øvrige med fasit: {{ h.modellandel }}. Resten får baseline.</p>
+  {% for g in h.grupper %}
+  <div class="panel-gruppe">
+  <div class="panel-rull">
+  <table class="panel-tabell">
+    <caption>{{ g.navn }}</caption>
+    <thead>
+      <tr>
+        <th scope="col">Mål</th>
+        {%- for k in g.kolonner %}
+        <th scope="col">{{ k }}</th>
+        {%- endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in g.rader %}
+      <tr>
+        <th scope="row">{{ r.maal }}</th>
+        {%- for c in r.celler %}
+        <td class="verdi" data-arm="{{ c.arm }}">
+          {%- if c.ikke_aktuelt %}<span aria-hidden="true">–</span><span class="visually-hidden">ikke aktuelt</span>
+          {%- else %}{% for d in c.deler %}{% if not loop.first %} {% endif %}{% if d.tall %}<span class="tall">{{ d.tekst }}</span>{% else %}{{ d.tekst }}{% endif %}{% endfor %}{% endif %}</td>
+        {%- endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if g.differanse %}
+  <p class="panel-differanse">{{ g.arm }} − baseline, innenfor ±30 min: {{ g.differanse }}</p>
+  {% endif %}
+  {% if g.differanse_f1 %}
+  <p class="panel-differanse">{{ g.arm }} − «varsle alle», varsel-F1: {{ g.differanse_f1 }}</p>
+  {% endif %}
+  {% if g.forklaring %}
+  <p class="panel-hjelp">{{ g.forklaring }}</p>
+  {% endif %}
+  {% if g.dom %}
+  <ul class="panel-dom">
+    {% for d in g.dom %}
+    <li>{{ d }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  </div>
+  {% endfor %}
+  {% endfor %}
+  <p class="fotnote">Modellandel: andelen av Øvrige-anløpene med fasit som modellen selv vurderer (modellutvalget). Resten får kalibrert baseline. pp: prosentpoeng, forskjellen mellom to prosenter. Presisjon: treff/varsler. Recall: treff/forsinkede. «Varsle alle» er referansen som varsler hvert anløp. «Kan ikke varsle»: baselinen varsler aldri.</p>
+  {% endif %}
+</section>
+</div>
 {% endblock %}

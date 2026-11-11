@@ -4,6 +4,7 @@ import datetime as dt
 from flask import Flask, current_app, render_template
 
 from app.data import anlop_i_vindu
+from app.panel import lag_panel
 from app.prediksjon import VINDU_TIMER, i_testperioden, lag_input, velg_prediktor_med_merknad
 from app.visning import OSLO, horisont_etikett, ukedag_dato_klokke, ukedag_klokke
 
@@ -80,6 +81,8 @@ def create_app(config=None):
             vindu_til=ukedag_dato_klokke(
                 naa.astimezone(dt.timezone.utc) + dt.timedelta(hours=VINDU_TIMER)
             ),
+            # E2-S09: modell mot baseline, lest fra metrikker.json. Uavhengig av vinduet og prediktoren.
+            panel=lag_panel(),
         )
 
     return app

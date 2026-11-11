@@ -2,7 +2,7 @@
 title: "Epics og stories"
 status: aktiv
 created: 2026-10-16
-updated: 2026-10-27
+updated: 2026-11-11
 bygger_på: docs/prd.md, docs/arkitektur.md, docs/ux/dashbord.md
 ---
 
@@ -316,12 +316,12 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_ruter.py::test_modell_i_valideringsvindu`, `::test_varselkolonnen_med_modellen`, `::test_laasen_alene_stopper_modellen_paa_testvindu`, `::test_laas_testperioden_standardvindu`, `::test_laas_testperioden_vindu_over_grensen`, `::test_fallback_baseline`, `::test_modell_foer_testperioden_sier_i_utvalg` m.fl. Modellrader rendres bare i vinduer før testperioden (15.06.2024 og 15.08.2025), og en autouse-vakt i `tests/conftest.py` stopper modellen på testrader utenfor kontrakttestene.
 
-### E2-S09 — Panel: modell mot baseline ☐
+### E2-S09 — Panel: modell mot baseline ✅
 **Krav:** FR10 · **Avhenger av:** E2-S08
 - Panelet viser modell og baseline side om side per horisont, pluss presisjon, recall og F1 mot referansen, lest fra `metrikker.json`. Taper modellen, vises det med samme tydelighet.
 - **Testrader** (Felipe, 10.11.2026): testrader brukes bare til det som står eksplisitt i denne storyen eller specen. Alt annet, også prediksjon uten fasit, krever at agenten stopper og spør først.
 
-**Test:** `tests/test_ruter.py::test_panel_modell_mot_baseline`
+**Test:** `tests/test_ruter.py::test_panel_modell_mot_baseline` (ekte `metrikker.json`), de andre `test_panel_*`-testene i `tests/test_ruter.py` (etter testkjøringen, modellen taper, «kan ikke varsle», «Tall mangler», lista og stripa urørt, horisontene, UU-struktur) og `tests/test_panel.py`. Visningen etter testkjøringen testes bare med syntetiske filer.
 
 ### E2-S10 — Resultatnotat ☐
 **Krav:** brief Success Criteria, NFR3 · **Avhenger av:** E2-S09
@@ -457,3 +457,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-10** — E2-S07 er ferdig: `ModellPrediktor` (`app/prediksjon/modell.py`) får F1–F16 gjennom `featurer_ved_kutt` i `app/prediksjon/__init__.py`, uten nye felt i `PrediksjonsInput`. Den delegerer Passasjer, rader uten tilstand, F6-rader og rader uten featurerad ved kuttet til baselinen, og gir samme tider og varsel som modellarmen i `scripts/evaluer.py` på valideringsradene. Dashbordet bruker fortsatt baselinen (byttet er E2-S08). Testen er `tests/test_modellprediktor.py` (Felipe).
 - **2026-11-10** — Etter E2-S07: E2-S08, E2-S09 og E2-S10 har fått regelen om at testrader bare brukes til det som står eksplisitt, og at agenten ellers stopper og spør først. Specene for de tre storyene skal ha den med (Felipe).
 - **2026-11-10** — E2-S08 er ferdig: `velg_prediktor` velger `ModellPrediktor` bak en lås for testperioden til testkjøringen i E2-S10 (vinduer før testperioden viser modellen med teksten om at den er trent på anløpene), og faller tilbake til baselinen med melding når artefaktet mangler. Stripa viser «Modell v1» og dekningsgrensen, og varselkolonnen viser ▲ + «VARSEL», «–» eller grunnen til delegeringen. Vinduet velger fortsatt på rapportert ETA. Prediksjonsfeil er flyttet til E1-S09 (Felipe).
+- **2026-11-11** — E2-S09 er ferdig: panelet «Treffsikkerhet: modell mot baseline» står i høyre kolonne på hovedskjermen og leser bare `data/modell/metrikker.json` (`app/panel.py`). Før testkjøringen viser det valideringsblokken, merket som utviklingstall og uten dom. Etter E2-S10 viser det `test`-blokken med bestått/ikke bestått per horisont på modellutvalget. Per horisont står modellutvalget, all Øvrige-trafikk med delegering og Passasjer (bare baseline), med ±30 min, presisjon, recall og F1 mot «varsle alle», og modellandelen. `null` vises som «kan ikke varsle». Ablasjonen og `test_bare_baseline` vises ikke. Testene er `tests/test_ruter.py::test_panel_modell_mot_baseline`, de andre `test_panel_*`-testene i `tests/test_ruter.py` og `tests/test_panel.py` (Felipe).

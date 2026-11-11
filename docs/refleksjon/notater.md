@@ -218,3 +218,17 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
   - Igjen fanget mutasjonssjekken det reviewerne ikke så: en reservevei er bare testet for den feiltypen testen tilfeldigvis kaster.
   - Mutasjonssjekk av en lås for testdata kan selv bryte låsen. Vakten måtte på plass før lås-mutantene ble kjørt.
   - **Tillegg 11.11:** Felipe ba om en test som viser at låsen alene holder. Lås-mutantene var fanget av vakten, ikke av låsetestene. `test_laasen_alene_stopper_modellen_paa_testvindu` bytter vakten ut med en spion som aldri kjører modellen, og fanger alle tre lås-mutantene uten vakten. Den ekvivalente mutanten (teksten om at modellen er trent på anløpene, uten `kan_varsle`) skyldtes at malen sjekket samme regel en gang til. Regelen står nå bare i `app/__init__.py`, og mutanten fanges. Etter dette: 25 av 25. Låsen og vakten er to sperrer som skal holde hver for seg (beslutning 6 i specen).
+
+## 2026-11-11 — Panelet: tre testhull bare mutasjonssjekken fant, og en «fanget» mutant som ikke var fanget (E2-S09)
+
+- **Hva:**
+  - Etter review og rettelser hadde panelet 409 grønne tester. Mutasjonssjekken fant likevel tre endringer ingen test fanget:
+    - F1-dommen med `>=` i stedet for `>`: ingen fixture hadde lik F1 for modellen og «varsle alle».
+    - Modell-F1 lik `null` ga «Tall mangler» i stedet for «kan ikke sammenlignes».
+    - Setningen om at bestått/ikke bestått først avgjøres på testperioden.
+  - I første kjøring rapporterte Claudes mutasjonsskript at `>=`-mutanten var fanget. Ved ny kjøring overlevde den tre ganger på rad, og «fanget» i første kjøring kunne ikke gjenskapes.
+- **Hvordan det ble oppdaget:** Claudes mutasjonssjekk etter reviewen, og at den ble kjørt på nytt etter at testene var endret.
+- **Resultat:** tre nye tester (`test_lik_f1_er_ikke_bestatt`, `test_f1_differanse_uten_modell_f1_kan_ikke_sammenlignes`, `test_panel_foer_testkjoringen_sier_at_dommen_venter`). 25 av 26 fanget; den siste er ekvivalent (`d == 0` returnerer «likt» før ordet velges). Se `git log --oneline --grep E2-S09`.
+- **Lærdom (råt):**
+  - Femte grensefeil i samme mønster: `>` mot `>=`, og igjen fant ikke reviewerne den.
+  - Et resultat fra én mutasjonskjøring er ikke et bevis. Mutantene må kjøres på nytt når testene endres, og en overraskende endring (fanget → overlever) må gjenskapes før den regnes med.

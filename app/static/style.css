@@ -264,3 +264,97 @@ h2 {
     white-space: normal;
   }
 }
+
+/* Panelet «modell mot baseline» (E2-S09, UX §2): høyre kolonne fra 1024 px, under lista ellers.
+   Modell og baseline har samme stil; ingen farge bærer mening alene. */
+.hovedrad {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .hovedrad {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 26rem;
+    gap: 2rem;
+    align-items: start;
+  }
+}
+
+.panel {
+  min-width: 0;
+  margin-top: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--flate);
+  border: 1px solid var(--kant);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 1024px) {
+  .panel {
+    margin-top: 0;
+  }
+}
+
+.panel h3 {
+  margin: 1.25rem 0 0.25rem;
+  font-size: 1rem;
+}
+
+.panel p,
+.panel ul {
+  margin: 0 0 0.5rem;
+}
+
+.panel-periode {
+  font-weight: 600;
+}
+
+.panel-hjelp,
+.panel-differanse {
+  font-size: 0.875rem;
+}
+
+.panel-hjelp {
+  color: var(--dempet);
+}
+
+.panel-dom {
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+}
+
+.panel-tabell {
+  width: 100%;
+  margin: 0.5rem 0;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.panel-tabell caption {
+  text-align: left;
+  font-weight: 600;
+}
+
+.panel-tabell th,
+.panel-tabell td {
+  padding: 0.25rem 0.5rem 0.25rem 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--kant);
+}
+
+/* Et tall (andel eller antall) brytes aldri; linja kan bare brytes mellom andelen og antallet. */
+.panel-tabell .tall {
+  white-space: nowrap;
+}
+
+/* Blir tabellen likevel for bred, ruller den inne i panelet, aldri siden. */
+.panel-rull {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.panel-tabell th {
+  color: var(--dempet);
+  font-weight: 600;
+}

@@ -7,9 +7,10 @@ import dataclasses
 import datetime as dt
 import json
 import re
+from pathlib import Path
 
 import pytest
-from conftest import VALIDERING_NAA, parse_html
+from conftest import VALIDERING_NAA, anlopslista, parse_html, syntetisk_blokk
 
 import app.prediksjon as prediksjon
 import app.prediksjon.modell as modellmodul
@@ -37,7 +38,7 @@ def _ren(t):
 
 def _rader(dokument):
     """Rader som {kolonne: celle-node}."""
-    tbody = dokument.finn_alle("tbody")[0]
+    tbody = anlopslista(dokument).finn_alle("tbody")[0]
     rader = []
     for tr in tbody.finn_alle("tr"):
         tder = tr.finn_alle("td")
@@ -46,10 +47,10 @@ def _rader(dokument):
 
 
 def test_standardvindu(dokument):
-    h2 = _ren(dokument.finn_alle("h2")[0].tekst())
+    h2 = _ren(anlopslista(dokument).finn_alle("h2")[0].tekst())
     assert h2 == "15 anløp · ons 08.10 08:00 – tor 09.10 08:00 (norsk tid)"
 
-    ths = [_ren(th.tekst()) for th in dokument.finn_alle("th")]
+    ths = [_ren(th.tekst()) for th in anlopslista(dokument).finn_alle("th")]
     assert ths == KOLONNER
 
     rader = _rader(dokument)
@@ -127,10 +128,10 @@ def test_norsk_tid_staar_paa_skjermen(dokument):
 
 
 def test_tomt_vindu(tomt_dokument):
-    h2 = _ren(tomt_dokument.finn_alle("h2")[0].tekst())
+    h2 = _ren(anlopslista(tomt_dokument).finn_alle("h2")[0].tekst())
     assert h2 == "0 anløp · tir 03.02 08:00 – ons 04.02 08:00 (norsk tid)"
     assert TOM_MELDING in _ren(tomt_dokument.tekst())
-    assert tomt_dokument.finn_alle("table") == []
+    assert anlopslista(tomt_dokument).finn_alle("table") == []
 
 
 def test_vindu_over_sommertid():
@@ -141,11 +142,11 @@ def test_vindu_over_sommertid():
     svar = klient.get("/")
     assert svar.status_code == 200
     dokument = parse_html(svar.get_data(as_text=True))
-    h2 = _ren(dokument.finn_alle("h2")[0].tekst())
+    h2 = _ren(anlopslista(dokument).finn_alle("h2")[0].tekst())
     assert h2.endswith("søn 26.10 07:00 (norsk tid)")
     antall = len(anlop_i_vindu(naa))
     assert h2.startswith(f"{antall} anløp")
-    tbody = dokument.finn_alle("tbody")
+    tbody = anlopslista(dokument).finn_alle("tbody")
     assert len(tbody[0].finn_alle("tr") if tbody else []) == antall
 
 
@@ -297,7 +298,8 @@ def test_varselkolonnen_med_modellen(monkeypatch):
             sett.add(p.forklaring["delegert"])
         assert "baselinen varsler ikke" not in lest
     assert sett == {"varsel", "ingen", "passasjer", "ingen_tilstand", "i_sonen_ved_kutt"}
-    fotnote = _ren(dokument.finn_alle("p")[-1].tekst())
+    liste = anlopslista(dokument)
+    fotnote = _ren(liste.finn_alle("p")[-1].tekst())  # panelet (E2-S09) står etter lista
     assert "▲ VARSEL" in fotnote and "baselinen varsler ikke" not in fotnote
 
 
@@ -343,9 +345,9 @@ def test_modell_endrer_bare_stripa_og_varselcellen(monkeypatch):
     base = _side(VALIDERING_NAA)
     monkeypatch.setenv("PREDIKTOR", "modell")
     modell = _side(VALIDERING_NAA)
-    assert [_ren(th.tekst()) for th in base.finn_alle("th")] == [
-        _ren(th.tekst()) for th in modell.finn_alle("th")]
-    assert _ren(base.finn_alle("h2")[0].tekst()) == _ren(modell.finn_alle("h2")[0].tekst())
+    assert [_ren(th.tekst()) for th in anlopslista(base).finn_alle("th")] == [
+        _ren(th.tekst()) for th in anlopslista(modell).finn_alle("th")]
+    assert _ren(anlopslista(base).finn_alle("h2")[0].tekst()) == _ren(anlopslista(modell).finn_alle("h2")[0].tekst())
     assert _ren(base.finn_alle("h1")[0].tekst()) == _ren(modell.finn_alle("h1")[0].tekst())
 
     def celler(d):
@@ -535,3 +537,296 @@ def test_vakta_stopper_modellen_paa_testrader():
     anlop = anlop_i_vindu(STANDARD_NAA)
     with pytest.raises(AssertionError, match="testrad"):
         ModellPrediktor().prediker([lag_input(anlop[0], STANDARD_NAA)], STANDARD_NAA)
+
+
+# ---------------------------------------------------------------------------
+# E2-S09: panelet «modell mot baseline». Det leser bare metrikker.json. Visningen etter testkjøringen testes bare
+# med syntetiske filer i tmp_path (regelen om testrader). PREDIKTOR=baseline (autouse over) gjelder også her.
+
+EKTE_METRIKKER = Path(__file__).resolve().parent.parent / "data" / "modell" / "metrikker.json"
+
+
+def _metrikker(monkeypatch, sti):
+    monkeypatch.setattr(prediksjon, "METRIKKER_FIL", sti)
+
+
+def _syntetisk(monkeypatch, tmp_path, data):
+    sti = tmp_path / "metrikker.json"
+    sti.write_text(json.dumps(data), encoding="utf-8")
+    _metrikker(monkeypatch, sti)
+
+
+def _panel(dokument):
+    return [n for n in dokument.iter() if n.attrs.get("id") == "treffsikkerhet"][0]
+
+
+def _forside():
+    svar = create_app({"TESTING": True}).test_client().get("/")
+    assert svar.status_code == 200
+    return parse_html(svar.get_data(as_text=True))
+
+
+def _pst(x):
+    return f"{x * 100:.1f}".replace(".", ",") + " %"
+
+
+def _brok(a, b):
+    return f"{a}/{b}"
+
+
+def _forventet_varsel(v):
+    if v["presisjon"] is None:
+        return ["kan ikke varsle"] * 3
+    return [f"{_pst(v['presisjon'])} ({_brok(v['treff'], v['varsler'])})",
+            f"{_pst(v['recall'])} ({_brok(v['treff'], v['forsinket'])})",
+            f"{v['f1']:.2f}".replace(".", ",")]
+
+
+def _forventet_tabell(radsett, armer):
+    """{mål: [celletekst per arm]} regnet rett fra fila, uavhengig av app/panel.py."""
+    rader = {"Innenfor ±30 min": [], "Presisjon": [], "Recall": [], "F1": []}
+    for arm in armer:
+        if arm == "varsle_alle":
+            v = radsett[arm]
+            rader["Innenfor ±30 min"].append("ikke aktuelt")
+        else:
+            a = radsett[arm]
+            v = a["varsel"]
+            rader["Innenfor ±30 min"].append(f"{_pst(a['andel_30'])} ({_brok(a['treff_30'], a['n'])})")
+        for maal, tekst in zip(("Presisjon", "Recall", "F1"), _forventet_varsel(v)):
+            rader[maal].append(tekst)
+    return rader
+
+
+def _tabell(table):
+    """{mål: [celletekst]} som skjermleseren får den (– er skjult, «ikke aktuelt» leses)."""
+    ut = {}
+    for tr in table.finn_alle("tbody")[0].finn_alle("tr"):
+        th = tr.finn_alle("th")[0]
+        ut[_ren(th.tekst())] = [_ren(td.skjermlesertekst()).replace("\u00a0", " ") for td in tr.finn_alle("td")]
+    return ut
+
+
+def _pst_og_f1_i_blokk(blokk):
+    """Alle andeler (som «x,y %») og F1-verdier (som «0,xx») en blokk har, lest rett fra fila."""
+    tekster = set()
+
+    def gaa(d):
+        if isinstance(d, dict):
+            for k, x in d.items():
+                if isinstance(x, float) and k in ("andel_30", "presisjon", "recall", "med_fasit", "alle_rader"):
+                    tekster.add(_pst(x))
+                elif isinstance(x, float) and k == "f1":
+                    tekster.add(f"{x:.2f}".replace(".", ","))
+                gaa(x)
+    gaa(blokk)
+    return tekster
+
+
+def _alle_tall_i_blokk(blokk):
+    """Alle andeler og brøker en blokk kan gi på skjermen, som visningstekst."""
+    tall = set()
+
+    def gaa(d):
+        if isinstance(d, dict):
+            if "andel_30" in d:
+                tall.add(_brok(d["treff_30"], d["n"]))
+            if "presisjon" in d and d["presisjon"] is not None:
+                tall.update({_brok(d["treff"], d["varsler"]), _brok(d["treff"], d["forsinket"])})
+            for v in d.values():
+                gaa(v)
+    gaa(blokk)
+    return tall
+
+
+def _forventet_differanse(a, b, skala, desimaler, enhet, subjekt="modellen"):
+    """Forventet differanselinje for den ekte fila (ingen grensetilfeller der: ingen er like eller runder til 0)."""
+    d = (a - b) * skala
+    assert d != 0 and round(abs(d), desimaler) != 0
+    tegn, ord_ = ("+", f"{subjekt} bedre") if d > 0 else ("−", f"{subjekt} dårligere")
+    return f"{tegn}{abs(d):.{desimaler}f}".replace(".", ",") + f"{enhet} ({ord_})"
+
+
+def test_panel_modell_mot_baseline(monkeypatch):
+    """Med den ekte metrikker.json: valideringsblokken, og hvert tall i panelet er filas verdi etter avrunding."""
+    data = json.loads(EKTE_METRIKKER.read_text(encoding="utf-8"))
+    assert data["testkjoringer"] == 0
+    _metrikker(monkeypatch, EKTE_METRIKKER)
+    panel = _panel(_forside())
+    tekst = _ren(panel.tekst()).replace("\u00a0", " ")
+    v = data["validering"]
+
+    assert "Validering (mai–sep 2025) — utviklingstall, ikke testresultat" in tekst
+    assert f"{v['antall_anlop']:,}".replace(",", " ") + " anløp i perioden" in tekst
+    assert "Tall mangler" not in tekst
+    assert panel.finn_alle("ul") == [] and " bestått (" not in tekst  # ingen dom før testkjøringen
+
+    h3 = [_ren(n.tekst()) for n in panel.finn_alle("h3")]
+    assert h3 == ["Horisont 6 t", "Horisont 24 t"]
+    tabeller = panel.finn_alle("table")
+    assert len(tabeller) == 6
+    grupper = [n for n in panel.iter() if "panel-gruppe" in n.attrs.get("class", "").split()]
+    assert len(grupper) == 6 and all(len(g.finn_alle("table")) == 1 for g in grupper)
+    # Faste ankre fra den ekte fila: modellen vinner ±30 min på modellutvalget, og systemet (modell + baseline for
+    # resten) taper F1 mot «varsle alle» på all Øvrige-trafikk ved 6 t. Den raden sier «systemet», aldri «modellen».
+    assert "Modell − baseline, innenfor ±30 min: +12,2 pp (modellen bedre)" in tekst
+    assert "Systemet − «varsle alle», varsel-F1: −0,35 (systemet dårligere)" in tekst
+    assert "Modell − «varsle alle», varsel-F1: −0,35" not in tekst
+    for i, h in enumerate(("6", "24")):
+        hv = v["horisonter"][h]
+        o, p = hv["antall"]["ovrige"], hv["antall"]["passasjer"]
+        assert f"Med fasit: Øvrige {o['med_fasit']} av {o['rader']}, Passasjer {p['med_fasit']} av {p['rader']}." in tekst
+        assert (f"Modellandel av Øvrige med fasit: {_pst(hv['andel_modellutvalg']['med_fasit'])} "
+                f"({_brok(o['modellutvalg_med_fasit'], o['med_fasit'])})") in tekst
+        forventet = [
+            ("Øvrige, modellutvalget", _forventet_tabell(hv["ovrige_modellutvalg"], ["modell", "baseline", "varsle_alle"])),
+            ("Øvrige, alle (resten får baseline)", _forventet_tabell(hv["ovrige_alle"], ["modell", "baseline", "varsle_alle"])),
+            ("Passasjer (rutegående, bare baseline)", _forventet_tabell(hv["passasjer"], ["baseline"])),
+        ]
+        for table, (caption, rader) in zip(tabeller[3 * i:3 * i + 3], forventet):
+            assert _ren(table.finn_alle("caption")[0].tekst()) == caption
+            assert _tabell(table) == rader
+        # Differanselinjene står i gruppens egen blokk, med fortegn og ord fra den uavrundede differansen.
+        for gruppe, radsett in zip(grupper[3 * i:3 * i + 3], ("ovrige_modellutvalg", "ovrige_alle", "passasjer")):
+            linjer = [_ren(p_.tekst()).replace("\u00a0", " ") for p_ in gruppe.finn_alle("p")]
+            if radsett == "passasjer":
+                assert linjer == []
+                continue
+            m, b, alle = (hv[radsett][k] for k in ("modell", "baseline", "varsle_alle"))
+            arm, subjekt = ("Systemet", "systemet") if radsett == "ovrige_alle" else ("Modell", "modellen")
+            forventet_linjer = [
+                f"{arm} − baseline, innenfor ±30 min: "
+                + _forventet_differanse(m["andel_30"], b["andel_30"], 100, 1, " pp", subjekt),
+                f"{arm} − «varsle alle», varsel-F1: "
+                + _forventet_differanse(m["varsel"]["f1"], alle["f1"], 1, 2, "", subjekt),
+            ]
+            if radsett == "ovrige_alle":
+                forventet_linjer.append(
+                    "De fleste forsinkelsene i all trafikk er turer inne i havneområdet, der modellen ikke brukes og "
+                    "baselinen ikke kan varsle. Modellutvalget er raden som viser modellen.")
+            assert linjer == forventet_linjer
+            kolonner = [_ren(th.tekst()) for th in gruppe.finn_alle("thead")[0].finn_alle("th")]
+            assert kolonner == ["Mål", arm, "Baseline", "«Varsle alle»"]
+
+    # Ingen verdi fra test_bare_baseline (eller ablasjonen) som ikke også står i valideringsblokken.
+    vist = _alle_tall_i_blokk({k: x for k, x in v["horisonter"].items()})
+    fremmede = _alle_tall_i_blokk(data["test_bare_baseline"]) - vist
+    assert fremmede and not any(re.search(rf"\b{re.escape(b)}\b", tekst) for b in fremmede)
+    fremmede_tall = _pst_og_f1_i_blokk(data["test_bare_baseline"]) - _pst_og_f1_i_blokk(v)
+    assert fremmede_tall
+    for t in fremmede_tall:
+        assert not re.search(rf"(?<![\d,+−<]){re.escape(t)}(?!\d)", tekst), f"{t} fra test_bare_baseline i panelet"
+    for h in ("6", "24"):
+        for radsett in ("ovrige_modellutvalg", "ovrige_alle"):
+            abl = v["horisonter"][h][radsett]["ablasjon_uten_f13_f14"]
+            assert f"({_brok(abl['treff_30'], abl['n'])})" not in tekst
+
+
+def test_panel_baseline_kan_ikke_varsle(monkeypatch):
+    _metrikker(monkeypatch, EKTE_METRIKKER)
+    for table in _panel(_forside()).finn_alle("table"):
+        rader = _tabell(table)
+        kolonner = [_ren(th.tekst()) for th in table.finn_alle("thead")[0].finn_alle("th")]
+        b = kolonner.index("Baseline") - 1
+        assert [rader[m][b] for m in ("Presisjon", "Recall", "F1")] == ["kan ikke varsle"] * 3
+        assert all("0,0" not in rader[m][b] for m in rader)
+
+
+def test_panel_etter_testkjoringen(monkeypatch, tmp_path):
+    _syntetisk(monkeypatch, tmp_path, {"testkjoringer": 1, "validering": syntetisk_blokk(modell_treff=301),
+                                       "test": syntetisk_blokk()})
+    panel = _panel(_forside())
+    tekst = _ren(panel.tekst()).replace("\u00a0", " ")
+    assert "Testperioden (14.09.2025–15.03.2026)" in tekst
+    assert "Validering" not in tekst and "301/400" not in tekst
+    assert "avgjøres først på testperioden" not in tekst
+    dommer = [_ren(li.tekst()).replace("\u00a0", " ") for li in panel.finn_alle("li")]
+    assert dommer == [  # én dom per horisont, på modellutvalget; 24 t har egne tall
+        "Innenfor ±30 min: bestått (modell 75,0 %, baseline 62,5 %)",
+        "Varsel-F1: bestått (modell 0,600, «varsle alle» 0,261)",
+        "Innenfor ±30 min: bestått (modell 80,0 %, baseline 65,0 %)",
+        "Varsel-F1: bestått (modell 0,582, «varsle alle» 0,298)",
+    ]
+
+
+def test_panel_foer_testkjoringen_sier_at_dommen_venter(monkeypatch, tmp_path):
+    """Før testkjøringen: ingen dom, og panelet sier at bestått/ikke bestått avgjøres på testperioden (beslutning 1)."""
+    _syntetisk(monkeypatch, tmp_path, {"testkjoringer": 0, "validering": syntetisk_blokk()})
+    panel = _panel(_forside())
+    tekst = _ren(panel.tekst()).replace("\u00a0", " ")
+    assert "Bestått eller ikke bestått avgjøres først på testperioden (E2-S10)." in tekst
+    assert panel.finn_alle("li") == []
+
+
+def test_panel_horisontene_viser_egne_tall(monkeypatch, tmp_path):
+    _syntetisk(monkeypatch, tmp_path, {"testkjoringer": 0, "validering": syntetisk_blokk()})
+    tabeller = _panel(_forside()).finn_alle("table")
+    assert _tabell(tabeller[0])["Innenfor ±30 min"][:2] == ["75,0 % (300/400)", "62,5 % (250/400)"]
+    assert _tabell(tabeller[3])["Innenfor ±30 min"][:2] == ["80,0 % (320/400)", "65,0 % (260/400)"]
+
+
+def test_panel_modellen_taper_like_tydelig(monkeypatch, tmp_path):
+    _syntetisk(monkeypatch, tmp_path, {"testkjoringer": 1, "test": syntetisk_blokk(modell_treff=230)})
+    panel = _panel(_forside())
+    tekst = _ren(panel.tekst()).replace("\u00a0", " ")
+    assert "Modell − baseline, innenfor ±30 min: −5,0 pp (modellen dårligere)" in tekst
+    assert "Innenfor ±30 min: ikke bestått (modell 57,5 %, baseline 62,5 %)" in tekst
+    # Samme visuelle vekt: modell- og baselinecellene har samme klasse, uthevingen er den samme.
+    for table in panel.finn_alle("table"):
+        for tr in table.finn_alle("tbody")[0].finn_alle("tr"):
+            klasser = {td.attrs.get("class") for td in tr.finn_alle("td")}
+            assert klasser == {"verdi"}
+            assert not any(n.tag in ("strong", "b", "em") for td in tr.finn_alle("td") for n in td.iter())
+
+
+@pytest.mark.parametrize("innhold", [None, "ikke json", '{"testkjoringer": 0}', '{"testkjoringer": 1}',
+                                     '{"testkjoringer": 1, "test_bare_baseline": {"antall_anlop": 1}}'],
+                         ids=["ingen-fil", "ikke-json", "ingen-validering", "ingen-test", "bare-baseline"])
+def test_panel_tall_mangler(monkeypatch, tmp_path, innhold):
+    sti = tmp_path / "metrikker.json"
+    if innhold is not None:
+        sti.write_text(innhold, encoding="utf-8")
+    _metrikker(monkeypatch, sti)
+    panel = _panel(_forside())
+    tekst = _ren(panel.tekst())
+    assert "Tall mangler" in tekst
+    assert panel.finn_alle("table") == []
+    assert ("Testperioden" if innhold and '"testkjoringer": 1' in innhold else "Validering") in tekst
+
+
+def test_panel_endrer_ikke_lista_og_stripa(monkeypatch):
+    """Lista og prediktor-stripa er like med og uten tall i panelet (E2-S08-visningen er urørt)."""
+    def deler(dokument):
+        stripe = [s for s in dokument.finn_alle("section") if "prediktor" in s.attrs.get("class", "").split()][0]
+        liste = [n for n in dokument.iter() if n.attrs.get("id") == "anlopslista"][0]
+        return _ren(stripe.tekst()), _ren(liste.tekst()), [_ren(th.tekst()) for th in liste.finn_alle("th")]
+
+    uten = deler(_forside())
+    _metrikker(monkeypatch, EKTE_METRIKKER)
+    med = _forside()
+    assert deler(med) == uten
+    assert deler(med)[2] == KOLONNER
+    # Panelet står etter lista i HTML, så mobil (< 640 px) viser lista først (beslutning 2A).
+    ider = [n.attrs.get("id") for n in med.iter() if n.attrs.get("id") in ("anlopslista", "treffsikkerhet")]
+    assert ider == ["anlopslista", "treffsikkerhet"]
+
+
+def test_panel_uu_struktur(monkeypatch):
+    """Overskrifter uten hopp, th med scope, caption per tabell, og ingen farge alene (UU3, UU7)."""
+    _metrikker(monkeypatch, EKTE_METRIKKER)
+    dokument = _forside()
+    nivaaer = [int(n.tag[1]) for n in dokument.iter() if len(n.tag) == 2 and n.tag[0] == "h" and n.tag[1] in "123456"]
+    for forrige, neste in zip(nivaaer, nivaaer[1:]):
+        assert neste <= forrige + 1
+    panel = _panel(dokument)
+    assert panel.tag == "section" and panel.attrs.get("aria-labelledby") == "panel-tittel"
+    assert panel.finn_alle("img") == [] and panel.finn_alle("svg") == []  # verdiene står som tekst
+    for table in panel.finn_alle("table"):
+        captions = table.finn_alle("caption")
+        assert len(captions) == 1 and _ren(captions[0].tekst())
+        for th in table.finn_alle("th"):
+            assert th.attrs.get("scope") in ("col", "row")
+            assert _ren(th.tekst()), "tom overskriftscelle"
+        for td in table.finn_alle("td"):
+            assert _ren(td.skjermlesertekst()), "verdicelle uten tekst"
+            assert "style" not in td.attrs
