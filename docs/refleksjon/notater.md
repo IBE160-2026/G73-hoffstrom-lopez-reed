@@ -205,3 +205,16 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Lærdom (råt):**
   - Samlet så langt: tidsstempeltesten (22.10), hullgrensen (`<=` mot `<`), og nå varselterskelen. Mutasjonssjekken har fanget alle, ikke reviewerne.
   - En test mot ekte data dekker bare grenser som dataene tilfeldigvis treffer. En terskel trenger en egen test med verdier rett på og rett over grensen.
+
+## 2026-11-10 — Rettelsen brøt to andre tester, og låsen tålte bare én feiltype (E2-S08)
+
+- **Hva:**
+  - Implementeringssubagenten la inn en autouse-fixture som skriver en låst `metrikker.json` i hver tests `tmp_path`. To tester i `tests/test_fetch_ais_kutt.py`, som forventer en tom `tmp_path`, feilet da. Subagenten var bedt om å kjøre bare testene for filene den endret, og meldte grønt.
+  - Låsen for testperioden skal regne vinduet som låst når testperiodens start ikke kan leses. Testen kastet bare `ValueError`, så en mutant som bare fanget `ValueError` overlevde. Et uleselig utdrag (`OSError`) ville gitt HTTP 500.
+- **Hvordan det ble oppdaget:** Claude kjørte hele suiten etter rettelsene (2 feilet), og deretter mutasjonssjekken (1 av 24 overlevde utenom en ekvivalent mutant). Ingen av de tre reviewerne hadde meldt noen av delene.
+- **Resultat:** fixturen bruker nå en egen mappe fra `tmp_path_factory`, og testen er parametrisert med `OSError`. 24 av 25 mutanter fanges; den siste er ekvivalent. En autouse-vakt i `tests/conftest.py` stopper `ModellPrediktor.prediker` før den kjører på en testrad. Da låsen ble slått av i mutasjonssjekken, var det vakten som stoppet modellen, så den kjørte aldri på testanløpene i standardvinduet. Se `git log --oneline --grep E2-S08`.
+- **Lærdom (råt):**
+  - «Kjør bare testene for filene du endrer» er riktig for subagenten, men da må orkestratoren alltid kjøre hele suiten etterpå. En autouse-fixture virker på alle testene, ikke bare på filene som ble endret.
+  - Igjen fanget mutasjonssjekken det reviewerne ikke så: en reservevei er bare testet for den feiltypen testen tilfeldigvis kaster.
+  - Mutasjonssjekk av en lås for testdata kan selv bryte låsen. Vakten måtte på plass før lås-mutantene ble kjørt.
+  - **Tillegg 11.11:** Felipe ba om en test som viser at låsen alene holder. Lås-mutantene var fanget av vakten, ikke av låsetestene. `test_laasen_alene_stopper_modellen_paa_testvindu` bytter vakten ut med en spion som aldri kjører modellen, og fanger alle tre lås-mutantene uten vakten. Den ekvivalente mutanten (teksten om at modellen er trent på anløpene, uten `kan_varsle`) skyldtes at malen sjekket samme regel en gang til. Regelen står nå bare i `app/__init__.py`, og mutanten fanges. Etter dette: 25 av 25. Låsen og vakten er to sperrer som skal holde hver for seg (beslutning 6 i specen).

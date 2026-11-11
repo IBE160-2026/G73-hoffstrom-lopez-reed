@@ -276,7 +276,11 @@ def test_en_rad_paavirkes_ikke_av_en_annen(prediktor, validering, features, monk
     assert igjen == foer
 
 
-def test_dashbordet_bruker_fortsatt_baselinen(monkeypatch):
-    """Byttet er E2-S08: ``PREDIKTOR`` uten verdi gir fortsatt baselinen."""
+def test_dashbordet_velger_modellen_bare_utenfor_testperioden(monkeypatch):
+    """E2-S08: før testkjøringen gir ``auto`` baselinen, og ``modell`` gir modellen bare i et valideringsvindu."""
     monkeypatch.delenv("PREDIKTOR", raising=False)
+    validering = dt.datetime(2025, 8, 15, 6, 0, tzinfo=dt.timezone.utc)
     assert isinstance(velg_prediktor(), BaselinePrediktor)
+    assert isinstance(velg_prediktor(naa=validering), BaselinePrediktor)
+    assert isinstance(velg_prediktor("modell", validering), ModellPrediktor)
+    assert isinstance(velg_prediktor("modell"), BaselinePrediktor)

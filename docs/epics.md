@@ -304,15 +304,17 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** legges til i `PREDIKTORER` i `tests/test_prediktor_kontrakt.py` og må bestå alle kontrakt- og lekkasjetestene der. `::test_kutt_ikke_etter_naa` (`t_H ≤ nå` for alle rader i en avspilling) ble flyttet til E1-S04 og gjelder allerede.
 
-### E2-S08 — Bytt inn i dashbordet ☐
+### E2-S08 — Bytt inn i dashbordet ✅
 **Krav:** FR3, FR4, FR9, UX §5 · **Avhenger av:** E2-S07
-- `PREDIKTOR=auto` velger modellen når artefaktet finnes. Prediktor-stripa viser «Modell v1», varselkolonnen viser ▲ + «VARSEL», og med fasit på kommer kolonnen Prediksjonsfeil.
-- Mangler artefaktet, faller appen tilbake til baseline med melding.
-- Malene endres ikke utover stripa, varselkolonnen og prediksjonsfeil. Det er testen på at A5 holdt.
+- Før testkjøringen (E2-S10) gir `PREDIKTOR=auto` baselinen. `PREDIKTOR=modell` viser modellen for vinduer før testperioden (trening og validering), og stripa sier da at modellen er trent på de anløpene. Etter testkjøringen velger `auto` og `modell` modellen. Prediktor-stripa viser «Modell v1», og varselkolonnen viser ▲ + «VARSEL», «–» eller grunnen til delegeringen.
+- Mangler artefaktet, eller feiler det, faller appen tilbake til baseline med melding.
+- Malene endres ikke utover stripa og varselkolonnen. Det er testen på at A5 holdt. Kolonnen Prediksjonsfeil (fasit på) er flyttet til E1-S09, etter E2-S10.
 - Forklaringen av varselet sier at modellen bare varsler for anløp utenfor ankomstsonen med AIS-posisjon ved kuttet, og at det i testperioden var under halvparten av de forsinkede anløpene (57 og 78 av 194).
 - **Testrader** (Felipe, 10.11.2026): testrader brukes bare til det som står eksplisitt i denne storyen eller specen. Alt annet, også prediksjon uten fasit, krever at agenten stopper og spør først.
 
-**Test:** `tests/test_ruter.py::test_modell_standard`, `::test_fallback_baseline`, og `::test_fasit_uavhengig_av_prediktor` (avvik og FORSINKET er like med `PREDIKTOR=baseline` og `PREDIKTOR=modell`)
+- **Lås til testkjøringen** (Felipe, 10.11.2026): før `testkjoringer ≥ 1` gir `auto` baselinen, og `modell` viser modellen bare for vinduer som slutter før testperioden (trening og validering, rettet av Felipe etter review). Ellers står låseteksten i stripa. Prediksjonsfeil og `test_fasit_uavhengig_av_prediktor` er flyttet til E1-S09, etter E2-S10 (`deferred-work.md`).
+
+**Test:** `tests/test_ruter.py::test_modell_i_valideringsvindu`, `::test_varselkolonnen_med_modellen`, `::test_laasen_alene_stopper_modellen_paa_testvindu`, `::test_laas_testperioden_standardvindu`, `::test_laas_testperioden_vindu_over_grensen`, `::test_fallback_baseline`, `::test_modell_foer_testperioden_sier_i_utvalg` m.fl. Modellrader rendres bare i vinduer før testperioden (15.06.2024 og 15.08.2025), og en autouse-vakt i `tests/conftest.py` stopper modellen på testrader utenfor kontrakttestene.
 
 ### E2-S09 — Panel: modell mot baseline ☐
 **Krav:** FR10 · **Avhenger av:** E2-S08
@@ -454,3 +456,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-09** — Etter E2-S06: varselet kan bare nå under halvparten av de forsinkede Øvrige-anløpene (57 og 78 av 194 i modellutvalget). Det står i briefen, README og på skjermen, og E2-S08 og E2-S10 skal si det der varselet forklares (Felipe).
 - **2026-11-10** — E2-S07 er ferdig: `ModellPrediktor` (`app/prediksjon/modell.py`) får F1–F16 gjennom `featurer_ved_kutt` i `app/prediksjon/__init__.py`, uten nye felt i `PrediksjonsInput`. Den delegerer Passasjer, rader uten tilstand, F6-rader og rader uten featurerad ved kuttet til baselinen, og gir samme tider og varsel som modellarmen i `scripts/evaluer.py` på valideringsradene. Dashbordet bruker fortsatt baselinen (byttet er E2-S08). Testen er `tests/test_modellprediktor.py` (Felipe).
 - **2026-11-10** — Etter E2-S07: E2-S08, E2-S09 og E2-S10 har fått regelen om at testrader bare brukes til det som står eksplisitt, og at agenten ellers stopper og spør først. Specene for de tre storyene skal ha den med (Felipe).
+- **2026-11-10** — E2-S08 er ferdig: `velg_prediktor` velger `ModellPrediktor` bak en lås for testperioden til testkjøringen i E2-S10 (vinduer før testperioden viser modellen med teksten om at den er trent på anløpene), og faller tilbake til baselinen med melding når artefaktet mangler. Stripa viser «Modell v1» og dekningsgrensen, og varselkolonnen viser ▲ + «VARSEL», «–» eller grunnen til delegeringen. Vinduet velger fortsatt på rapportert ETA. Prediksjonsfeil er flyttet til E1-S09 (Felipe).

@@ -1,17 +1,34 @@
-"""Hovedskjermen `GET /` (E1-S06, UX §2 skjerm A, §5 tomt vindu)."""
+"""Hovedskjermen `GET /` (E1-S06, UX §2 skjerm A, §5 tomt vindu; E2-S08 modellen i dashbordet).
+
+Testene for baselineverdiene låser ``PREDIKTOR=baseline`` (autouse-fixturen under). Modellrader rendres bare
+for ``VALIDERING_NAA`` i valideringsdelen, aldri for et vindu i testperioden (regelen om testrader, E2-S08).
+"""
+import dataclasses
 import datetime as dt
+import json
 import re
 
-from conftest import parse_html
+import pytest
+from conftest import VALIDERING_NAA, parse_html
 
-from app import STANDARD_NAA, create_app
+import app.prediksjon as prediksjon
+import app.prediksjon.modell as modellmodul
+from app import DELEGERT_TEKST, STANDARD_NAA, create_app
 from app.data import anlop_i_vindu
-from app.prediksjon import lag_input, velg_prediktor
-from app.visning import ukedag_dato_klokke, ukedag_klokke
+from app.prediksjon import MERKNAD_IKKE_FUNNET, MERKNAD_LAAST, lag_input, velg_prediktor
+from app.prediksjon.baseline import BaselinePrediktor
+from app.prediksjon.modell import ModellPrediktor
+from app.visning import OSLO, ukedag_dato_klokke, ukedag_klokke
 
 KOLONNER = ["Skip", "Gruppe", "Rapportert", "Predikert", "Horisont", "Varsel"]
 HJELPETEKST = "predikert før valgt tidspunkt"
 TOM_MELDING = "Ingen anløp med rapportert ETA i dette vinduet. Prøv et annet tidspunkt."
+
+
+@pytest.fixture(autouse=True)
+def _baseline(monkeypatch):
+    """Baselineforventningene gjelder ``PREDIKTOR=baseline``. Modelltestene setter verdien selv."""
+    monkeypatch.setenv("PREDIKTOR", "baseline")
 
 
 def _ren(t):
@@ -100,6 +117,9 @@ def test_prediktor_stripa(dokument):
     assert "Baselinen kan ikke varsle avvik. Varselkolonnen fylles når modellen kommer." in tekst
     assert "I testperioden var det under halvparten av de forsinkede anløpene." in tekst
     assert "rapportert ETA justert med median liggetid" in tekst
+    # «ankomstsone» er gruppens interne begrep; på skjermen står «havneområdet» (E2-S08, beslutning 3).
+    assert "utenfor havneområdet med AIS-posisjon ved kuttet" in tekst
+    assert "ankomstsone" not in tekst
 
 
 def test_norsk_tid_staar_paa_skjermen(dokument):
@@ -164,3 +184,354 @@ def test_standard_naa_er_oslo_0800():
     assert STANDARD_NAA.utcoffset() == dt.timedelta(hours=2)
     assert (STANDARD_NAA.year, STANDARD_NAA.month, STANDARD_NAA.day, STANDARD_NAA.hour) == (
         2025, 10, 8, 8)
+
+
+# ---------------------------------------------------------------------------
+# E2-S08: modellen i dashbordet. Modellrader bare i valideringsvinduet.
+
+I_UTVALG = ("Modellen er trent på disse anløpene, så treffene ser bedre ut enn de er. "
+            "Ekte resultater finnes først for testperioden.")
+TRENING_NAA = dt.datetime(2024, 6, 15, 8, 0, tzinfo=OSLO)
+MODELL_STRIPE = "Modellen varsler bare for anløp utenfor havneområdet med AIS-posisjon ved kuttet."
+BASELINE_STRIPE = "Baselinen kan ikke varsle avvik. Varselkolonnen fylles når modellen kommer."
+
+
+def _side(naa):
+    svar = create_app({"TESTING": True, "STANDARD_NAA": naa}).test_client().get("/")
+    assert svar.status_code == 200
+    return parse_html(svar.get_data(as_text=True))
+
+
+def _synlig(celle):
+    """Synlig tekst: uten ``visually-hidden``."""
+    def tekst(n):
+        if "visually-hidden" in n.attrs.get("class", "").split():
+            return ""
+        return "".join(c if isinstance(c, str) else tekst(c) for c in n.children)
+    return _ren(tekst(celle))
+
+
+def _stripe(dokument):
+    return _ren([s for s in dokument.finn_alle("section")
+                 if "prediktor" in s.attrs.get("class", "").split()][0].tekst())
+
+
+def _testkjoringer(monkeypatch, tmp_path, antall):
+    sti = tmp_path / "metrikker.json"
+    sti.write_text(json.dumps({"testkjoringer": antall}), encoding="utf-8")
+    monkeypatch.setattr(prediksjon, "METRIKKER_FIL", sti)
+
+
+def _valideringsprediksjoner():
+    """Modellens prediksjoner for valideringsvinduet, per skipsnavn (bare valideringsrader)."""
+    naa = VALIDERING_NAA
+    assert naa.astimezone(dt.timezone.utc) + dt.timedelta(hours=24) <= prediksjon.testperiode_start()
+    inputs = [lag_input(a, naa) for a in anlop_i_vindu(naa)]
+    return {i.shipname: p for i, p in zip(inputs, ModellPrediktor().prediker(inputs, naa))}
+
+
+def test_valideringsvinduet_er_foer_testperioden():
+    assert prediksjon.testperiode_start() == dt.datetime(2025, 9, 14, 3, 15, tzinfo=dt.timezone.utc)
+    assert VALIDERING_NAA + dt.timedelta(hours=24) < prediksjon.testperiode_start()
+    assert all(a.split == "train" for a in anlop_i_vindu(VALIDERING_NAA))
+
+
+def test_auto_foer_testkjoringen_gir_baseline(monkeypatch):
+    monkeypatch.setenv("PREDIKTOR", "auto")
+    stripe = _stripe(_side(VALIDERING_NAA))
+    assert "Kalibrert baseline" in stripe
+    assert BASELINE_STRIPE in stripe
+    assert MERKNAD_LAAST not in stripe and MERKNAD_IKKE_FUNNET not in stripe
+
+
+def test_modell_i_valideringsvindu(monkeypatch):
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    dokument = _side(VALIDERING_NAA)
+    stripe = _stripe(dokument)
+    assert "Modell v1" in stripe
+    assert MODELL_STRIPE in stripe
+    assert "57 av 194 ved 6 t og 78 av 194 ved 24 t" in stripe
+    assert BASELINE_STRIPE not in stripe
+    assert MERKNAD_LAAST not in stripe and MERKNAD_IKKE_FUNNET not in stripe
+
+    pred = _valideringsprediksjoner()
+    rader = {_ren(r["Skip"].tekst()): r for r in _rader(dokument)}
+    assert set(rader) == set(pred)
+    for skip, r in rader.items():
+        assert _ren(r["Predikert"].tekst()).startswith(ukedag_klokke(pred[skip].predikert_ankomst))
+    # Sortert på modellens uavrundede predikerte ankomst.
+    skip = [_ren(r["Skip"].tekst()) for r in _rader(dokument)]
+    assert skip == sorted(skip, key=lambda s: pred[s].predikert_ankomst)
+
+
+def test_varselkolonnen_med_modellen(monkeypatch):
+    """▲ + «VARSEL» (ikon og tekst, UU3), «–» med skjermlesertekst, og synlig grunn for delegerte rader."""
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    dokument = _side(VALIDERING_NAA)
+    pred = _valideringsprediksjoner()
+    grunner = {
+        "passasjer": "– (rutegående: bare baseline)",
+        "ingen_tilstand": "– (ingen AIS-tilstand)",
+        "i_sonen_ved_kutt": "– (allerede i havneområdet)",
+    }
+    sett = set()
+    for r in _rader(dokument):
+        p = pred[_ren(r["Skip"].tekst())]
+        celle = r["Varsel"]
+        synlig, lest = _synlig(celle), _ren(celle.skjermlesertekst())
+        skjult = [_ren(c.tekst()) for c in celle.iter() if c.attrs.get("aria-hidden") == "true"]
+        if p.forventet_forsinket is True:
+            assert synlig == "▲ VARSEL"
+            assert skjult == ["▲"]
+            assert lest == "VARSEL"
+            assert "varsel-merke" in celle.finn_alle("span")[0].attrs["class"]
+            sett.add("varsel")
+        elif p.forventet_forsinket is False:
+            assert skjult == ["–"]
+            assert lest == "Ingen varsel"
+            sett.add("ingen")
+        else:
+            assert synlig == grunner[p.forklaring["delegert"]]
+            assert skjult == ["–"]
+            assert lest == "Ingen varsel: " + grunner[p.forklaring["delegert"]][2:]
+            sett.add(p.forklaring["delegert"])
+        assert "baselinen varsler ikke" not in lest
+    assert sett == {"varsel", "ingen", "passasjer", "ingen_tilstand", "i_sonen_ved_kutt"}
+    fotnote = _ren(dokument.finn_alle("p")[-1].tekst())
+    assert "▲ VARSEL" in fotnote and "baselinen varsler ikke" not in fotnote
+
+
+def test_varsel_ingen_featurerad(monkeypatch):
+    """Uten featurerad ved kuttet står «– (ingen modelldata ved kuttet)»."""
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    pred = _valideringsprediksjoner()
+    maal = next(s for s, p in pred.items() if p.forklaring.get("metode") == "modell")
+    ekte = modellmodul.featurer_ved_kutt
+    monkeypatch.setattr(modellmodul, "featurer_ved_kutt",
+                        lambda inp: None if inp.shipname == maal else ekte(inp))
+    rader = {_ren(r["Skip"].tekst()): r for r in _rader(_side(VALIDERING_NAA))}
+    assert _synlig(rader[maal]["Varsel"]) == "– (ingen modelldata ved kuttet)"
+
+
+def test_varsel_ukjent_delegering(monkeypatch):
+    """En delegert rad uten kjent kode får «– (ingen modellvurdering)», ikke «Ingen varsel»."""
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    ekte = ModellPrediktor.prediker
+
+    def uten_kode(self, inputs, naa):
+        return [dataclasses.replace(p, forventet_forsinket=None, forklaring={"metode": "kalibrert_baseline"})
+                for p in ekte(self, inputs, naa)]
+
+    monkeypatch.setattr(ModellPrediktor, "prediker", uten_kode)
+    for r in _rader(_side(VALIDERING_NAA)):
+        assert _synlig(r["Varsel"]) == "– (ingen modellvurdering)"
+        assert _ren(r["Varsel"].skjermlesertekst()) == "Ingen varsel: (ingen modellvurdering)"
+
+
+def test_delegert_tekst_dekker_kodene():
+    """Nøklene i ``DELEGERT_TEKST`` er nøyaktig kodene ``ModellPrediktor`` kan gi (``app/prediksjon/modell.py``)."""
+    import inspect
+
+    kilde = inspect.getsource(modellmodul)
+    koder = set(re.findall(r'grunn = "([a-z_]+)"', kilde))
+    assert koder == {"passasjer", "ingen_tilstand", "i_sonen_ved_kutt", "ingen_featurerad"}
+    assert set(DELEGERT_TEKST) == koder
+
+
+def test_modell_endrer_bare_stripa_og_varselcellen(monkeypatch):
+    """A5: samme kolonner, anløp og celler som baselinen, utenom Predikert (tiden), Varsel og stripa."""
+    base = _side(VALIDERING_NAA)
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    modell = _side(VALIDERING_NAA)
+    assert [_ren(th.tekst()) for th in base.finn_alle("th")] == [
+        _ren(th.tekst()) for th in modell.finn_alle("th")]
+    assert _ren(base.finn_alle("h2")[0].tekst()) == _ren(modell.finn_alle("h2")[0].tekst())
+    assert _ren(base.finn_alle("h1")[0].tekst()) == _ren(modell.finn_alle("h1")[0].tekst())
+
+    def celler(d):
+        return {_ren(r["Skip"].tekst()): {k: _ren(v.tekst()) for k, v in r.items()
+                                          if k in ("Skip", "Gruppe", "Rapportert", "Horisont")}
+                for r in _rader(d)}
+
+    assert celler(base) == celler(modell)
+
+
+def test_laasen_alene_stopper_modellen_paa_testvindu(monkeypatch):
+    """Låsen og vakten mot testrader er to sperrer som skal holde hver for seg (E2-S08, beslutning 6).
+
+    Vakten fra ``conftest.py`` er her byttet ut med en spion som aldri kjører den ekte modellen. Testen viser at
+    låsen alene gir baselinen for standardvinduet (testperioden): ``ModellPrediktor`` blir verken valgt eller kalt.
+    Bryter låsen, feiler testen uten at modellen har predikert noe på testradene.
+    """
+    kall = []
+
+    def spion(self, inputs, naa):
+        kall.append(len(inputs))
+        raise AssertionError("ModellPrediktor.prediker kalt for et testvindu: låsen holdt ikke")
+
+    monkeypatch.setattr(ModellPrediktor, "prediker", spion)
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    assert prediksjon.testkjoringer() == 0
+    prediktor, merknad = prediksjon.velg_prediktor_med_merknad(naa=STANDARD_NAA)
+    assert isinstance(prediktor, BaselinePrediktor) and merknad == MERKNAD_LAAST
+    svar = create_app({"TESTING": True, "STANDARD_NAA": STANDARD_NAA}).test_client().get("/")
+    assert svar.status_code == 200
+    assert kall == []
+    assert MERKNAD_LAAST in _stripe(parse_html(svar.get_data(as_text=True)))
+
+
+def test_laas_testperioden_standardvindu(monkeypatch):
+    """Før testkjøringen gir ``PREDIKTOR=modell`` baselinen og låseteksten i standardvinduet."""
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    assert prediksjon.testkjoringer() == 0
+    dokument = _side(STANDARD_NAA)
+    stripe = _stripe(dokument)
+    assert "Kalibrert baseline" in stripe and "Modell v1" not in stripe
+    assert MERKNAD_LAAST in stripe
+    assert BASELINE_STRIPE in stripe
+    for r in _rader(dokument):
+        assert "baselinen varsler ikke" in _ren(r["Varsel"].skjermlesertekst())
+
+
+def test_laas_testperioden_vindu_over_grensen(monkeypatch):
+    """Et vindu som starter i valideringsdelen og slutter i testperioden, er låst."""
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    naa = dt.datetime(2025, 9, 13, 8, 0, tzinfo=OSLO)
+    assert naa < prediksjon.testperiode_start() < naa + dt.timedelta(hours=24)
+    stripe = _stripe(_side(naa))
+    assert "Kalibrert baseline" in stripe
+    assert MERKNAD_LAAST in stripe
+
+
+def test_laas_grensen_er_vinduets_slutt(monkeypatch):
+    start = prediksjon.testperiode_start()
+    paa_grensen = start - dt.timedelta(hours=24)
+    assert isinstance(velg_prediktor("modell", paa_grensen), ModellPrediktor)
+    assert isinstance(velg_prediktor("modell", paa_grensen + dt.timedelta(seconds=1)), BaselinePrediktor)
+    assert isinstance(velg_prediktor("modell", None), BaselinePrediktor)
+    assert prediksjon.velg_prediktor_med_merknad("modell", None)[1] == MERKNAD_LAAST
+    for verdi in ("auto", "baseline"):
+        assert isinstance(velg_prediktor(verdi, paa_grensen), BaselinePrediktor)
+
+
+@pytest.mark.parametrize("innhold", [None, "{}", '{"testkjoringer": 0}', "ikke json",
+                                     '{"testkjoringer": true}', "[]"])
+def test_laas_uten_testkjoring(monkeypatch, tmp_path, innhold):
+    """Manglende fil eller nøkkel teller som 0 testkjøringer."""
+    sti = tmp_path / "metrikker.json"
+    if innhold is not None:
+        sti.write_text(innhold, encoding="utf-8")
+    monkeypatch.setattr(prediksjon, "METRIKKER_FIL", sti)
+    assert prediksjon.testkjoringer() == 0
+    assert isinstance(velg_prediktor("auto", VALIDERING_NAA), BaselinePrediktor)
+    assert isinstance(velg_prediktor("modell", STANDARD_NAA), BaselinePrediktor)
+
+
+@pytest.mark.parametrize("verdi", ["auto", "modell"])
+def test_etter_testkjoringen_gir_modellen(monkeypatch, tmp_path, verdi):
+    """Etter testkjøringen velges modellen for alle vinduer. Bare valget sjekkes for testvinduet; modellrader
+    rendres bare i valideringsvinduet."""
+    _testkjoringer(monkeypatch, tmp_path, 1)
+    for naa in (None, STANDARD_NAA, VALIDERING_NAA):
+        prediktor, merknad = prediksjon.velg_prediktor_med_merknad(verdi, naa)
+        assert isinstance(prediktor, ModellPrediktor) and merknad is None
+    monkeypatch.setenv("PREDIKTOR", verdi)
+    stripe = _stripe(_side(VALIDERING_NAA))
+    assert "Modell v1" in stripe and MODELL_STRIPE in stripe
+
+
+def test_eksplisitt_baseline_etter_testkjoringen(monkeypatch, tmp_path):
+    _testkjoringer(monkeypatch, tmp_path, 1)
+    assert isinstance(velg_prediktor("baseline", VALIDERING_NAA), BaselinePrediktor)
+    stripe = _stripe(_side(VALIDERING_NAA))
+    assert "Kalibrert baseline" in stripe and BASELINE_STRIPE in stripe
+
+
+def test_fallback_baseline(monkeypatch, tmp_path):
+    """Tom modellmappe: baselinen og «Modell ikke funnet — viser kalibrert baseline» (UX §5)."""
+    monkeypatch.setattr(prediksjon, "MODELL_DIR", tmp_path)
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    prediktor, merknad = prediksjon.velg_prediktor_med_merknad(naa=VALIDERING_NAA)
+    assert isinstance(prediktor, BaselinePrediktor) and merknad == MERKNAD_IKKE_FUNNET
+    dokument = _side(VALIDERING_NAA)
+    stripe = _stripe(dokument)
+    assert "Kalibrert baseline" in stripe
+    assert "Modell ikke funnet — viser kalibrert baseline" in stripe
+    assert BASELINE_STRIPE in stripe
+    for r in _rader(dokument):
+        assert "baselinen varsler ikke" in _ren(r["Varsel"].skjermlesertekst())
+
+
+def test_fallback_baseline_etter_testkjoringen(monkeypatch, tmp_path):
+    _testkjoringer(monkeypatch, tmp_path, 1)
+    tom = tmp_path / "tom"
+    tom.mkdir()
+    monkeypatch.setattr(prediksjon, "MODELL_DIR", tom)
+    for verdi in ("auto", "modell"):
+        prediktor, merknad = prediksjon.velg_prediktor_med_merknad(verdi, STANDARD_NAA)
+        assert isinstance(prediktor, BaselinePrediktor) and merknad == MERKNAD_IKKE_FUNNET
+
+
+def test_ukjent_prediktor_gir_valueerror(monkeypatch):
+    monkeypatch.setenv("PREDIKTOR", "tull")
+    with pytest.raises(ValueError):
+        velg_prediktor(naa=VALIDERING_NAA)
+
+
+@pytest.mark.parametrize("naa", [TRENING_NAA, VALIDERING_NAA], ids=["trening", "validering"])
+def test_modell_foer_testperioden_sier_i_utvalg(monkeypatch, naa):
+    """Beslutning 1 (rettelse) og 5: trening- og valideringsvinduer viser modellen med teksten om at den er trent
+    på anløpene."""
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    assert all(a.split == "train" for a in anlop_i_vindu(naa))
+    stripe = _stripe(_side(naa))
+    assert "Modell v1" in stripe and I_UTVALG in stripe
+
+
+def test_i_utvalg_ikke_med_baselinen(monkeypatch):
+    stripe = _stripe(_side(VALIDERING_NAA))
+    assert "Kalibrert baseline" in stripe and I_UTVALG not in stripe
+
+
+def test_i_utvalg_ikke_for_testvindu_etter_testkjoringen(monkeypatch, tmp_path):
+    """Etter testkjøringen vises ikke teksten for testvinduer. Bare stripa sjekkes; modellen kjøres ikke på
+    testradene (vinduet er tomt, TOMT_NAA i testperioden)."""
+    from conftest import TOMT_NAA
+
+    _testkjoringer(monkeypatch, tmp_path, 1)
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    assert anlop_i_vindu(TOMT_NAA) == []
+    stripe = _stripe(_side(TOMT_NAA))
+    assert "Modell v1" in stripe and I_UTVALG not in stripe
+
+
+@pytest.mark.parametrize("feil", [ValueError("min() arg is an empty sequence"), OSError("utdraget kan ikke leses")])
+def test_testperiode_start_feiler_gir_laast(monkeypatch, feil):
+    """Kan ikke testperiodens start leses (ingen testrader, eller uleselig utdrag), er vinduet låst, og siden svarer
+    likevel 200."""
+    def feiler():
+        raise feil
+
+    monkeypatch.setattr(prediksjon, "testperiode_start", feiler)
+    assert prediksjon.i_testperioden(VALIDERING_NAA) is True
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    stripe = _stripe(_side(VALIDERING_NAA))
+    assert "Kalibrert baseline" in stripe and MERKNAD_LAAST in stripe
+
+
+def test_fallback_korrupt_artefakt(monkeypatch, tmp_path):
+    """Et korrupt ``.joblib`` gir baselinen og «Modell ikke funnet», ikke HTTP 500."""
+    for h in (6, 24):
+        (tmp_path / f"modell_{h}t.joblib").write_bytes(b"ikke en joblib-fil")
+    monkeypatch.setattr(prediksjon, "MODELL_DIR", tmp_path)
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    prediktor, merknad = prediksjon.velg_prediktor_med_merknad(naa=VALIDERING_NAA)
+    assert isinstance(prediktor, BaselinePrediktor) and merknad == MERKNAD_IKKE_FUNNET
+    assert MERKNAD_IKKE_FUNNET in _stripe(_side(VALIDERING_NAA))
+
+
+def test_vakta_stopper_modellen_paa_testrader():
+    """Autouse-vakta i conftest stopper modellen før den kjøres på en testrad."""
+    anlop = anlop_i_vindu(STANDARD_NAA)
+    with pytest.raises(AssertionError, match="testrad"):
+        ModellPrediktor().prediker([lag_input(anlop[0], STANDARD_NAA)], STANDARD_NAA)

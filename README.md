@@ -78,6 +78,8 @@ flask --app app run --port 8000
 - Overskriften sier «15 anløp · ons 08.10 08:00 – tor 09.10 08:00 (norsk tid)».
 - Lista starter med ROTTERDAM og slutter med MSC POESIA. Den er sortert etter predikert ankomst. BERGEN ENERGY har rapportert ETA ons 11:00 og predikert ankomst ons 09:56.
 - Prediktor-stripa viser «Kalibrert baseline». Varselkolonnen viser «–», fordi baselinen ikke kan varsle avvik. Det står forklart på siden.
+- Modellen (E2-S08) er låst for testperioden til den ene testkjøringen (E2-S10) er gjort. Til da viser standard (`PREDIKTOR=auto`) baselinen. `PREDIKTOR=modell` viser «Modell v1» og varselkolonnen (▲ VARSEL) bare for vinduer før testperioden, ellers baselinen med en merknad i stripa. Mangler modellartefaktet, viser appen baselinen og «Modell ikke funnet — viser kalibrert baseline».
+- Til skjemaet for «nå» (E1-S07) finnes, viser appen bare standardvinduet, som er i testperioden og derfor låst. Vil du se modellen lokalt, start appen med et «nå» før testperioden, for eksempel: `PREDIKTOR=modell python -c "import datetime as dt; from zoneinfo import ZoneInfo; from app import create_app; create_app({'STANDARD_NAA': dt.datetime(2025, 8, 15, 8, 0, tzinfo=ZoneInfo('Europe/Oslo'))}).run(port=8000)"`. Stripa sier da også at modellen er trent på disse anløpene.
 - Også når modellen kommer, kan varselet bare nå under halvparten av de forsinkede anløpene, uansett hvor god modellen er. Av 194 forsinkede ikke-rutegående anløp i testperioden ligger bare 57 (6 t) og 78 (24 t) i utvalget modellen brukes på. Resten er turer inne i ankomstsonen ved kuttet eller anløp uten AIS-posisjon, og de får baselinen (beslutning 12, `docs/brief.md`).
 - Under 640 px bredde vises anløpene som kort i stedet for tabell.
 

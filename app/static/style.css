@@ -1,7 +1,7 @@
 /* Ankomstprediksjon · Bergen Havn (E1-S06, UX §7).
    Tokenene er kopiert fra tabellen i docs/ux/dashbord.md §7 (lyst tema).
    tests/test_kontrast.py sjekker at verdiene er like og regner kontrasten på nytt.
-   Mørkt tema, --varsel og --ok kommer i E1-S13. */
+   --varsel kom i E2-S08 (▲ VARSEL). Mørkt tema og --ok kommer i E1-S13. */
 :root {
   --bakgrunn: #FFFFFF;
   --flate: #F3F5F7;
@@ -9,6 +9,7 @@
   --dempet: #4A5560;
   --aksent: #0B5CAD;
   --kant: #7A8590;
+  --varsel: #A4262C;
 }
 
 *,
@@ -131,6 +132,19 @@ h2 {
 }
 
 .prediktor-varsel {
+  color: var(--dempet);
+}
+
+.prediktor-merknad {
+  font-weight: 600;
+}
+
+.varsel-merke {
+  color: var(--varsel);
+  font-weight: 700;
+}
+
+.varsel-grunn {
   color: var(--dempet);
 }
 

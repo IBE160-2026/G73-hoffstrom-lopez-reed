@@ -1,4 +1,5 @@
 import datetime as dt
+import json
 from html.parser import HTMLParser
 from zoneinfo import ZoneInfo
 
@@ -9,6 +10,46 @@ from app import create_app
 # Et vindu i testperioden uten anløp (pause i dataene 01.02–06.02.2026).
 TOMT_NAA = dt.datetime(2026, 2, 3, 8, 0, tzinfo=ZoneInfo("Europe/Oslo"))
 
+# Et vindu i valideringsdelen (siste 20 % av train, kronologisk), langt før testperioden (14.09.2025).
+# Modellrader rendres bare her (E2-S08, regelen om testrader). Vinduet har både varsel, ikke varsel og alle
+# delegeringsgrunnene unntatt ``ingen_featurerad``.
+VALIDERING_NAA = dt.datetime(2025, 8, 15, 8, 0, tzinfo=ZoneInfo("Europe/Oslo"))
+
+
+# Kontrakttestene og modellprediktortestene får kjøre modellen på testrader (E2-S07). Ingen andre.
+TESTRADER_TILLATT = {"test_prediktor_kontrakt", "test_modellprediktor"}
+
+
+@pytest.fixture(autouse=True)
+def _ingen_testkjoring(monkeypatch, tmp_path_factory):
+    """Testene avhenger ikke av den ekte ``metrikker.json``: ``testkjoringer = 0`` med mindre testen overstyrer."""
+    import app.prediksjon as prediksjon
+
+    sti = tmp_path_factory.mktemp("metrikker_laast") / "metrikker.json"  # egen mappe: tmp_path til testen er urørt
+    sti.write_text(json.dumps({"testkjoringer": 0}), encoding="utf-8")
+    monkeypatch.setattr(prediksjon, "METRIKKER_FIL", sti)
+
+
+@pytest.fixture(autouse=True)
+def _ingen_modell_paa_testrader(request, monkeypatch):
+    """Håndhever regelen om testrader (E2-S08): ``ModellPrediktor.prediker`` feiler FØR den kjøres hvis en input har
+    rapportert ETA ved eller etter testperiodens start."""
+    if request.module.__name__.rsplit(".", 1)[-1] in TESTRADER_TILLATT:
+        return
+    import app.prediksjon as prediksjon
+    from app.prediksjon.modell import ModellPrediktor
+
+    ekte = ModellPrediktor.prediker
+
+    def vaktet(self, inputs, naa):
+        start = prediksjon.testperiode_start()
+        for inp in inputs:
+            if getattr(inp, "eta_reported", None) is not None and inp.eta_reported >= start:
+                raise AssertionError(f"modellen kjørt på en testrad (voyageid {inp.voyageid}) utenfor kontrakttestene")
+        return ekte(self, inputs, naa)
+
+    monkeypatch.setattr(ModellPrediktor, "prediker", vaktet)
+
 
 @pytest.fixture
 def app():
@@ -18,6 +59,11 @@ def app():
 @pytest.fixture
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture
+def validering_client():
+    return create_app({"TESTING": True, "STANDARD_NAA": VALIDERING_NAA}).test_client()
 
 
 @pytest.fixture

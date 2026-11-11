@@ -23,3 +23,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-e2-s07-modellprediktor.md`
   summary: The `velg_prediktor` docstring in `app/prediksjon/__init__.py` still says no model artifact exists; update it when E2-S08 wires `ModellPrediktor` into `velg_prediktor`.
   evidence: E2-S07 review finding 10; E2-S07 was not allowed to change `velg_prediktor`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-e2-s08-bytt-inn-i-dashbordet.md`
+  summary: The Prediksjonsfeil column (actual − predicted) and `tests/test_ruter.py::test_fasit_uavhengig_av_prediktor` move from E2-S08 to E1-S09 (ground-truth toggle), after the E2-S10 test run.
+  evidence: Both need `fasit=1` (E1-S09, not built), and Prediksjonsfeil on test-period calls is scoring the model on the test period before E2-S10 (Felipe, 2026-11-10, decision 2A).
