@@ -4,7 +4,9 @@ Tilleggsanalyse regnet etter den ene testkjøringen (Felipe, 13.11.2026). Den en
 av kriteriene i briefen på tallene i ``data/modell/metrikker.json``. McNemar trenger antall uenige par (anløp der
 bare én av armene treffer), og ``metrikker.json`` har bare summene. Testradene leses derfor på nytt, med:
 
-- de samme committede artefaktene og den samme koden som testkjøringen (funksjonene i ``scripts/evaluer.py``)
+- de samme committede artefaktene og den samme prediksjonskoden som testkjøringen (funksjonene i ``scripts/evaluer.py``).
+  Treffregelen per anløp (``_treff``: |faktisk − predikert| ≤ 30 min) er skrevet her, likt ``app.metrikker.andel_innenfor``,
+  og summene sjekkes mot ``metrikker.json``
 - en sjekk først om de låste filene er uendret siden kjøringens commit (``testkjoringer_logg[-1].commit``)
 - en sjekk etterpå om summene er nøyaktig lik ``test``-blokken. Er de ikke det, skrives ingenting.
 
@@ -65,16 +67,25 @@ def _treff(prediksjoner, anlop):
 
 
 def sjekk_uendret(commit):
-    """De låste filene er like i arbeidstreet og i kjøringens commit (``git diff --quiet``)."""
-    r = subprocess.run(["git", "diff", "--quiet", commit, "--", *LAASTE_STIER], cwd=REPO_ROT)
-    if r.returncode != 0:
+    """De låste filene er like i arbeidstreet og i kjøringens commit (``git diff --quiet``), og det finnes ingen
+    ikke-sporede filer under dem (``git status --porcelain``)."""
+    try:
+        r = subprocess.run(["git", "diff", "--quiet", commit, "--", *LAASTE_STIER], cwd=REPO_ROT)
+        ukjente = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all", "--", *LAASTE_STIER],
+                                 cwd=REPO_ROT, capture_output=True, text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise Avvik(f"git er ikke tilgjengelig ({exc})") from exc
+    if r.returncode != 0 or ukjente:
         raise Avvik(f"de låste filene er endret siden testkjøringens commit {commit}")
 
 
 def beregn(metrikker):
     if metrikker.get("testkjoringer") != 1 or "test" not in metrikker:
         raise Avvik("krever nøyaktig én testkjøring i metrikker.json")
-    commit = metrikker["testkjoringer_logg"][-1]["commit"]
+    logg = metrikker.get("testkjoringer_logg") or []
+    if not logg or "commit" not in logg[-1]:
+        raise Avvik("testkjoringer_logg mangler commit")
+    commit = logg[-1]["commit"]
     sjekk_uendret(commit)
     artefakter, _ = ev.last_artefakter(ev.STANDARD["modell_dir"], ev.STANDARD["features"], ev.STANDARD["anlop"])
     features = ev.les_features(ev.STANDARD["features"])
@@ -114,9 +125,22 @@ def tabell(data):
 
 
 def main(argv=None):
+    """Uten argumenter: analysen, én gang. Finnes ``mcnemar.json``, stopper den (testradene leses ikke på nytt).
+    ``--bare-tabell``: skriv tabellen fra ``mcnemar.json`` uten å lese testradene."""
+    argv = sys.argv[1:] if argv is None else argv
+    if argv == ["--bare-tabell"]:
+        print(tabell(json.loads(UT.read_text(encoding="utf-8"))))
+        return 0
+    if argv:
+        print("Bruk: scripts/mcnemar.py [--bare-tabell]", file=sys.stderr)
+        return 2
+    if UT.exists():
+        print(f"Stopper, ingenting er skrevet: {UT} finnes. Analysen er gjort én gang (E2-S10), og en ny kjøring "
+              "ville lest testradene på nytt. Bruk --bare-tabell for å skrive tabellen.", file=sys.stderr)
+        return 2
     try:
         data = beregn(json.loads(ev.STANDARD["ut"].read_text(encoding="utf-8")))
-    except (Avvik, ev.Avvik) as exc:
+    except (Avvik, ev.Avvik, OSError, ValueError) as exc:
         print(f"Stopper, ingenting er skrevet: {exc}", file=sys.stderr)
         return 2
     ev.skriv_json(UT, data)

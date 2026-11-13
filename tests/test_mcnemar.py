@@ -18,9 +18,10 @@ _spec.loader.exec_module(mc)
     (5, 5, 1.0),                     # likt gir 1 (kappet)
     (0, 0, 1.0),                     # ingen uenige par
     (1, 0, 1.0),                     # 2 · 0,5 = 1
+    (123, 54, 2.27737e-07),          # 6 t i testperioden: må ikke avrundes til 0
 ])
 def test_p_eksakt(b, c, p):
-    assert mc.p_mcnemar_eksakt(b, c) == pytest.approx(p)
+    assert mc.p_mcnemar_eksakt(b, c) == pytest.approx(p, rel=1e-5)
 
 
 def test_krysstabell():
@@ -58,5 +59,27 @@ def test_committet_mcnemar_i_notatet():
         assert v["begge"] + v["bare_modell"] == s["modell"]["treff_30"]
         assert v["begge"] + v["bare_baseline"] == s["baseline"]["treff_30"]
         assert v["n"] == s["modell"]["n"]
-        assert v["p_verdi"] == pytest.approx(mc.p_mcnemar_eksakt(v["bare_modell"], v["bare_baseline"]), abs=1e-6)
+        assert v["p_verdi"] == pytest.approx(mc.p_mcnemar_eksakt(v["bare_modell"], v["bare_baseline"]), rel=1e-5)
     assert mc.tabell(data) in (REPO_ROT / "docs" / "resultater.md").read_text(encoding="utf-8")
+
+
+def test_ny_analyse_stopper_naar_fila_finnes(tmp_path, monkeypatch, capsys):
+    """Analysen leser testradene og skal bare gjøres én gang: finnes fila, stopper main før noe leses."""
+    fil = tmp_path / "mcnemar.json"
+    fil.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(mc, "UT", fil)
+    monkeypatch.setattr(mc, "beregn", lambda *_: pytest.fail("beregn skal ikke kalles"))
+    assert mc.main([]) == 2
+    assert "ingenting er skrevet" in capsys.readouterr().err
+    assert fil.read_text(encoding="utf-8") == "{}"
+
+
+def test_bare_tabell_leser_ikke_testradene(tmp_path, monkeypatch, capsys):
+    data = {"horisonter": {h: {"n": 10, "begge": 4, "bare_modell": 3, "bare_baseline": 1, "ingen": 2, "uenige": 4,
+                                "p_verdi": 0.625} for h in ("6", "24")}}
+    fil = tmp_path / "mcnemar.json"
+    fil.write_text(json.dumps(data), encoding="utf-8")
+    monkeypatch.setattr(mc, "UT", fil)
+    monkeypatch.setattr(mc, "beregn", lambda *_: pytest.fail("beregn skal ikke kalles"))
+    assert mc.main(["--bare-tabell"]) == 0
+    assert mc.tabell(data) in capsys.readouterr().out

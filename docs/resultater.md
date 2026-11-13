@@ -1,6 +1,6 @@
 # Resultatnotat: modell mot kalibrert baseline (E2-S10)
 
-Testperioden (14.09.2025–15.03.2026) er kjørt én gang, 13.11.2026, med `scripts/evaluer.py --test` på commit `8920acb92cda52c9ed03992cb404def7d03f9fdc`. Før kjøringen var modellen, konfigurasjonen, valgreglene og suksesskriteriene låst. Kriteriene ble kopiert ordrett fra `docs/brief.md` inn i specen (`_bmad-output/implementation-artifacts/spec-e2-s10-resultatnotat.md`) og committet før tallene var kjent. Ingenting er endret etter kjøringen, og ingenting er kjørt på nytt. Alle tall i tabellene under er hentet fra `data/modell/metrikker.json` og `data/modell/mcnemar.json`, og `tests/test_resultater.py` og `tests/test_mcnemar.py` sjekker at tabellene er ordrett like filene.
+Testperioden (14.09.2025–15.03.2026) er kjørt én gang, 13.11.2026, med `scripts/evaluer.py --test` på commit `8920acb92cda52c9ed03992cb404def7d03f9fdc`. Før kjøringen var modellen, konfigurasjonen, valgreglene og suksesskriteriene låst. Kriteriene ble kopiert ordrett fra `docs/brief.md` inn i specen (`_bmad-output/implementation-artifacts/spec-e2-s10-resultatnotat.md`) og committet før tallene var kjent. Ingenting i modellen, konfigurasjonen, valgreglene eller kriteriene er endret etter kjøringen, og testkjøringen er ikke gjort på nytt. Testradene er lest én gang til, for McNemar-tilleggsanalysen, med de samme låste artefaktene (se under), og det endrer ikke dommen. Alle tall i tabellene under er hentet fra `data/modell/metrikker.json` og `data/modell/mcnemar.json`, og `tests/test_resultater.py` og `tests/test_mcnemar.py` sjekker at tabellene er ordrett like filene.
 
 ## Oppsummering
 
@@ -8,7 +8,7 @@ Testperioden (14.09.2025–15.03.2026) er kjørt én gang, 13.11.2026, med `scri
 - **6 t er en klar forbedring.** Modellen treffer innenfor ±30 min på 68,5 % mot baselinens 59,1 % (+9,4 prosentpoeng, 502 mot 433 av 733 anløp). McNemars test (tilleggsanalyse, se under) gir p ≈ 2,3 · 10⁻⁷.
 - **24 t er formelt bestått, men forskjellen er seks anløp, og den hviler på data vi ikke kan verifisere.** Modellen treffer 57,1 % mot baselinens 56,3 % (424 mot 418 av 742). McNemars test gir p = 0,64, så forskjellen kan ikke skilles fra tilfeldig variasjon.
 - **Bestått ved 24 t avhenger av avgangshavn og ETD (F13–F14).** Ablasjonen uten dem treffer 53,8 % mot baselinens 56,3 %, og ville altså **ikke bestått**. F13–F14 er de to featurene vi ikke kan verifisere (avgangshavn og ETD, begrensningen ved siden av A1 i beslutning 11): de kommer fra en seilaspost som kan være satt sammen i etterkant.
-- **Varsel-F1 falt fra validering til test**, fra 0,58 til 0,46 (6 t) og fra 0,60 til 0,44 (24 t). Testperioden er vinterhalvåret, mens valideringen var mai–september 2025.
+- **Varsel-F1 falt fra validering til test**, fra 0,58 til 0,46 (6 t) og fra 0,60 til 0,44 (24 t). Testperioden er høst og vinter (14.09.2025–15.03.2026), mens valideringen var mai–13.09.2025.
 - **For all Øvrige-trafikk er systemet dårligere enn «varsle alle» på varsel.** Systemet (modellen der den brukes, baselinen ellers) har F1 0,19 og 0,21 mot 0,33. Det er ikke kriteriet, men det er prisen for at varselet bare kan nå under halvparten av de forsinkede anløpene (se begrensningene).
 
 ## Kriteriene
@@ -43,7 +43,7 @@ Tabellen har samme form som i briefen. Raden for modellutvalget avgjør dommen. 
 
 ## Tilleggsanalyse: McNemars test for ±30 min
 
-**Regnet etter testkjøringen, og endrer ikke dommen.** Modell og baseline er målt på de samme anløpene, så forskjellen i treffandel kan testes parvis. McNemar trenger antall uenige par: anløp der bare modellen eller bare baselinen treffer. `metrikker.json` har bare summene. Testradene ble derfor lest på nytt med `scripts/mcnemar.py` (godkjent av Felipe 13.11.2026), med de samme committede artefaktene og den samme koden som testkjøringen. Skriptet sjekket først at de låste filene var uendret siden kjøringens commit, og etterpå at summene ble nøyaktig de samme som i `metrikker.json`. Bare krysstabellen og p-verdien er lagret (`data/modell/mcnemar.json`), ikke prediksjoner per anløp. p-verdien er den eksakte tosidige binomialtesten på de uenige parene.
+**Regnet etter testkjøringen, og endrer ikke dommen.** Modell og baseline er målt på de samme anløpene, så forskjellen i treffandel kan testes parvis. McNemar trenger antall uenige par: anløp der bare modellen eller bare baselinen treffer. `metrikker.json` har bare summene. Testradene ble derfor lest på nytt med `scripts/mcnemar.py` (godkjent av Felipe 13.11.2026), med de samme committede artefaktene og den samme prediksjonskoden som testkjøringen (funksjonene i `scripts/evaluer.py`). Treffregelen per anløp (|faktisk − predikert| ≤ 30 min) er skrevet i skriptet, lik den i `app/metrikker.py`. Skriptet sjekket først at de låste filene var uendret siden kjøringens commit, og etterpå at summene ble nøyaktig de samme som i `metrikker.json`. Bare krysstabellen og p-verdien er lagret (`data/modell/mcnemar.json`), ikke prediksjoner per anløp. p-verdien er den eksakte tosidige binomialtesten på de uenige parene. Det er ikke regnet effektstørrelse eller konfidensintervall for den parvise forskjellen, og p-verdiene er ikke korrigert for at to horisonter er testet. Skriptet stopper nå hvis `mcnemar.json` finnes, så analysen ikke kan gjøres på nytt ved et uhell.
 
 | Horisont | n | Begge riktige | Bare modell | Bare baseline | Ingen | Uenige par | p (eksakt) |
 |---|---|---|---|---|---|---|---|
@@ -71,7 +71,7 @@ Valideringstallene og testtallene kommer fra ulike tilpasninger (E2-S06, beslutn
 
 - Andelen innenfor ±30 min holdt seg på modellutvalget (69,1 → 68,5 % ved 6 t, 59,8 → 57,1 % ved 24 t). Baselinen var derimot høyere i test (56,9 → 59,1 % og 51,8 → 56,3 %). Ved 24 t krympet derfor marginen fra 8 til under 1 prosentpoeng.
 - Varsel-F1 falt fra 0,58 til 0,46 (6 t) og fra 0,60 til 0,44 (24 t). Grunnraten for forsinkede i modellutvalget er også lavere i test (7,8 % og 10,5 %), så «varsle alle» falt fra 0,19 til 0,14 og fra 0,28 til 0,19.
-- Vi har ikke undersøkt om fallet skyldes sesong, at grunnraten er lavere, eller noe annet. Testperioden er vinterhalvåret (14.09.2025–15.03.2026), og valideringen var mai–september 2025.
+- Vi har ikke undersøkt om fallet skyldes sesong, at grunnraten er lavere, eller noe annet. Testperioden er høst og vinter (14.09.2025–15.03.2026), og valideringen var mai–13.09.2025.
 
 ## Ablasjon uten F13–F14
 
@@ -121,11 +121,11 @@ Anløp i testperioden: 1566.
 
 - **Varselet kan nå under halvparten av de forsinkede anløpene, uansett hvor god modellen er.** Av 194 forsinkede Øvrige-anløp i testperioden ligger bare 57 (6 t) og 78 (24 t) i modellutvalget. Resten er turer inne i ankomstsonen ved kuttet (F6) eller anløp uten AIS-posisjon ved kuttet. De får baselinen, som ikke kan varsle. Derfor er systemets F1 for all Øvrige-trafikk lavere enn «varsle alle».
 - **Etiketten for turer inne i havneområdet.** For anløp som allerede er i ankomstsonen ved kuttet (F6), måler etiketten (soneinngang) ikke en ankomst (beslutning 03). Disse anløpene er tatt ut av modellutvalget og gis baselinen (beslutning 12). Det er grunnen til at bestått/ikke bestått avgjøres på modellutvalget, og til at varselbarrieren ble lavere enn opprinnelig. Barrieren ble flyttet etter at valideringstallene var kjent (E2-S05, beslutning 12), men før testkjøringen.
-- **Testperioden er vinterhalvåret** (14.09.2025–15.03.2026). Resultatet sier ingenting om sommerhalvåret. Valideringen (mai–september 2025) var i sommerhalvåret, og F1 falt fra validering til test.
+- **Testperioden er vinterhalvåret** (14.09.2025–15.03.2026, høst og vinter). Resultatet sier ingenting om sommeren. Valideringen (mai–13.09.2025) var for det meste sommer, og F1 falt fra validering til test.
 - **AIS-hull.** Anløp uten gyldig posisjon i døgnet før kuttet får baselinen (107 og 108 Øvrige-anløp ved 6 t og 24 t). Modellen er bare målt der den har AIS.
 - **A1: rapportert ETA ved `t_H`.** Datasettet har én rapportert ETA per seilas og ingen tidsstempel for når den ble meldt. Er den oppdatert etter `t_H`, har både modell og baseline fått mer informasjon enn vakta hadde. Det kan ikke verifiseres i dataene (beslutning 11).
 - **Avgangshavn og ETD (F13–F14).** De kommer fra en seilaspost som kan være satt sammen i etterkant, og kan ikke verifiseres. ETD brukes bare når den ligger før `t_H`. Bestått ved 24 t avhenger av disse feltene (ablasjonen over).
-- **Én testperiode, én kjøring.** Det er ikke regnet konfidensintervaller for andelene. McNemar-testen er en tilleggsanalyse regnet etter kjøringen.
+- **Én testperiode, én kjøring.** Det er ikke regnet konfidensintervaller for andelene eller effektstørrelse for den parvise forskjellen. McNemar-testen er en tilleggsanalyse regnet etter kjøringen, uten korreksjon for to horisonter.
 
 ## Ble målene nådd?
 
@@ -136,8 +136,10 @@ Anløp i testperioden: 1566.
 
 ## Feil funnet etter kjøringen
 
-Ingen.
+- **I testkjøringen (`scripts/evaluer.py --test`):** ingen.
+- **I tilleggsanalysen:** første versjon av `scripts/mcnemar.py` avrundet p-verdien til 6 desimaler, og 6 t ble lagret som `0.0`. Den ble rettet til 6 gjeldende siffer, og p ble regnet på nytt fra den lagrede krysstabellen, uten nytt gjennomløp av testradene. Krysstabellen ble ikke endret. Testen sjekker nå p-verdien med relativ toleranse.
+- **I dashbordet, etter sammenslåingen med `main` (PR #6):** siden rullet horisontalt ved 640 px (200 % zoom, UU6), fordi visningsnavnet «Spesialfartøy» og modellens varseltekster sammen gjorde tabellen for bred. Det er rettet med en myk bindestrek i visningsnavnet. Feilen påvirket ingen tall.
 
 ## Reproduksjon
 
-Testkjøringen skal ikke gjøres på nytt (`--ny-testkjoring` er ikke brukt). Tabellene lages fra de committede filene med `.venv/bin/python scripts/resultattabeller.py`, og McNemar-tabellen med `mcnemar.tabell` fra `data/modell/mcnemar.json`. Ingen av dem leser testradene.
+Testkjøringen skal ikke gjøres på nytt (`--ny-testkjoring` er ikke brukt). Tabellene lages fra de committede filene med `.venv/bin/python scripts/resultattabeller.py`, og McNemar-tabellen med `.venv/bin/python scripts/mcnemar.py --bare-tabell` fra `data/modell/mcnemar.json`. Ingen av dem leser testradene.

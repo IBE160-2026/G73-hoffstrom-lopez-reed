@@ -2,7 +2,7 @@
 title: 'E2-S10 — Resultatnotat'
 type: 'feature'
 created: '2026-11-13'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '503454cbe1f36d08781ad0748fab169033727f90'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -144,9 +144,9 @@ The reported-ETA baseline itself is scored the same way, calibrated per vessel-t
 **The run (once):** `.venv/bin/python scripts/evaluer.py --test`. Save the console output in Implementation Notes.
 
 **After the run** (commit B):
-- [ ] `data/modell/metrikker.json` -- as written by the run, untouched.
-- [ ] `docs/resultater.md` -- the rendered tables, plus text covering every item in Requirement 4 and the epics list. The verdict uses the verbatim criteria.
-- [ ] `README.md`, `docs/epics.md` (E2-S10 ✅, E2 done), the brief cells (Decision 2), and the screenshots (Decision 3).
+- [x] `data/modell/metrikker.json` -- as written by the run, untouched.
+- [x] `docs/resultater.md` -- the rendered tables, plus text covering every item in Requirement 4 and the epics list. The verdict uses the verbatim criteria.
+- [x] `README.md`, `docs/epics.md` (E2-S10 ✅, E2 done), the brief cells (Decision 2), and the screenshots (Decision 3).
 
 **Acceptance Criteria:**
 - Given commit B, when `git log` is read, then the hash in `metrikker.json` `testkjoringer_logg[0].commit` is an ancestor of B, and no file in the "Never" list differs between that hash and B.
@@ -165,6 +165,69 @@ The reported-ETA baseline itself is scored the same way, calibrated per vessel-t
 - After review (2026-11-13): `sjekk_git` runs `git fetch --quiet` before reading `@{u}`; `--test` refuses unless `--features/--anlop/--modell-dir/--ut` equal the `STANDARD` paths; the successful `--test` path is tested with git, `last_artefakter` and `evaluer` replaced (commit in log and `test.kilder`); the main-table row reads «(avgjør bestått/ikke bestått)»; the table CLI also catches `KeyError/TypeError/AttributeError`; `test_resultater.py` has a post-run test for acceptance criterion 3 (panel test view, `auto` → `ModellPrediktor`, no prediction).
 - Gate output is recorded in the hand-off report and goes into these notes in commit B (writing it here before the run would dirty the tree).
 - Gate output (pytest, clean tree, HEAD = `@{u}`) and the run's console output are written here in commit B. Writing them before the run would dirty the tree and block the guard. Pre-run code was reviewed (triage log below); the note in commit B is reviewed after the run.
+
+**Checkpoint (Decision 6), shown to Felipe before the run on 2026-11-13. He answered "Ja, start testkjøringen":**
+- Commit: `8920acb92cda52c9ed03992cb404def7d03f9fdc`, authored by Felipe.
+- `.venv/bin/pytest -q`: 441 passed, 3 skipped (the skipped tests in `tests/test_resultater.py`), 28 s.
+- `git status --porcelain`: empty. After `git fetch`, HEAD and `@{u}` (`origin/epic/e2-modell`) were both `8920acb…`, and `sjekk_git()` returned the same hash.
+- Criteria: verbatim in this spec, committed before the run. The script check against `docs/brief.md` lines 46–71 was True.
+- Command: `.venv/bin/python scripts/evaluer.py --test`
+
+**Console output of the one test run (2026-11-13):**
+
+```
+Split: test (1566 anløp)
+
+H = 6 t. Øvrige: 1119 rader, 996 med fasit, 1012 med tilstand, 200 F6, 812 i modellutvalget (733 med fasit). Modellandel:  72.6% av alle,  73.6% av dem med fasit.
+  radsett              arm                        n     ±30     MAE  median     P     R    F1
+  ovrige_modellutvalg  baseline                 733   59.1%    91.9    21.5     –     –     –
+  ovrige_modellutvalg  modell                   733   68.5%    75.9    14.7  0.58  0.39  0.46
+  ovrige_modellutvalg  ablasjon_uten_f13_f14    733   66.0%    84.0    15.8  1.00  0.18  0.30
+  ovrige_modellutvalg  «varsle alle»            733                          0.08  1.00  0.14
+  ovrige_alle          baseline                 996   46.6%   135.8    34.3     –     –     –
+  ovrige_alle          modell                   996   53.5%   124.0    26.5  0.58  0.11  0.19
+  ovrige_alle          ablasjon_uten_f13_f14    996   51.7%   130.0    27.7  1.00  0.05  0.10
+  ovrige_alle          «varsle alle»            996                          0.19  1.00  0.33
+  passasjer            baseline                 431   79.6%    22.5     5.7     –     –     –
+
+H = 24 t. Øvrige: 1119 rader, 996 med fasit, 1011 med tilstand, 191 F6, 820 i modellutvalget (742 med fasit). Modellandel:  73.3% av alle,  74.5% av dem med fasit.
+  radsett              arm                        n     ±30     MAE  median     P     R    F1
+  ovrige_modellutvalg  baseline                 742   56.3%   102.4    23.4     –     –     –
+  ovrige_modellutvalg  modell                   742   57.1%    96.4    23.6  0.75  0.31  0.44
+  ovrige_modellutvalg  ablasjon_uten_f13_f14    742   53.8%   102.4    26.2  0.39  0.19  0.26
+  ovrige_modellutvalg  «varsle alle»            742                          0.11  1.00  0.19
+  ovrige_alle          baseline                 996   46.6%   135.8    34.3     –     –     –
+  ovrige_alle          modell                   996   47.2%   131.3    34.2  0.75  0.12  0.21
+  ovrige_alle          ablasjon_uten_f13_f14    996   44.7%   135.8    35.7  0.39  0.08  0.13
+  ovrige_alle          «varsle alle»            996                          0.19  1.00  0.33
+  passasjer            baseline                 431   79.6%    22.5     5.7     –     –     –
+
+Skrev blokken «test» til /Users/theodorhoffstrom/G73-hoffstrom-lopez-reed/data/modell/metrikker.json
+```
+
+The log is `testkjoringer_logg = [{"nr": 1, "dato": "2026-11-13", "commit": "8920acb92cda52c9ed03992cb404def7d03f9fdc"}]`, and the same commit is in `test.kilder.commit`.
+
+**After the run:**
+- `tests/test_resultater.py`: all three previously skipped tests passed once `docs/resultater.md` existed. Before that, `test_notat_lik_metrikker` failed with `FileNotFoundError`, as expected.
+- **McNemar add-on** (`scripts/mcnemar.py`, approved by Felipe as 1A after Claude stopped and asked under the test-row rule). It ran once and checked that the locked files were unchanged since `8920acb` and that the totals equalled `metrikker.json`. Output:
+
+  ```
+| Horisont | n | Begge riktige | Bare modell | Bare baseline | Ingen | Uenige par | p (eksakt) |
+|---|---|---|---|---|---|---|---|
+| 6 t | 733 | 379 | 123 | 54 | 177 | 177 | < 0,000001 |
+| 24 t | 742 | 365 | 59 | 53 | 265 | 112 | 0,6368 |
+
+Skrev /Users/theodorhoffstrom/G73-hoffstrom-lopez-reed/data/modell/mcnemar.json
+  ```
+
+  The first version rounded p to 6 decimals, which stored 6 h as `0.0`. It was fixed to 6 significant digits, and p was recomputed from the stored cross-table without reading the test rows again.
+- **F13–F14 vs A1:** Felipe's wording "(A1)" was corrected, with his approval, to "the limitation next to A1 in decision 11".
+- **Commit order (Felipe):**
+  - `a30ddd7`: results, note and reflection notes
+  - `c6f1dbd`: merge of `origin/main` (PR #6, E1-S18/S19), with conflicts in `app/__init__.py`, `docs/epics.md`, `docs/prd.md` and `docs/ux/dashbord.md` resolved as Felipe approved
+  - a last commit: brief cells, README, epics, screenshots and this spec
+- **Locked-file check** (`git diff --stat 8920acb HEAD -- data/modell/*.joblib data/modell/modellvalg.json data/utdrag/features.csv scripts/tren.py scripts/evaluer.py app/prediksjon`): empty after `a30ddd7`, after `c6f1dbd`, and before the last commit. None of PR #6's files are on the locked list.
+- **UU6 regression after the merge:** the screenshot script found 649 px at 640 px. The cause was «Spesialfartøy» (PR #6) together with the model's alert texts. It was fixed with a soft hyphen (Felipe, A) and the test `test_spesialfartoy_myk_bindestrek_uten_synlige`. It is now 640 px, and the screenshots were retaken with the model.
 
 ## Spec Change Log
 
@@ -188,6 +251,21 @@ The reported-ETA baseline itself is scored the same way, calibrated per vessel-t
 | 14 | blind | The module loader is duplicated in two test files | low | harmless duplication | reject |
 | 15 | edge-case | Inputs could change between `sjekk_git()` and the reads | low | needs a concurrent edit during the one supervised run | reject |
 | 16 | edge-case | The AC names `logg[0]`, while the test checks `logg[-1]` | false | with one run (`--ny-testkjoring` forbidden) they are the same entry | reject |
+| 17 | post-run: blind, edge-case, verification-gap | The p-value test uses `abs=1e-6`, so the `0.0` bug would pass | medium | the 6 h p is 2.3e-07, below the tolerance | patch: `rel=1e-5`, plus a `(123, 54)` case |
+| 18 | post-run: blind | The note's opening says "nothing rerun" while McNemar re-read the test rows | medium | contradiction inside `docs/resultater.md` | patch: opening names the one approved re-read |
+| 19 | post-run: blind | "Feil funnet etter kjøringen: Ingen" omits the p rounding bug and UU6 | medium | both are in the reflection notes, not in the note | patch |
+| 20 | post-run: blind | Nothing stops a second McNemar run, which would read test rows again | medium | `main` always recomputes | patch: refuse when `mcnemar.json` exists; `--bare-tabell` reads only the JSON |
+| 21 | post-run: blind, edge-case | "The same code" overstates it, because `_treff` re-implements the ±30 rule | low | semantics match `andel_innenfor` (`<=`, timedelta), and totals are checked | patch: wording narrowed in the docstring and the note |
+| 22 | post-run: blind, edge-case | `sjekk_uendret` ignores untracked files | low | `git diff` does not see untracked files | patch: plus `git status --porcelain --untracked-files=all` |
+| 23 | post-run: edge-case | Missing log commit, missing git or bad JSON gives a traceback | low | direct `except` and guard | patch |
+| 24 | post-run: verification-gap | No test reaches `sjekk_uendret` or the totals check | medium | pre-verified | defer (`deferred-work.md`); the script now refuses to run again |
+| 25 | post-run: blind | The briefs show the 24 h pass without its caveats | medium | changelog said only "pass at both horizons" | patch: six voyages, p = 0.64, ablation |
+| 26 | post-run: blind | The UU6 row contradicts itself about 1920 px | low | old sentence left in the same cell | patch |
+| 27 | post-run: blind | Summer/winter split is loose (both periods include September) | low | validation ends 13.09.2025, test starts 14.09.2025 | patch: exact dates |
+| 28 | post-run: blind | No effect size or CI, and no correction for two horizons | low | omission not stated | patch: stated as left out |
+| 29 | post-run: blind, verification-gap | Soft-hyphen constants at the bottom of the test file, and the hyphen not checked in the HTML | low | direct | patch |
+| 30 | post-run: blind | `mcnemar.json` lacks the analysis date and that p was recomputed | low | recorded in the note and the spec; editing committed data by hand again adds risk | reject |
+| 31 | post-run: edge-case | `app/__init__.py` is not on the locked list and changed in the merge | false | McNemar ran before the merge, when `app/__init__.py` equalled `8920acb` | reject |
 
 ## Verification
 

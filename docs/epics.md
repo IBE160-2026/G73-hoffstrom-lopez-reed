@@ -231,7 +231,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 ## E2 — Modell bak dashbordet (fase 4, 7.–27. nov) · `epic/e2-modell`
 
-**Mål:** en modell som slår den kalibrerte baselinen, synlig i det samme dashbordet. Klarer den det ikke, skal det vises ærlig. **Ferdig når:** dashbordet viser modellen som standard, og resultatnotatet er skrevet.
+**Mål:** en modell som slår den kalibrerte baselinen, synlig i det samme dashbordet. Klarer den det ikke, skal det vises ærlig. **Ferdig når:** dashbordet viser modellen som standard, og resultatnotatet er skrevet. **Status 13.11.2026:** begge deler er oppfylt (E2-S10). E2-S01 står som ◐ til gruppa har godkjent beslutning 11 i PR-en.
 
 **Grunnlag:** [beslutning 08](beslutninger/08-horisont-kuttes-pa-rapportert-eta.md). Kuttpunktet er `t_H = rapportert ETA − H`, aldri faktisk ankomst (PRD FR9a). Dagens AIS-cache har posisjon ved kuttpunktet for bare 31 % (6 t) og 7 % (24 t) av Øvrige i testperioden. Derfor kommer det en egen henting (S02) før noe trenes.
 
@@ -324,7 +324,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_ruter.py::test_panel_modell_mot_baseline` (ekte `metrikker.json`), de andre `test_panel_*`-testene i `tests/test_ruter.py` (etter testkjøringen, modellen taper, «kan ikke varsle», «Tall mangler», lista og stripa urørt, horisontene, UU-struktur) og `tests/test_panel.py`. Visningen etter testkjøringen testes bare med syntetiske filer.
 
-### E2-S10 — Resultatnotat ☐
+### E2-S10 — Resultatnotat ✅
 **Krav:** brief Success Criteria, NFR3 · **Avhenger av:** E2-S09
 - `docs/resultater.md` dekker:
   - modell og baseline på testperioden per horisont
@@ -339,7 +339,9 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **Lås før testkjøringen** (E2-S06, beslutning 2): modell, konfigurasjon og valgregler er låst før den ene kjøringen av `scripts/evaluer.py --test`, og ingenting endres etterpå. Endres noe likevel, står det i resultatnotatet. Testkjøringen gjøres i denne storyen, ikke før.
 - **Testrader** (Felipe, 10.11.2026): testrader brukes bare til det som står eksplisitt i denne storyen eller specen. Alt annet, også prediksjon uten fasit, krever at agenten stopper og spør først.
 
-**Test:** tallene i notatet er lik `metrikker.json` (sjekkes i PR).
+**Test:** tallene i notatet er lik `metrikker.json` (sjekkes i PR). Tabellene sjekkes også av testene: `tests/test_resultater.py::test_notat_lik_metrikker`, `::test_testkjoringen_har_full_commit` og `::test_etter_testkjoringen_viser_appen_modellen`, og `tests/test_mcnemar.py`.
+
+**Resultat (13.11.2026):** én testkjøring, på commit `8920acb`. Modellen består ved begge horisontene: ±30 min er 68,5 % mot 59,1 % ved 6 t og 57,1 % mot 56,3 % ved 24 t. Varsel-F1 er 0,46 mot 0,14 og 0,44 mot 0,19. Ved 24 t er forskjellen seks anløp, McNemar gir p = 0,64 (tilleggsanalyse), og ablasjonen uten F13–F14 ville ikke bestått. Se `docs/resultater.md`.
 
 ---
 
@@ -460,3 +462,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-10** — Etter E2-S07: E2-S08, E2-S09 og E2-S10 har fått regelen om at testrader bare brukes til det som står eksplisitt, og at agenten ellers stopper og spør først. Specene for de tre storyene skal ha den med (Felipe).
 - **2026-11-10** — E2-S08 er ferdig: `velg_prediktor` velger `ModellPrediktor` bak en lås for testperioden til testkjøringen i E2-S10 (vinduer før testperioden viser modellen med teksten om at den er trent på anløpene), og faller tilbake til baselinen med melding når artefaktet mangler. Stripa viser «Modell v1» og dekningsgrensen, og varselkolonnen viser ▲ + «VARSEL», «–» eller grunnen til delegeringen. Vinduet velger fortsatt på rapportert ETA. Prediksjonsfeil er flyttet til E1-S09 (Felipe).
 - **2026-11-11** — E2-S09 er ferdig: panelet «Treffsikkerhet: modell mot baseline» står i høyre kolonne på hovedskjermen og leser bare `data/modell/metrikker.json` (`app/panel.py`). Før testkjøringen viser det valideringsblokken, merket som utviklingstall og uten dom. Etter E2-S10 viser det `test`-blokken med bestått/ikke bestått per horisont på modellutvalget. Per horisont står modellutvalget, all Øvrige-trafikk med delegering og Passasjer (bare baseline), med ±30 min, presisjon, recall og F1 mot «varsle alle», og modellandelen. `null` vises som «kan ikke varsle». Ablasjonen og `test_bare_baseline` vises ikke. Testene er `tests/test_ruter.py::test_panel_modell_mot_baseline`, de andre `test_panel_*`-testene i `tests/test_ruter.py` og `tests/test_panel.py` (Felipe).
+- **2026-11-13** — E2-S10 er ferdig: én testkjøring av `scripts/evaluer.py --test` på commit `8920acb`. Commiten står i `metrikker.json`. Notatet `docs/resultater.md` er skrevet, cellene i briefen er fylt inn, og `auto` viser modellen. Etter kjøringen godkjente Felipe McNemars test som tilleggsanalyse (`scripts/mcnemar.py`, testradene ble lest på nytt). Etter sammenslåingen med `main` (PR #6) ga «Spesialfartøy» og varseltekstene horisontal rulling ved 640 px (UU6). Det er rettet med en myk bindestrek i visningsnavnet (Felipe).

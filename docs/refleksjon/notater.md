@@ -259,3 +259,22 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Lærdom (råt):**
   - Regelen fra E2-S07 virket: en ny bruk av testrader ble oppdaget før den skjedde, ikke etterpå.
   - «Avrund til 6 desimaler» er feil for p-verdier. Bruk gjeldende siffer.
+
+## 2026-11-13 — To grener besto UU6 hver for seg, men feilet sammen etter sammenslåingen (E2-S10, PR #6)
+
+- **Hva:**
+  - PR #6 (E1-S18, E1-S19) innførte visningsnavnet «Spesialfartøy» og målte ingen horisontal rulling ved 360, 640, 1280 og 1920 px, med baselinen i standardvinduet.
+  - `epic/e2-modell` målte heller ingen rulling. Der viste standardvinduet modellen med varseltekstene etter testkjøringen, men med «Auxiliary» som gruppenavn.
+  - Etter sammenslåingen av `main` inn i `epic/e2-modell` (`c6f1dbd`) var siden 649 px bred ved 640 px, altså 200 % zoom (UU6). Årsaken var «Spesialfartøy» i Gruppe-kolonnen, ett ord som ikke kan brytes, sammen med de lengre tekstene i varselkolonnen med modellen.
+- **Hvordan det ble oppdaget:** skjermbildeskriptet (`scripts/ta_skjermbilder.py`) stoppet med «Horisontal rulling på 640 px». Ingen test fanget det, fordi `pytest` ikke måler layout, og hele suiten var grønn (457) etter sammenslåingen. Claude isolerte årsaken med fire målinger:
+  - før sammenslåingen: 640
+  - etter, med baselinen: 640
+  - etter, med modellen: 649
+  - etter, med modellen og uten «Spesialfartøy»: 640
+- **Resultat:**
+  - En myk bindestrek i visningsnavnet (`"Spesial­fartøy"`), godkjent av Felipe.
+  - En test om at navnet uten myke bindestreker er «Spesialfartøy» og ikke har synlige bindestreker.
+  - Målingen gir 640 px. Skjermbildene er tatt på nytt med modellen.
+- **Lærdom (råt):**
+  - En UU-sjekk som er bestått på hver gren, gjelder ikke for sammenslåingen. Mål på nytt etter hver merge.
+  - Skjermbildeskriptet er den eneste layoutsjekken vi har, og det kjøres ikke av `pytest`. Det bør kjøres etter hver merge som endrer maler, CSS eller tekst på skjermen.

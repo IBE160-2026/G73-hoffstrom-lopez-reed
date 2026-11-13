@@ -26,3 +26,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-e2-s08-bytt-inn-i-dashbordet.md`
   summary: The Prediksjonsfeil column (actual − predicted) and `tests/test_ruter.py::test_fasit_uavhengig_av_prediktor` move from E2-S08 to E1-S09 (ground-truth toggle), after the E2-S10 test run.
   evidence: Both need `fasit=1` (E1-S09, not built), and Prediksjonsfeil on test-period calls is scoring the model on the test period before E2-S10 (Felipe, 2026-11-10, decision 2A).
+- source_spec: `_bmad-output/implementation-artifacts/spec-e2-s10-resultatnotat.md`
+  summary: Tester av sperrene i `scripts/mcnemar.py` (låste filer endret, summer ulike → `Avvik` og ingenting skrevet), med syntetiske data.
+  evidence: review av E2-S10 etter kjøringen. Ingen test når `sjekk_uendret` eller sammenligningen av summene. Analysen er kjørt én gang, utdataene er festet av `test_committet_mcnemar_i_notatet`, og `main` stopper nå hvis `mcnemar.json` finnes. Testene trengs bare hvis skriptet noen gang skal kjøres igjen.
