@@ -220,14 +220,23 @@ def _falsk_git(status="", head=HASH_A, upstream=HASH_A, feil=None):
     def git(*args):
         if feil is not None:
             raise feil
-        return {("status", "--porcelain"): status, ("rev-parse", "HEAD"): head,
+        return {("status", "--porcelain"): status, ("fetch", "--quiet"): "", ("rev-parse", "HEAD"): head,
                 ("rev-parse", "@{u}"): upstream}[args]
     return git
 
 
 def test_sjekk_git_gir_full_hash_naar_rent_og_pushet(monkeypatch):
-    monkeypatch.setattr(ev, "git", _falsk_git())
+    kall = []
+    git = _falsk_git()
+    monkeypatch.setattr(ev, "git", lambda *a: kall.append(a) or git(*a))
     assert ev.sjekk_git() == HASH_A
+    assert kall.index(("fetch", "--quiet")) < kall.index(("rev-parse", "@{u}"))  # @{u} er fersk
+
+
+def _standard_fixture(monkeypatch, fixture, ut):
+    """Standardstiene pekt på den syntetiske fixturen, så ``--test`` uten stiargumenter er lov (sjekk_standardstier)."""
+    monkeypatch.setattr(ev, "STANDARD", {"features": fixture / "features.csv", "anlop": fixture / "anlop.csv",
+                                         "modell_dir": fixture / "modell", "ut": ut})
 
 
 @pytest.mark.parametrize("git, grunn", [
@@ -237,7 +246,9 @@ def test_sjekk_git_gir_full_hash_naar_rent_og_pushet(monkeypatch):
     (_falsk_git(feil=FileNotFoundError("git")), "git er ikke tilgjengelig"),
     (_falsk_git(feil=ev.subprocess.CalledProcessError(128, ["git"], stderr="no upstream configured")),
      "no upstream"),
-], ids=["endret", "usporet", "ikke_pushet", "uten_git", "uten_upstream"])
+    (_falsk_git(feil=ev.subprocess.CalledProcessError(128, ["git", "fetch"], stderr="could not read from remote")),
+     "could not read from remote"),
+], ids=["endret", "usporet", "ikke_pushet", "uten_git", "uten_upstream", "fetch_feiler"])
 def test_test_uten_ren_pushet_git_stopper_for_noe_predikeres(fixture, tmp_path, monkeypatch, capsys, git, grunn):
     """``--test`` stopper med «ingenting er skrevet» før artefakter lastes eller noe predikeres, og fila er urørt."""
     def nekt(*a, **k):
@@ -263,10 +274,11 @@ def test_test_allerede_kjort_stopper(fixture, tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(ev, "git", _falsk_git())
     monkeypatch.setattr(ev, "evaluer", nekt)
     ut = tmp_path / "metrikker.json"
+    _standard_fixture(monkeypatch, fixture, ut)
     innhold = json.dumps({"testkjoringer": 1, "testkjoringer_logg": [{"nr": 1, "dato": "2026-11-20",
                                                                       "commit": HASH_A}]})
     ut.write_text(innhold, encoding="utf-8")
-    assert ev.main(_args(fixture, ut, "--test")) == 2
+    assert ev.main(["--test"]) == 2
     assert ut.read_text(encoding="utf-8") == innhold
     assert "--ny-testkjoring" in capsys.readouterr().err
 
@@ -278,6 +290,39 @@ def test_vakta_gjelder_bare_test(fixture, tmp_path, monkeypatch):
 
     monkeypatch.setattr(ev, "git", nekt)
     assert ev.main(_args(fixture, tmp_path / "a.json", "--bare-baseline")) == 0
+    assert ev.main(_args(fixture, tmp_path / "b.json")) == 0
+
+
+def test_test_bare_med_standardstier(fixture, tmp_path, monkeypatch, capsys):
+    """``--test`` med andre stier enn standard stopper før noe lastes, så commiten beskriver inputene."""
+    def nekt(*a, **k):
+        raise AssertionError("--test lastet eller predikerte med andre stier enn standard")
+
+    monkeypatch.setattr(ev, "git", _falsk_git())
+    for navn in ("last_artefakter", "evaluer"):
+        monkeypatch.setattr(ev, navn, nekt)
+    ut = tmp_path / "metrikker.json"
+    assert ev.main(_args(fixture, ut, "--test")) == 2
+    assert not ut.exists()
+    err = capsys.readouterr().err
+    assert "ingenting er skrevet" in err and "standardstiene" in err
+
+
+def test_test_logger_commit_i_loggen_og_kildene(fixture, tmp_path, monkeypatch):
+    """Vellykket ``--test``-sti med git, artefakter og evaluering byttet ut: ingenting predikeres, og commiten
+    havner i ``testkjoringer_logg`` og ``test.kilder``."""
+    monkeypatch.setattr(ev, "git", _falsk_git())
+    monkeypatch.setattr(ev, "last_artefakter", lambda *a, **k: (None, {"features_sha256": "syntetisk"}))
+    resultat = {"split": "test", "antall_anlop": 0, "horisonter": {}}
+    monkeypatch.setattr(ev, "evaluer", lambda *a, **k: resultat)
+    monkeypatch.setattr(ev, "skriv_tabell", lambda *a, **k: None)
+    ut = tmp_path / "metrikker.json"
+    _standard_fixture(monkeypatch, fixture, ut)
+    assert ev.main(["--test"]) == 0
+    data = json.loads(ut.read_text(encoding="utf-8"))
+    assert data["test"]["kilder"] == {"features_sha256": "syntetisk", "commit": HASH_A}
+    assert data["testkjoringer"] == 1
+    assert data["testkjoringer_logg"] == [{"nr": 1, "dato": ev.dt.date.today().isoformat(), "commit": HASH_A}]
 
 
 def test_artefakt_mot_feil_utdrag_stopper_uten_a_skrive(fixture, tmp_path, capsys):

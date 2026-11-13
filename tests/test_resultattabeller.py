@@ -50,7 +50,7 @@ def test_hovedtabellen_har_briefens_form():
     linjer = rt.render(_data())["hovedtabell"].splitlines()
     assert linjer[0] == ("| Rad | Testanløp med fasit | Modellandel (av Øvrige-anløp med fasit) | Baseline, ±30 min | "
                          "Modell, ±30 min | Grunnrate forsinket | F1 «varsle alle» | F1 modell |")
-    assert linjer[2] == ("| **Modellutvalget** (bestått/ikke bestått) | 400 / 400 | 66,7 % / 66,7 % | "
+    assert linjer[2] == ("| **Modellutvalget** (avgjør bestått/ikke bestått) | 400 / 400 | 66,7 % / 66,7 % | "
                          "62,5 % (250/400) / 65,0 % (260/400) | 75,0 % (300/400) / 80,0 % (320/400) | "
                          "15,0 % (60/400) / 17,5 % (70/400) | 0,26 / 0,30 | 0,60 / 0,58 |")
     assert linjer[3].startswith("| **All Øvrige-trafikk, med delegering** | 600 / 600 | 66,7 % / 66,7 % | "
@@ -151,3 +151,12 @@ def test_kommandolinja(tmp_path, capsys):
     sti.write_text(json.dumps({"testkjoringer": 0}), encoding="utf-8")
     assert rt.main(["--metrikker", str(sti)]) == 2
     assert "ingen testkjøring" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("innhold", ["[]", '"tekst"', json.dumps({"testkjoringer": 1, "validering": {}, "test": {}})],
+                         ids=["liste", "streng", "mangler_nokler"])
+def test_kommandolinja_feil_form_gir_melding(tmp_path, capsys, innhold):
+    sti = tmp_path / "metrikker.json"
+    sti.write_text(innhold, encoding="utf-8")
+    assert rt.main(["--metrikker", str(sti)]) == 2
+    assert "Kan ikke lage tabellene" in capsys.readouterr().err

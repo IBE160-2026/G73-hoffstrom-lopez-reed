@@ -39,3 +39,18 @@ def test_testkjoringen_har_full_commit():
     commit = logg[-1]["commit"]
     assert len(commit) == 40 and all(c in "0123456789abcdef" for c in commit)
     assert data["test"]["kilder"]["commit"] == commit
+
+
+def test_etter_testkjoringen_viser_appen_modellen(monkeypatch):
+    """Akseptkriterium 3: den ekte fila gir testvisningen i panelet, og ``auto`` velger modellen i standardvinduet.
+    Ingen prediksjon og ingen rendering av ``/``."""
+    _data()
+    import app.prediksjon as prediksjon
+    from app import STANDARD_NAA
+    from app.panel import PERIODE_TEST, lag_panel
+    from app.prediksjon.modell import ModellPrediktor
+
+    panel = lag_panel(METRIKKER)
+    assert panel["etter_test"] and panel["periode"] == PERIODE_TEST and not panel["mangler"]
+    monkeypatch.setattr(prediksjon, "METRIKKER_FIL", METRIKKER)
+    assert isinstance(prediksjon.velg_prediktor("auto", STANDARD_NAA), ModellPrediktor)

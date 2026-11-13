@@ -139,7 +139,7 @@ The reported-ETA baseline itself is scored the same way, calibrated per vessel-t
 
   `tests/test_resultater.py::test_notat_lik_metrikker` is skipped while `testkjoringer == 0`. -- Requirement 4
 - [x] `tests/test_panel.py`, `tests/test_ruter.py` -- the real-file tests read the validation view (Decision 1).
-- [ ] **Gate:** pytest green, `git status --porcelain` empty, push, HEAD = `@{u}`. Log the output in Implementation Notes. **Then stop at the checkpoint (Decision 6).**
+- [x] **Gate:** pytest green, `git status --porcelain` empty, push, HEAD = `@{u}`. Log the output in Implementation Notes. **Then stop at the checkpoint (Decision 6).**
 
 **The run (once):** `.venv/bin/python scripts/evaluer.py --test`. Save the console output in Implementation Notes.
 
@@ -162,11 +162,32 @@ The reported-ETA baseline itself is scored the same way, calibrated per vessel-t
 - `tests/test_resultattabeller.py` (synthetic), `tests/test_resultater.py` (real file; both tests skip while `testkjoringer == 0`; also checks the log commit is a full hash equal to `test.kilder.commit`).
 - Decision 1A: `valideringsvisning` fixture in `tests/conftest.py` (real file, `testkjoringer = 0`, empty log, no `test`). Used by `test_panel.py::test_ekte_fil_gir_valideringsblokken` and the four real-file panel tests in `test_ruter.py`.
 - Shape check (not committed): `render` on the real file with `test` set to a copy of `validering` reproduces the panel's validation numbers (69,1 % / 59,8 %). No test rows were touched.
+- After review (2026-11-13): `sjekk_git` runs `git fetch --quiet` before reading `@{u}`; `--test` refuses unless `--features/--anlop/--modell-dir/--ut` equal the `STANDARD` paths; the successful `--test` path is tested with git, `last_artefakter` and `evaluer` replaced (commit in log and `test.kilder`); the main-table row reads «(avgjør bestått/ikke bestått)»; the table CLI also catches `KeyError/TypeError/AttributeError`; `test_resultater.py` has a post-run test for acceptance criterion 3 (panel test view, `auto` → `ModellPrediktor`, no prediction).
 - Gate output is recorded in the hand-off report and goes into these notes in commit B (writing it here before the run would dirty the tree).
+- Gate output (pytest, clean tree, HEAD = `@{u}`) and the run's console output are written here in commit B. Writing them before the run would dirty the tree and block the guard. Pre-run code was reviewed (triage log below); the note in commit B is reviewed after the run.
 
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Layer | Finding | Verdict | Evidence | Route |
+|---|-------|---------|---------|----------|-------|
+| 1 | verification-gap, blind | The successful `main --test` path is untested, so `commit` could be missing from `test.kilder` without any test failing | medium | pre-verified: deleting `kilder = dict(kilder, commit=commit)` leaves the suite green, and `test_resultater` is skipped until the run | patch |
+| 2 | verification-gap, blind, edge-case | "Validation does not ask git" is tested only for `--bare-baseline` | low | `test_vakta_gjelder_bare_test` runs only `--bare-baseline`; direct one-line fix | patch |
+| 3 | blind, edge-case | `--test` accepts path arguments outside the repo or to ignored files, so the commit would not describe the scored inputs | medium | `STANDARD` paths are overridable through `argparse`, and `git status --porcelain` does not see ignored or external files | patch |
+| 4 | blind | HEAD = `@{u}` uses a local ref that can be stale | low | nothing fetches before the comparison; Requirement 1 says "pushed" | patch |
+| 5 | blind, edge-case | The main table prints «(bestått/ikke bestått)» literally | low | `tabell_hoved` copies the brief's row label; it reads as an unfilled cell in a results note | patch |
+| 6 | blind, edge-case | `resultattabeller.main` gives a traceback on a missing nested key or a non-dict file | low | `except` covers only `OSError, ValueError, Mangler`; direct fix | patch |
+| 7 | blind | No test checks that the real file gives the test view and the model after the run (AC 3) | medium | the real-file tests now all use `valideringsvisning` (Decision 1) | patch: skipped-until-run test without prediction |
+| 8 | verification-gap | The note must land in the same commit as `metrikker.json`, or `test_notat_lik_metrikker` goes red | false | already the plan: commit B holds both | reject |
+| 9 | blind | Guard runs before the "already run" check, and `"sjekk"` is a placeholder | low | both orders refuse with exit 2 and nothing written; only the message order differs | reject |
+| 10 | blind | `dom_horisont` does not assert that the model and baseline `n` are equal | false | `evaluer.py` scores both arms on identical subset rows (S06 matrix "Subset identity", tested there) | reject |
+| 11 | blind, edge-case | `_skilles` stops at 6 decimals, and a win rounded to a tie becomes "ikke bestått" | false | `evaluer._r` stores 6 decimals; with equal `n` ≈ 733, two shares differ by ≥ 1/733 | reject |
+| 12 | blind | `test_notat_lik_metrikker` checks tables, not headings or prose numbers | low | the spec requires tables verbatim; prose is checked in the PR (epics E2-S10 Test) | reject |
+| 13 | blind, edge-case | `render` does not check log length or `kilder.commit` against the log | low | `test_testkjoringen_har_full_commit` checks it on the real file; a guard adds branches for an unreachable state | reject |
+| 14 | blind | The module loader is duplicated in two test files | low | harmless duplication | reject |
+| 15 | edge-case | Inputs could change between `sjekk_git()` and the reads | low | needs a concurrent edit during the one supervised run | reject |
+| 16 | edge-case | The AC names `logg[0]`, while the test checks `logg[-1]` | false | with one run (`--ny-testkjoring` forbidden) they are the same entry | reject |
 
 ## Verification
 

@@ -83,9 +83,12 @@ def git(*args):
 def sjekk_git():
     """Vakta før ``--test`` (E2-S10, krav 1): rent arbeidstre og HEAD = ``@{u}``. Gir full HEAD-hash.
 
-    Uten git, uten upstream eller med feil fra git stopper den også. Kaster ``Avvik``, så ingenting skrives."""
+    ``git fetch`` kjøres først, så ``@{u}`` er fersk og «pushet» er sjekket mot remote, ikke mot en gammel lokal ref.
+    Uten git, uten upstream, uten nett eller med feil fra git stopper den også. Kaster ``Avvik``, så ingenting
+    skrives."""
     try:
         status = git("status", "--porcelain")
+        git("fetch", "--quiet")
         head = git("rev-parse", "HEAD")
         upstream = git("rev-parse", "@{u}")
     except (OSError, subprocess.CalledProcessError) as exc:
@@ -96,6 +99,14 @@ def sjekk_git():
     if head != upstream:
         raise Avvik(f"HEAD {head} er ikke lik @{{u}} {upstream}. Push før testkjøringen.")
     return head
+
+
+def sjekk_standardstier(args):
+    """``--test`` bare med standardstiene (E2-S10): ellers beskriver commiten i loggen ikke inputene som scores."""
+    avvik = [f"--{k.replace('_', '-')} {getattr(args, k)}" for k, v in STANDARD.items()
+             if Path(getattr(args, k)).resolve() != Path(v).resolve()]
+    if avvik:
+        raise Avvik("--test kjøres bare med standardstiene i repoet, ikke " + ", ".join(avvik))
 
 
 def sha256_fil(sti):
@@ -402,6 +413,8 @@ def main(argv=None):
 
     try:
         commit = sjekk_git() if args.test else None  # før noe lastes eller predikeres
+        if args.test:
+            sjekk_standardstier(args)
         if args.bare_baseline:
             artefakter = None
             kilder = {"features_sha256": sha256_fil(args.features), "anlop_sha256": sha256_fil(args.anlop),

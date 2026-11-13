@@ -120,7 +120,7 @@ def tabell_hoved(test):
         ]
     hode = ["Rad", "Testanløp med fasit", "Modellandel (av Øvrige-anløp med fasit)", "Baseline, ±30 min",
             "Modell, ±30 min", "Grunnrate forsinket", "F1 «varsle alle»", "F1 modell"]
-    return tabell(hode, [rad("Modellutvalget", "ovrige_modellutvalg", " (bestått/ikke bestått)"),
+    return tabell(hode, [rad("Modellutvalget", "ovrige_modellutvalg", " (avgjør bestått/ikke bestått)"),
                          rad("All Øvrige-trafikk, med delegering", "ovrige_alle", "")])
 
 
@@ -232,7 +232,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     try:
         tabeller = render(json.loads(args.metrikker.read_text(encoding="utf-8")))
-    except (OSError, ValueError, Mangler) as exc:
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, Mangler) as exc:
         print(f"Kan ikke lage tabellene: {exc}", file=sys.stderr)
         return 2
     sys.stdout.write(som_markdown(tabeller))
