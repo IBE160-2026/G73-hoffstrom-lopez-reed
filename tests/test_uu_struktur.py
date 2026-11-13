@@ -3,6 +3,9 @@
 Bare stdlib (``html.parser`` via ``conftest.parse_html``). Kontrast og tabulatorrekkefølge
 slik den oppleves, må sjekkes manuelt (UX §6).
 """
+import re
+from pathlib import Path
+
 import pytest
 
 INTERAKTIVE = {"a", "button", "input", "select", "textarea", "summary"}
@@ -123,3 +126,17 @@ def test_dekorative_tegn_er_skjult(dokument):
     assert merker
     for m in merker:
         assert m.attrs.get("aria-hidden") == "true"
+
+
+def test_hopplenke_dekker_ikke_overskriften_ved_fokus():
+    """E1-S18: vakt på den valgte løsningen, ikke en test av opplevelsen. Ved fokus går hopp-lenka inn
+    i flyten (position: static) og skyver overskriften ned, i stedet for å ligge absolutt over
+    «ANKOMSTPREDIKSJON». At den fortsatt er første Tab-stopp, dekker test_hopplenke_er_forst_og_virker.
+    Selve opplevelsen sjekkes manuelt (UU2 i UX §6)."""
+    css = (Path(__file__).resolve().parent.parent / "app" / "static" / "style.css").read_text(encoding="utf-8")
+    blokk = re.search(r"\.hopp:focus\s*\{([^}]*)\}", css)
+    assert blokk, ".hopp:focus mangler"
+    assert re.search(r"position:\s*static", blokk.group(1))
+    # Uten fokus er lenka fortsatt skjult utenfor skjermen.
+    hvile = re.search(r"\.hopp\s*\{([^}]*)\}", css).group(1)
+    assert re.search(r"position:\s*absolute", hvile) and re.search(r"top:\s*-", hvile)

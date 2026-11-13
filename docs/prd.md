@@ -44,7 +44,7 @@ Hvert begrep har ett navn. Navnene brukes likt i PRD, UX, arkitektur, stories og
 | **Anløp** | Én seilas til Bergen Havn, altså én rad i datautdraget (`voyageid`) |
 | **Rapportert ETA** | `eta_reported`: ankomsttiden skipet selv har meldt. Én verdi per anløp. |
 | **Faktisk ankomst** | `arrival_in_area`: første AIS-posisjon innenfor ankomstsonen, ~15 km fra kai (beslutning 03). Ikke ankomst ved kai. |
-| **Passasjer / Øvrige** | Skipsgruppe. *Passasjer* er `ship_group = Passasjer` og brukes som proxy for rutegående trafikk, selv om gruppen også har cruiseskip. *Øvrige* er alle andre grupper (Last, Tank, Slep, Auxiliary, Fisk). Hovedtallet gjelder Øvrige. |
+| **Passasjer / Øvrige** | Skipsgruppe. *Passasjer* er `ship_group = Passasjer` og brukes som proxy for rutegående trafikk, selv om gruppen også har cruiseskip. *Øvrige* er alle andre grupper (Last, Tank, Slep, Spesialfartøy, Fisk). *Spesialfartøy* er visningsnavnet for `ship_group = Auxiliary` (ut fra de vanligste fartøyene i gruppa, f.eks. G O SARS, Johan Hjort, Siem Symphony og Island Contender: forsknings-, offshore- og subseafartøy). Kilden og utdraget beholder `Auxiliary`. Hovedtallet gjelder Øvrige. |
 | **Kalibrert baseline** | `rapportert ETA − offset[gruppe]`, der offset er median tid fra ankomstsonen til kai i treningsdata: 44,8 min for Passasjer og 64,2 min for Øvrige (beslutning 04) |
 | **Avvik** | `faktisk ankomst − kalibrert baseline`, i minutter. Positivt betyr senere enn forventet. Regnes *alltid* mot kalibrert baseline, uansett hvilken prediktor som vises. |
 | **Forsinket** | Fasitetiketten `avvik > 120 min` (signert, beslutning 06). Den er uavhengig av prediktoren. |
@@ -193,3 +193,4 @@ Som i briefens Scope/OUT: live-data, flere havner, API for andre, innlogging og 
 - **2026-10-22** — E0-S10, beslutning 09: 24 t-horisonten beholdes. FR9a har fått tilbakeblikk på 24 t og krav om at posisjoner filtreres på tidsstemplet i svaret, siden API-et forskyver og kutter vinduer. Nytt åpent spørsmål om ny henting av `empty`-seilasene.
 - **2026-10-22** — E0-S13, beslutning 07 korrigert: gruppespørsmålet om ny henting er besvart med nei, og ny henting er ført under §7. Teksten for `empty` i FR4 er endret til «ingen AIS-data hentet», siden dataene finnes i Kystdatahuset.
 - **2026-10-27** — E1-S05: naiv ETA for Øvrige er rettet fra 12,9 % til 12,8 % (127/996) i FR8. Pipelinen avrundet avviket før ±30-sammenligningen. Uavrundet regnes alle tall, som besluttet i E0-S18.
+- **2026-11-05** — E1-S19: ordlista bruker visningsnavnet «Spesialfartøy» for `ship_group = Auxiliary` (Felipe). Kilden og utdraget er uendret.

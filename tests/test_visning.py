@@ -4,6 +4,7 @@ import datetime as dt
 import pytest
 
 from app.visning import (
+    gruppe_visning,
     horisont_etikett,
     til_oslo_minutt,
     ukedag_dato_klokke,
@@ -74,3 +75,21 @@ def test_horisont_etiketter():
     assert horisont_etikett(24) == "6–24 t"
     with pytest.raises(ValueError):
         horisont_etikett(12)
+
+
+def test_gruppe_visning():
+    """E1-S19: «Auxiliary» vises som «Spesialfartøy». Andre grupper vises som i kilden."""
+    assert gruppe_visning("Auxiliary") == "Spesialfartøy"
+    for g in ("Last", "Passasjer", "Tank", "Slep", "Fisk", "Ukjent"):
+        assert gruppe_visning(g) == g
+
+
+def test_ingen_rad_viser_auxiliary(client):
+    """E1-S19: standardvinduet har G O SARS (ship_group Auxiliary). Raden viser det norske navnet.
+    Standardvinduet er nok: alle rader, også kortvisningen under 640 px, bygges av _rader i app/__init__.py.
+    Mutasjonssjekket: testen feiler når gruppe_visning ikke brukes i radene."""
+    html = client.get("/").get_data(as_text=True)
+    assert "Auxiliary" not in html
+    rad = html[html.index("G O SARS"):]
+    rad = rad[:rad.index("</tr>")]
+    assert ">Spesialfartøy</td>" in rad
