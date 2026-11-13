@@ -232,3 +232,30 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Lærdom (råt):**
   - Femte grensefeil i samme mønster: `>` mot `>=`, og igjen fant ikke reviewerne den.
   - Et resultat fra én mutasjonskjøring er ikke et bevis. Mutantene må kjøres på nytt når testene endres, og en overraskende endring (fanget → overlever) må gjenskapes før den regnes med.
+
+## 2026-11-13 — Implementeringsagenten committet og pushet før reviewen (E2-S10)
+
+- **Hva:** I E2-S10 skulle koden før testkjøringen gjennom review før den ble committet og pushet. Steget for implementering i BMAD-flyten sier «No push». Implementeringssubagenten committet og pushet likevel `fbaa7ca` (git-vakt, commit-hash i loggen og resultattabellene) med en gang den var ferdig. Den meldte commiten som klar til sjekklista før testkjøringen, uten at review var kjørt.
+- **Hvordan det ble oppdaget:** Claude (orkestratoren) så det i `git log` da diffen skulle leses før reviewen. Commiten lå allerede på `origin/epic/e2-modell`.
+- **Konsekvens og retting:**
+  - Reviewen ble kjørt på den pushede koden. Tre reviewere fant 16 funn, og 7 ble rettet. To av dem gjaldt selve kjøringen:
+    - den vellykkede `--test`-veien var ikke testet, så commiten kunne mangle i `test.kilder` uten at noen test feilet, og feilen ville først vist seg etter den ene kjøringen
+    - vakta kunne omgås med egne filstier
+  - Rettelsene kom i `8920acb`. Testkjøringen ble bygd på den commiten, ikke på `fbaa7ca`.
+  - Ingenting ble kjørt mot testperioden før rettingen. Hadde Felipe sagt ja til sjekklista subagenten foreslo, ville kjøringen bygd på kode uten review.
+- **Lærdom (råt):**
+  - Et forbud i en stegfil når ikke fram til en subagent som bare får specen. Specen sa «commit A» før kjøringen, og subagenten fulgte specen.
+  - Orkestratoren må si «ikke commit, ikke push» i oppdraget når review gjenstår. Det ble gjort ved rettelsene.
+  - Sjekk `git log` mot origin før du stoler på en subagents rapport om at noe er «klart».
+
+## 2026-11-13 — Claude stoppet og spurte før testradene ble lest på nytt for McNemar (E2-S10)
+
+- **Hva:** Etter testkjøringen ba Felipe om McNemars test for ±30 min ved begge horisontene. Testen trenger antall uenige par per anløp, og `metrikker.json` har bare summene. Testradene måtte altså leses på nytt med modellen. Specen sa at alt etter kjøringen bare skulle lese `test`-blokken.
+- **Hva Claude gjorde:** Claude stoppet og spurte før noe ble kjørt, i tråd med regelen om testrader fra E2-S07 («testrader brukes bare til det som står eksplisitt … ellers stopp og spør»). Det la fram to valg: et eget gjennomløp med låste artefakter og kode, eller ingen McNemar-test.
+  - Claude rettet også en feil i forespørselen: F13–F14 er ikke A1, men en egen begrensning ved siden av A1 (beslutning 11).
+- **Hva Felipe avgjorde:** eget gjennomløp (1A), fordi alt var låst: samme artefakter, samme kode, ingen endringer, og dommen endres ikke. Bare krysstabellen og p-verdien lagres, ikke prediksjoner per anløp. Notatet sier at testradene ble lest på nytt, og hvorfor.
+- **Resultat:** `scripts/mcnemar.py` sjekker først at de låste filene er uendret siden kjøringens commit (`8920acb`), og etterpå at summene blir nøyaktig de samme som i `metrikker.json`. Det ble kjørt én gang.
+  - Første versjon avrundet p-verdien til 6 desimaler, og 6 t ble lagret som `0.0`. Det ble rettet ved å regne p på nytt fra den lagrede krysstabellen, uten nytt gjennomløp av testradene.
+- **Lærdom (råt):**
+  - Regelen fra E2-S07 virket: en ny bruk av testrader ble oppdaget før den skjedde, ikke etterpå.
+  - «Avrund til 6 desimaler» er feil for p-verdier. Bruk gjeldende siffer.
