@@ -92,20 +92,20 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 **Dekker:** FR4, FR6, UU3 · **Stories:** E1-S09, E1-S10
 
 ```
-│ Skip ▲▼        Gruppe     Rapportert  Predikert   Faktisk    Avvik ▲▼        Varsel │
-│ ───────────── ────────── ─────────── ─────────── ────────── ─────────────── ────── │
-│ ROTTERDAM      Passasjer  ons 08:00   ons 07:15   ons 06:28  −47 min           –    │
-│ BERGEN ENERGY  Tank       ons 11:00   ons 09:56   ons 13:18  ▲ +3 t 22 min     –    │
-│                                                              FORSINKET              │
-│ OCEAN RESPONSE Last       ons 13:45   ons 12:41   ons 20:06  ▲ +7 t 25 min     –    │
-│                                                              FORSINKET              │
-│ SIEM PEARL     Slep       ons 16:30   ons 15:26   ons 22:02  ▲ +6 t 36 min     –    │
-│                                                              FORSINKET              │
-│ G O SARS       Auxiliary  ons 16:00   ons 14:56   ons 10:39  −4 t 16 min       –    │
-│ (rad uten AIS) Tank       …           …           Fasit mangler (ingen AIS-data    │
-│                                                   hentet)                          │
-│ (avkortet)     Last       …           …           Fasit mangler (avkortet av neste │
-│                                                   seilas, trolig stort avvik)      │
+│ Skip ▲▼        Gruppe        Rapportert  Predikert   Faktisk    Avvik ▲▼        Varsel │
+│ ───────────── ───────────── ─────────── ─────────── ────────── ─────────────── ────── │
+│ ROTTERDAM      Passasjer     ons 08:00   ons 07:15   ons 06:28  −47 min           –    │
+│ BERGEN ENERGY  Tank          ons 11:00   ons 09:56   ons 13:18  ▲ +3 t 22 min     –    │
+│                                                                 FORSINKET              │
+│ OCEAN RESPONSE Last          ons 13:45   ons 12:41   ons 20:06  ▲ +7 t 25 min     –    │
+│                                                                 FORSINKET              │
+│ SIEM PEARL     Slep          ons 16:30   ons 15:26   ons 22:02  ▲ +6 t 36 min     –    │
+│                                                                 FORSINKET              │
+│ G O SARS       Spesialfartøy ons 16:00   ons 14:56   ons 10:39  −4 t 16 min       –    │
+│ (rad uten AIS) Tank          …           …           Fasit mangler (ingen AIS-data    │
+│                                                      hentet)                          │
+│ (avkortet)     Last          …           …           Fasit mangler (avkortet av neste │
+│                                                      seilas, trolig stort avvik)      │
 ```
 
 - **FORSINKET** er ikon (▲) + tekst + varselfarge (`--varsel`). Fargen er aldri alene (UU3).
@@ -228,7 +228,7 @@ Kjøres manuelt i E1-S15 og på nytt før levering (fase 6). Resultat og dato f�
 | Krav | Sjekk | Test | Resultat |
 |---|---|---|---|
 | UU1 | Alle tokenpar under ≥ 4,5:1 (tekst) / 3:1 (kant) | `tests/test_kontrast.py` (E1-S06: tokens = tabellen i §7, kontrast regnet på nytt) | ✅ 03.11.2026: testen er grønn. `--varsel` (lyst tema) er tatt i bruk i E2-S08, og testen er grønn 10.11.2026. Mørkt tema og `--ok` er ikke bygd (KAN, E1-S13). |
-| UU2 | Hele skjerm A og C kan brukes med bare tastatur. Fokus synlig hele veien. Hopp-lenke virker. | manuell | ✅ 03.11.2026, skjerm A (Thomas Kvile-Reed, full bredde). Hopp-lenken får fokus først, og fokus er tydelig synlig. Enter på hopp-lenken går til `#anlopslista`, som får fokusramme. Hopp-lenken er foreløpig det eneste interaktive elementet. **Funn:** hopp-lenken dekker overskriften når den har fokus (E1-S18). Skjerm C: ikke bygd (KAN, E1-S11). |
+| UU2 | Hele skjerm A og C kan brukes med bare tastatur. Fokus synlig hele veien. Hopp-lenke virker. | manuell | ✅ 03.11.2026, skjerm A (Thomas Kvile-Reed, full bredde). Hopp-lenken får fokus først, og fokus er tydelig synlig. Enter på hopp-lenken går til `#anlopslista`, som får fokusramme. Hopp-lenken er foreløpig det eneste interaktive elementet. **Funn:** hopp-lenken dekker overskriften når den har fokus (E1-S18). **Rettet og sjekket 05.11.2026 (E1-S18, Theodor Gimming, mot `fix/e1-s18-s19`):** hopp-lenken dekker ikke lenger «ANKOMSTPREDIKSJON» eller «Anløp» når den har fokus, fokusrammen er tydelig, og Enter går til `#anlopslista`. G O SARS vises som «Spesialfartøy» (E1-S19). Skjerm C: ikke bygd (KAN, E1-S11). |
 | UU3 | Skjermbilde i gråtoner: FORSINKET og varsel kan fortsatt skilles ut | manuell | Delvis bygd. Varselet (E2-S08) er ▲ + «VARSEL» i `--varsel`, så det kan skilles ut uten farge (`tests/test_ruter.py::test_varselkolonnen_med_modellen`). Gråtoneskjermbildet er ikke tatt. FORSINKET er ikke bygd (E1-S09). |
 | UU4 | Alle `<img>`/`<svg>` med mening har tekstalternativ | `tests/test_uu_struktur.py` (E1-S06: `img alt`, `svg` med tittel, pyntetegn `aria-hidden`), `tests/test_ruter.py::test_varselkolonnen_forklarer_seg` | ✅ 03.11.2026: testene er grønne. |
 | UU5 | Alle `<input>` har `<label for>`, og feil har `aria-describedby` | `tests/test_uu_struktur.py` | Ikke bygd (KAN, E1-S07). Skjermen har ingen skjemafelt ennå. Testen er grønn. |
@@ -281,6 +281,7 @@ Fokusring: 3 px `--aksent` med 2 px avstand, aldri `outline: none` uten erstatni
   - Mobil: telle-linja bruker samme format som desktop («ons 08.10 08:00 – tor 09.10 08:00 (norsk tid)»), og prediktor-stripa har hele teksten i stedet for den korte versjonen. Lenka «Mer ›» er utelatt til `/metode` bygges i E1-S12.
   - Mobil: tabellen har eksplisitte ARIA-roller (`table`, `rowgroup`, `row`, `columnheader`, `cell`). `display: block` under 640 px fjerner tabellsemantikken i Safari/VoiceOver, og uten rollene ville ikke skjermlesere sett en tabell, slik §3 lover.
   - Mobil: toppen viser også «Ankomstprediksjon · Bergen Havn» og «Avspilling av historiske data», som på desktop.
+- **2026-11-05** — E1-S18 og E1-S19: skissen i A2 viser «Spesialfartøy» i stedet for «Auxiliary», og Gruppe-kolonnen er 3 tegn bredere. UU2 har fått en merknad om rettelsen av hopp-lenken, som Theodor Gimming sjekket manuelt samme dag. Skjermbildene er tatt på nytt, og ingen bredde gir horisontal rulling (360, 640, 1280 og 1920 px).
 - **2026-11-10** — E2-S08, modellen i dashbordet: §5 har fått tilstandene for varsel, ingen varsel, delegerte rader (fire tekster, «havneområdet» i stedet for det interne «ankomstsone») og låst testperiode. Skjerm A-merknaden om prediktor-stripa beskriver modellteksten. `--varsel` er tatt i bruk i stilarket. Kolonnen Prediksjonsfeil er flyttet til E1-S09 (fasit på), etter E2-S10.
 - **2026-11-11** — E2-S09, panelet «modell mot baseline»: §2 beskriver panelet slik det er bygd (høyre kolonne fra 1024 px, under lista på mobil), og §5 har fått tilstandene før og etter testkjøringen, «kan ikke varsle» og «Tall mangler». Avvik fra skissen: panelet viser modell og kalibrert baseline fra `metrikker.json` per horisont og radsett, ikke naiv ETA, og har ingen søyler og ingen lenke til `/metode` ennå (E1-S12).
 - **2026-11-11** — E2-S09: raden for all Øvrige-trafikk i panelet sier «Systemet», ikke «Modell», med en kort forklaring om turene inne i havneområdet (Felipe).

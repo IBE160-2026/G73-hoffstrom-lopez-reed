@@ -6,7 +6,7 @@ from flask import Flask, current_app, render_template
 from app.data import anlop_i_vindu
 from app.panel import lag_panel
 from app.prediksjon import VINDU_TIMER, i_testperioden, lag_input, velg_prediktor_med_merknad
-from app.visning import OSLO, horisont_etikett, ukedag_dato_klokke, ukedag_klokke
+from app.visning import OSLO, gruppe_visning, horisont_etikett, ukedag_dato_klokke, ukedag_klokke
 
 # Standard «nå» (UX §2): ons 08.10.2025 08:00 norsk tid.
 STANDARD_NAA = dt.datetime(2025, 10, 8, 8, 0, tzinfo=OSLO)
@@ -44,7 +44,7 @@ def _rader(naa):
     rader = [
         {
             "skip": inp.shipname,
-            "gruppe": inp.ship_group,
+            "gruppe": gruppe_visning(inp.ship_group),
             "rapportert": ukedag_klokke(inp.eta_reported),
             "predikert": ukedag_klokke(p.predikert_ankomst),
             "for_naa": p.predikert_ankomst < naa,

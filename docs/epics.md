@@ -211,18 +211,19 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** manuell. Filene finnes og avvikene er beskrevet.
 
-### E1-S18 — Hopp-lenken dekker overskriften ved fokus ☐ · KAN
+### E1-S18 — Hopp-lenken dekker overskriften ved fokus ✅ · KAN
 **Krav:** UU2 · **Avhenger av:** E1-S06
 - Funn fra UU-sjekken 03.11.2026 (E1-S16): når hopp-lenken har fokus, ligger den over «ANKOMSTPREDIKSJON» og første bokstav i «Anløp».
 - Hopp-lenken er fortsatt første Tab-stopp og synlig ved fokus, men dekker ikke overskriften eller annen tekst.
 
 **Test:** manuell, med punkt UU2 i UX §6. `tests/test_uu_struktur.py` er fortsatt grønn.
 
-### E1-S19 — Norsk visningsnavn for gruppen «Auxiliary» ☐ · KAN
+### E1-S19 — Norsk visningsnavn for gruppen «Auxiliary» ✅ · KAN
 **Krav:** UX §2 · **Avhenger av:** E1-S06
 - Funn fra UU-sjekken 03.11.2026 (E1-S16), ikke et UU-krav: gruppenavnet «Auxiliary» (for eksempel G O SARS) er engelsk midt i norske gruppenavn. Det gjelder 524 anløp i `data/utdrag/anlop.csv`.
 - Dashbordet viser et norsk navn. Hvilket navn, avgjøres av gruppa når storyen startes. Bare visningen endres: `ship_group` i utdraget beholdes slik kilden har det, så sjekksummer og dataregresjonen står urørt.
 - PRD-ordlista og skissen i UX skjerm A2 bruker samme navn.
+- **Valgt navn (Felipe, 05.11.2026, godkjent av gruppa):** «Spesialfartøy».
 
 **Test:** test som viser at ingen rad viser «Auxiliary». `tests/test_dataregresjon.py` er uendret og grønn.
 
@@ -451,6 +452,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-03** — E2-S01, beslutning 11: én modell for Øvrige, trent per horisont, og Passasjer beholder baselinen. Featurelista F1–F16 er lagt inn i E2-S04 med to nye tester, ablasjonen i E2-S05 og E2-S06, og rapportering med og uten F6 i E2-S06 og E2-S10. E2-S07 delegerer Passasjer til baselinen.
 - **2026-11-03** — E2-S03: tilstandsutdraget får `ais_status` og metadata i `tilstand_ved_kutt.json`, og `allerede_ankommet` er tatt ut. E2-S06 bruker F6 som eneste definisjon av «allerede i ankomstsonen» (Felipe).
 - **2026-11-03** — E2-S04: `features.csv` erstatter det rå statiske utdraget, og rå ETD committes ikke. Sjekken av lange avstander og etikettsjekken kjøres etter hentingen (Felipe).
+- **2026-11-05** — E1-S19 er ferdig: «Auxiliary» vises som «Spesialfartøy» (Felipe). Bare visningen er endret, og dataregresjonen står urørt. E1-S18 er ferdig: hopp-lenken går inn i flyten ved fokus. UU2 i UX §6 er sjekket manuelt av Theodor Gimming samme dag.
 - **2026-11-09** — E2-S05, beslutning 12: modellen brukes bare utenfor ankomstsonen ved kuttet, og F6-rader går til baselinen. Det påvirker E2-S06 og E2-S07 (Felipe).
 - **2026-11-09** — E2-S06 er ferdig: `scripts/evaluer.py` skriver valideringstallene til `metrikker.json`, og baselinen på testperioden (uten modell) ligger under `test_bare_baseline`. Bestått/ikke bestått avgjøres på modellutvalget, og all Øvrige-trafikk med delegering står i samme tabell (brief, PRD FR10). E2-S10 har fått låsen før den ene testkjøringen og tabellen med begge radene og modellandelen (Felipe).
 - **2026-11-09** — Etter E2-S06: varselet kan bare nå under halvparten av de forsinkede Øvrige-anløpene (57 og 78 av 194 i modellutvalget). Det står i briefen, README og på skjermen, og E2-S08 og E2-S10 skal si det der varselet forklares (Felipe).
