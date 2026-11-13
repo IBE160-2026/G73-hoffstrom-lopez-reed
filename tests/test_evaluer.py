@@ -3,7 +3,8 @@
 Baselinen på testperioden regnes på de committede utdragene, gjennom skriptets egne funksjoner, uten ``--test`` og uten
 å røre ``metrikker.json``. Alt med modell bruker en syntetisk fixture i ``tmp_path``, med artefakter trent av
 ``scripts/tren.py``. Ingen test kjører ``--test``, og ingen test predikerer på testperioden med en modell. Den eneste
-testen med ekte modell er valideringskjøringen med refit bare på treningsdelen (spec-beslutning 4).
+testen med ekte modell er valideringskjøringen med refit bare på treningsdelen (spec-beslutning 4). Git-vakta før
+``--test`` (E2-S10) testes med git byttet ut og med alt som predikerer byttet ut med en funksjon som feiler.
 """
 import importlib.util
 import json
@@ -190,19 +191,93 @@ def test_validering_beholder_testblokken_og_er_deterministisk(fixture, tmp_path)
     assert ut.read_bytes() == forste
 
 
-def test_testkjoring_teller_og_logger_dato():
-    """Bokføringen for ``--test``, uten å kjøre ``--test``."""
-    en = ev.oppdater(None, "test", {"split": "test"}, "2026-11-20")
-    assert en["testkjoringer"] == 1 and en["testkjoringer_logg"] == [{"nr": 1, "dato": "2026-11-20"}]
-    to = ev.oppdater(en, "test", {"split": "test"}, "2026-11-21", ny_testkjoring=True)
+HASH_A, HASH_B = "a" * 40, "b" * 40
+
+
+def test_testkjoring_teller_og_logger_dato_og_commit():
+    """Bokføringen for ``--test``, uten å kjøre ``--test``. Loggen har ``{nr, dato, commit}`` (E2-S10)."""
+    en = ev.oppdater(None, "test", {"split": "test"}, "2026-11-20", commit=HASH_A)
+    assert en["testkjoringer"] == 1
+    assert en["testkjoringer_logg"] == [{"nr": 1, "dato": "2026-11-20", "commit": HASH_A}]
+    to = ev.oppdater(en, "test", {"split": "test"}, "2026-11-21", ny_testkjoring=True, commit=HASH_B)
     assert to["testkjoringer"] == 2 and [x["dato"] for x in to["testkjoringer_logg"]] == ["2026-11-20", "2026-11-21"]
+    assert [x["commit"] for x in to["testkjoringer_logg"]] == [HASH_A, HASH_B]
     with pytest.raises(ev.Avvik, match="--ny-testkjoring"):
-        ev.oppdater(to, "test", {"split": "test"}, "2026-11-22")
+        ev.oppdater(to, "test", {"split": "test"}, "2026-11-22", commit=HASH_B)
     va = ev.oppdater(to, "validering", {"split": "validering"})
     assert va["testkjoringer"] == 2 and va["test"] == {"split": "test"}
     assert ev.oppdater(va, "test_bare_baseline", {})["testkjoringer"] == 2
-    with pytest.raises(ValueError):
-        ev.oppdater(None, "test", {})
+    with pytest.raises(ValueError, match="dato"):
+        ev.oppdater(None, "test", {}, commit=HASH_A)
+    with pytest.raises(ValueError, match="commit"):
+        ev.oppdater(None, "test", {}, "2026-11-20")
+
+
+# --- Git-vakta før --test (E2-S10, krav 1). Syntetisk: git er byttet ut, og ingenting predikeres. ----------
+
+
+def _falsk_git(status="", head=HASH_A, upstream=HASH_A, feil=None):
+    def git(*args):
+        if feil is not None:
+            raise feil
+        return {("status", "--porcelain"): status, ("rev-parse", "HEAD"): head,
+                ("rev-parse", "@{u}"): upstream}[args]
+    return git
+
+
+def test_sjekk_git_gir_full_hash_naar_rent_og_pushet(monkeypatch):
+    monkeypatch.setattr(ev, "git", _falsk_git())
+    assert ev.sjekk_git() == HASH_A
+
+
+@pytest.mark.parametrize("git, grunn", [
+    (_falsk_git(status=" M scripts/evaluer.py"), "ikke rent"),
+    (_falsk_git(status="?? ny_fil.txt"), "ikke rent"),
+    (_falsk_git(upstream=HASH_B), "Push"),
+    (_falsk_git(feil=FileNotFoundError("git")), "git er ikke tilgjengelig"),
+    (_falsk_git(feil=ev.subprocess.CalledProcessError(128, ["git"], stderr="no upstream configured")),
+     "no upstream"),
+], ids=["endret", "usporet", "ikke_pushet", "uten_git", "uten_upstream"])
+def test_test_uten_ren_pushet_git_stopper_for_noe_predikeres(fixture, tmp_path, monkeypatch, capsys, git, grunn):
+    """``--test`` stopper med «ingenting er skrevet» før artefakter lastes eller noe predikeres, og fila er urørt."""
+    def nekt(*a, **k):
+        raise AssertionError("--test gikk forbi git-vakta")
+
+    monkeypatch.setattr(ev, "git", git)
+    for navn in ("last_artefakter", "evaluer", "baseline_prediksjoner", "modell_prediksjoner"):
+        monkeypatch.setattr(ev, navn, nekt)
+    ut = tmp_path / "metrikker.json"
+    innhold = json.dumps({"testkjoringer": 0, "testkjoringer_logg": []})
+    ut.write_text(innhold, encoding="utf-8")
+    assert ev.main(_args(fixture, ut, "--test")) == 2
+    assert ut.read_text(encoding="utf-8") == innhold
+    err = capsys.readouterr().err
+    assert "ingenting er skrevet" in err and grunn in err
+
+
+def test_test_allerede_kjort_stopper(fixture, tmp_path, monkeypatch, capsys):
+    """Med ``testkjoringer ≥ 1`` nektes ``--test`` som før, også når git er rent, og ingenting predikeres."""
+    def nekt(*a, **k):
+        raise AssertionError("--test predikerte etter en tidligere testkjøring")
+
+    monkeypatch.setattr(ev, "git", _falsk_git())
+    monkeypatch.setattr(ev, "evaluer", nekt)
+    ut = tmp_path / "metrikker.json"
+    innhold = json.dumps({"testkjoringer": 1, "testkjoringer_logg": [{"nr": 1, "dato": "2026-11-20",
+                                                                      "commit": HASH_A}]})
+    ut.write_text(innhold, encoding="utf-8")
+    assert ev.main(_args(fixture, ut, "--test")) == 2
+    assert ut.read_text(encoding="utf-8") == innhold
+    assert "--ny-testkjoring" in capsys.readouterr().err
+
+
+def test_vakta_gjelder_bare_test(fixture, tmp_path, monkeypatch):
+    """Validering og ``--bare-baseline`` spør ikke git."""
+    def nekt(*a, **k):
+        raise AssertionError("git kalt utenfor --test")
+
+    monkeypatch.setattr(ev, "git", nekt)
+    assert ev.main(_args(fixture, tmp_path / "a.json", "--bare-baseline")) == 0
 
 
 def test_artefakt_mot_feil_utdrag_stopper_uten_a_skrive(fixture, tmp_path, capsys):

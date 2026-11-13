@@ -1,6 +1,7 @@
 import datetime as dt
 import json
 from html.parser import HTMLParser
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -49,6 +50,23 @@ def _ingen_modell_paa_testrader(request, monkeypatch):
         return ekte(self, inputs, naa)
 
     monkeypatch.setattr(ModellPrediktor, "prediker", vaktet)
+
+
+# Den ekte ``metrikker.json`` sett som før testkjøringen (E2-S10, beslutning 1A): ``testkjoringer = 0``, tom logg og uten
+# ``test``-blokken. Testene som leser den ekte fila og forventer valideringsvisningen, er da grønne både før og etter
+# den ene testkjøringen, og ingen test må endres etter den.
+EKTE_METRIKKER = Path(__file__).resolve().parent.parent / "data" / "modell" / "metrikker.json"
+
+
+@pytest.fixture
+def valideringsvisning(tmp_path_factory):
+    data = json.loads(EKTE_METRIKKER.read_text(encoding="utf-8"))
+    data["testkjoringer"] = 0
+    data["testkjoringer_logg"] = []
+    data.pop("test", None)
+    sti = tmp_path_factory.mktemp("valideringsvisning") / "metrikker.json"
+    sti.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return sti
 
 
 @pytest.fixture

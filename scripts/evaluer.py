@@ -20,7 +20,10 @@ Kjøringer:
   i ``modellvalg.json``) fittes på nytt i minnet, bare på treningsradene, med ``fartoy_*_modellvalg``, som ved
   modellvalget i ``tren.py``. Ingenting av dette lagres.
 - ``--test``: testperioden, med de committede endelige artefaktene. Skriver blokken ``test``, øker ``testkjoringer``
-  og logger datoen. Finnes det allerede en testkjøring, stopper skriptet, med mindre ``--ny-testkjoring`` er gitt.
+  og logger datoen og commiten. Finnes det allerede en testkjøring, stopper skriptet, med mindre ``--ny-testkjoring``
+  er gitt. Før noe lastes eller predikeres, sjekker skriptet git (E2-S10): arbeidstreet må være rent og HEAD lik
+  ``@{u}`` (pushet). Ellers, eller uten git, stopper det med «ingenting er skrevet». Full ``git rev-parse HEAD``
+  lagres i loggen og i ``test.kilder.commit``.
 - ``--bare-baseline``: bare baselinen på testperioden, uten å laste noen modell og uten å røre ``testkjoringer``.
   Gir baselinecellene og modellandelen til tabellen i briefen. Skriver blokken ``test_bare_baseline``.
 
@@ -35,6 +38,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -69,6 +73,29 @@ MERKNAD_VALIDERING = (
 
 class Avvik(Exception):
     """Input stemmer ikke (artefakt mot utdrag, split mot split). Ingenting skrives."""
+
+
+def git(*args):
+    """Kjør git i repo-roten og gi stdout uten linjeskift på slutten. Testene bytter ut denne funksjonen."""
+    return subprocess.run(["git", *args], cwd=REPO_ROT, capture_output=True, text=True, check=True).stdout.rstrip("\n")
+
+
+def sjekk_git():
+    """Vakta før ``--test`` (E2-S10, krav 1): rent arbeidstre og HEAD = ``@{u}``. Gir full HEAD-hash.
+
+    Uten git, uten upstream eller med feil fra git stopper den også. Kaster ``Avvik``, så ingenting skrives."""
+    try:
+        status = git("status", "--porcelain")
+        head = git("rev-parse", "HEAD")
+        upstream = git("rev-parse", "@{u}")
+    except (OSError, subprocess.CalledProcessError) as exc:
+        detalj = getattr(exc, "stderr", None) or exc
+        raise Avvik(f"git er ikke tilgjengelig, eller grenen har ingen upstream ({str(detalj).strip()})") from exc
+    if status:
+        raise Avvik("arbeidstreet er ikke rent. Commit eller fjern endringene før testkjøringen:\n" + status)
+    if head != upstream:
+        raise Avvik(f"HEAD {head} er ikke lik @{{u}} {upstream}. Push før testkjøringen.")
+    return head
 
 
 def sha256_fil(sti):
@@ -296,8 +323,9 @@ def evaluer(anlop, features, split, artefakter=None):
                            for h in HORISONTER}}
 
 
-def oppdater(gammel, nokkel, blokk, dato=None, ny_testkjoring=False):
-    """Ny ``metrikker.json`` fra den gamle. Bare ``nokkel`` byttes. ``nokkel == "test"`` øker telleren og logger ``dato``."""
+def oppdater(gammel, nokkel, blokk, dato=None, ny_testkjoring=False, commit=None):
+    """Ny ``metrikker.json`` fra den gamle. Bare ``nokkel`` byttes. ``nokkel == "test"`` øker telleren og logger
+    ``dato`` og ``commit`` (full hash av commiten testkjøringen bygger på)."""
     ny = dict(gammel or {})
     ny.setdefault("testkjoringer", 0)
     ny.setdefault("testkjoringer_logg", [])
@@ -308,11 +336,14 @@ def oppdater(gammel, nokkel, blokk, dato=None, ny_testkjoring=False):
     if nokkel == "test":
         if dato is None:
             raise ValueError("en testkjøring må ha dato")
+        if commit is None:
+            raise ValueError("en testkjøring må ha commit")
         if ny["testkjoringer"] >= 1 and not ny_testkjoring:
             raise Avvik(f"testperioden er allerede kjørt {ny['testkjoringer']} gang(er). En ny testkjøring må "
                         "begrunnes i resultatnotatet; gi --ny-testkjoring for å kjøre likevel.")
         ny["testkjoringer"] = ny["testkjoringer"] + 1
-        ny["testkjoringer_logg"] = list(ny["testkjoringer_logg"]) + [{"nr": ny["testkjoringer"], "dato": dato}]
+        logg = {"nr": ny["testkjoringer"], "dato": dato, "commit": commit}
+        ny["testkjoringer_logg"] = list(ny["testkjoringer_logg"]) + [logg]
     return ny
 
 
@@ -370,6 +401,7 @@ def main(argv=None):
             return 2
 
     try:
+        commit = sjekk_git() if args.test else None  # før noe lastes eller predikeres
         if args.bare_baseline:
             artefakter = None
             kilder = {"features_sha256": sha256_fil(args.features), "anlop_sha256": sha256_fil(args.anlop),
@@ -380,7 +412,8 @@ def main(argv=None):
             split, nokkel = ("test", "test") if args.test else ("validering", "validering")
         gammel = json.loads(args.ut.read_text(encoding="utf-8")) if args.ut.is_file() else None
         if nokkel == "test":
-            oppdater(gammel, "test", {}, "sjekk", args.ny_testkjoring)  # stopp før noe predikeres
+            oppdater(gammel, "test", {}, "sjekk", args.ny_testkjoring, "sjekk")  # stopp før noe predikeres
+            kilder = dict(kilder, commit=commit)
         if nokkel == "validering":
             modellvalg_sti = Path(args.modell_dir) / "modellvalg.json"
             if not modellvalg_sti.is_file():
@@ -393,7 +426,7 @@ def main(argv=None):
         if nokkel == "validering":
             blokk["merknad"] = MERKNAD_VALIDERING
         dato = dt.date.today().isoformat() if nokkel == "test" else None
-        ny = oppdater(gammel, nokkel, blokk, dato, args.ny_testkjoring)
+        ny = oppdater(gammel, nokkel, blokk, dato, args.ny_testkjoring, commit)
     except (Avvik, T.Inkonsistens) as exc:
         print(f"Stopper, ingenting er skrevet: {exc}", file=sys.stderr)
         return 2

@@ -7,7 +7,6 @@ import dataclasses
 import datetime as dt
 import json
 import re
-from pathlib import Path
 
 import pytest
 from conftest import VALIDERING_NAA, anlopslista, parse_html, syntetisk_blokk
@@ -543,7 +542,8 @@ def test_vakta_stopper_modellen_paa_testrader():
 # E2-S09: panelet «modell mot baseline». Det leser bare metrikker.json. Visningen etter testkjøringen testes bare
 # med syntetiske filer i tmp_path (regelen om testrader). PREDIKTOR=baseline (autouse over) gjelder også her.
 
-EKTE_METRIKKER = Path(__file__).resolve().parent.parent / "data" / "modell" / "metrikker.json"
+# Den ekte fila leses gjennom ``valideringsvisning`` (conftest, E2-S10 beslutning 1A), så testene er like før og etter
+# testkjøringen.
 
 
 def _metrikker(monkeypatch, sti):
@@ -647,11 +647,12 @@ def _forventet_differanse(a, b, skala, desimaler, enhet, subjekt="modellen"):
     return f"{tegn}{abs(d):.{desimaler}f}".replace(".", ",") + f"{enhet} ({ord_})"
 
 
-def test_panel_modell_mot_baseline(monkeypatch):
-    """Med den ekte metrikker.json: valideringsblokken, og hvert tall i panelet er filas verdi etter avrunding."""
-    data = json.loads(EKTE_METRIKKER.read_text(encoding="utf-8"))
-    assert data["testkjoringer"] == 0
-    _metrikker(monkeypatch, EKTE_METRIKKER)
+def test_panel_modell_mot_baseline(monkeypatch, valideringsvisning):
+    """Med den ekte metrikker.json sett før testkjøringen (beslutning 1A i E2-S10): valideringsblokken, og hvert tall
+    i panelet er filas verdi etter avrunding."""
+    data = json.loads(valideringsvisning.read_text(encoding="utf-8"))
+    assert data["testkjoringer"] == 0 and "test" not in data
+    _metrikker(monkeypatch, valideringsvisning)
     panel = _panel(_forside())
     tekst = _ren(panel.tekst()).replace("\u00a0", " ")
     v = data["validering"]
@@ -722,8 +723,8 @@ def test_panel_modell_mot_baseline(monkeypatch):
             assert f"({_brok(abl['treff_30'], abl['n'])})" not in tekst
 
 
-def test_panel_baseline_kan_ikke_varsle(monkeypatch):
-    _metrikker(monkeypatch, EKTE_METRIKKER)
+def test_panel_baseline_kan_ikke_varsle(monkeypatch, valideringsvisning):
+    _metrikker(monkeypatch, valideringsvisning)
     for table in _panel(_forside()).finn_alle("table"):
         rader = _tabell(table)
         kolonner = [_ren(th.tekst()) for th in table.finn_alle("thead")[0].finn_alle("th")]
@@ -794,7 +795,7 @@ def test_panel_tall_mangler(monkeypatch, tmp_path, innhold):
     assert ("Testperioden" if innhold and '"testkjoringer": 1' in innhold else "Validering") in tekst
 
 
-def test_panel_endrer_ikke_lista_og_stripa(monkeypatch):
+def test_panel_endrer_ikke_lista_og_stripa(monkeypatch, valideringsvisning):
     """Lista og prediktor-stripa er like med og uten tall i panelet (E2-S08-visningen er urørt)."""
     def deler(dokument):
         stripe = [s for s in dokument.finn_alle("section") if "prediktor" in s.attrs.get("class", "").split()][0]
@@ -802,7 +803,7 @@ def test_panel_endrer_ikke_lista_og_stripa(monkeypatch):
         return _ren(stripe.tekst()), _ren(liste.tekst()), [_ren(th.tekst()) for th in liste.finn_alle("th")]
 
     uten = deler(_forside())
-    _metrikker(monkeypatch, EKTE_METRIKKER)
+    _metrikker(monkeypatch, valideringsvisning)
     med = _forside()
     assert deler(med) == uten
     assert deler(med)[2] == KOLONNER
@@ -811,9 +812,9 @@ def test_panel_endrer_ikke_lista_og_stripa(monkeypatch):
     assert ider == ["anlopslista", "treffsikkerhet"]
 
 
-def test_panel_uu_struktur(monkeypatch):
+def test_panel_uu_struktur(monkeypatch, valideringsvisning):
     """Overskrifter uten hopp, th med scope, caption per tabell, og ingen farge alene (UU3, UU7)."""
-    _metrikker(monkeypatch, EKTE_METRIKKER)
+    _metrikker(monkeypatch, valideringsvisning)
     dokument = _forside()
     nivaaer = [int(n.tag[1]) for n in dokument.iter() if len(n.tag) == 2 and n.tag[0] == "h" and n.tag[1] in "123456"]
     for forrige, neste in zip(nivaaer, nivaaer[1:]):

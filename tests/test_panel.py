@@ -4,15 +4,11 @@ Visningen etter testkjøringen testes bare med syntetiske filer i ``tmp_path`` (
 Rutetestene står i ``tests/test_ruter.py``.
 """
 import json
-from pathlib import Path
 
 import pytest
 from conftest import syntetisk_blokk
 
 from app.panel import KAN_IKKE_VARSLE, PERIODE_TEST, PERIODE_VALIDERING, lag_panel
-
-EKTE = Path(__file__).resolve().parent.parent / "data" / "modell" / "metrikker.json"
-
 
 def _fil(tmp_path, data):
     sti = tmp_path / "metrikker.json"
@@ -25,10 +21,11 @@ def _celler(panel, h=0, gruppe=0):
     return {r["maal"]: [c["tekst"] for c in r["celler"]] for r in g["rader"]}
 
 
-def test_ekte_fil_gir_valideringsblokken():
-    data = json.loads(EKTE.read_text(encoding="utf-8"))
-    assert data["testkjoringer"] == 0  # ellers er dette en annen test
-    panel = lag_panel(EKTE)
+def test_ekte_fil_gir_valideringsblokken(valideringsvisning):
+    """Den ekte fila sett før testkjøringen (E2-S10, beslutning 1A)."""
+    data = json.loads(valideringsvisning.read_text(encoding="utf-8"))
+    assert data["testkjoringer"] == 0 and "test" not in data
+    panel = lag_panel(valideringsvisning)
     assert not panel["mangler"] and not panel["etter_test"]
     assert panel["periode"] == PERIODE_VALIDERING
     v = data["validering"]
