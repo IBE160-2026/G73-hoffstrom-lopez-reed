@@ -1,0 +1,881 @@
+{
+  "beskrivelse": "Modell mot kalibrert baseline på de samme anløpene (E2-S06, PRD FR10, beslutning 11 og 12). Laget med scripts/evaluer.py.",
+  "test": {
+    "antall_anlop": 1566,
+    "horisonter": {
+      "24": {
+        "andel_modellutvalg": {
+          "alle_rader": 0.732797,
+          "med_fasit": 0.74498
+        },
+        "antall": {
+          "ovrige": {
+            "f6": 191,
+            "f6_med_fasit": 188,
+            "med_fasit": 996,
+            "med_tilstand": 1011,
+            "med_tilstand_med_fasit": 930,
+            "modellutvalg": 820,
+            "modellutvalg_med_fasit": 742,
+            "rader": 1119
+          },
+          "passasjer": {
+            "med_fasit": 431,
+            "rader": 447
+          }
+        },
+        "ovrige_alle": {
+          "ablasjon_uten_f13_f14": {
+            "andel_30": 0.446787,
+            "mae_min": 135.8163,
+            "median_min": 35.6834,
+            "n": 996,
+            "treff_30": 445,
+            "varsel": {
+              "f1": 0.12931,
+              "forsinket": 194,
+              "n": 996,
+              "presisjon": 0.394737,
+              "recall": 0.07732,
+              "treff": 15,
+              "varsler": 38
+            }
+          },
+          "baseline": {
+            "andel_30": 0.465863,
+            "mae_min": 135.8337,
+            "median_min": 34.3417,
+            "n": 996,
+            "treff_30": 464,
+            "varsel": {
+              "f1": null,
+              "forsinket": 194,
+              "n": 996,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          },
+          "modell": {
+            "andel_30": 0.471888,
+            "mae_min": 131.3268,
+            "median_min": 34.1557,
+            "n": 996,
+            "treff_30": 470,
+            "varsel": {
+              "f1": 0.212389,
+              "forsinket": 194,
+              "n": 996,
+              "presisjon": 0.75,
+              "recall": 0.123711,
+              "treff": 24,
+              "varsler": 32
+            }
+          },
+          "varsle_alle": {
+            "f1": 0.32605,
+            "forsinket": 194,
+            "n": 996,
+            "presisjon": 0.194779,
+            "recall": 1.0,
+            "treff": 194,
+            "varsler": 996
+          }
+        },
+        "ovrige_modellutvalg": {
+          "ablasjon_uten_f13_f14": {
+            "andel_30": 0.537736,
+            "mae_min": 102.4044,
+            "median_min": 26.2425,
+            "n": 742,
+            "treff_30": 399,
+            "varsel": {
+              "f1": 0.258621,
+              "forsinket": 78,
+              "n": 742,
+              "presisjon": 0.394737,
+              "recall": 0.192308,
+              "treff": 15,
+              "varsler": 38
+            }
+          },
+          "baseline": {
+            "andel_30": 0.563342,
+            "mae_min": 102.4276,
+            "median_min": 23.4083,
+            "n": 742,
+            "treff_30": 418,
+            "varsel": {
+              "f1": null,
+              "forsinket": 78,
+              "n": 742,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          },
+          "modell": {
+            "andel_30": 0.571429,
+            "mae_min": 96.378,
+            "median_min": 23.5962,
+            "n": 742,
+            "treff_30": 424,
+            "varsel": {
+              "f1": 0.436364,
+              "forsinket": 78,
+              "n": 742,
+              "presisjon": 0.75,
+              "recall": 0.307692,
+              "treff": 24,
+              "varsler": 32
+            }
+          },
+          "varsle_alle": {
+            "f1": 0.190244,
+            "forsinket": 78,
+            "n": 742,
+            "presisjon": 0.105121,
+            "recall": 1.0,
+            "treff": 78,
+            "varsler": 742
+          }
+        },
+        "passasjer": {
+          "baseline": {
+            "andel_30": 0.795824,
+            "mae_min": 22.513,
+            "median_min": 5.7333,
+            "n": 431,
+            "treff_30": 343,
+            "varsel": {
+              "f1": null,
+              "forsinket": 2,
+              "n": 431,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          }
+        }
+      },
+      "6": {
+        "andel_modellutvalg": {
+          "alle_rader": 0.725648,
+          "med_fasit": 0.735944
+        },
+        "antall": {
+          "ovrige": {
+            "f6": 200,
+            "f6_med_fasit": 195,
+            "med_fasit": 996,
+            "med_tilstand": 1012,
+            "med_tilstand_med_fasit": 928,
+            "modellutvalg": 812,
+            "modellutvalg_med_fasit": 733,
+            "rader": 1119
+          },
+          "passasjer": {
+            "med_fasit": 431,
+            "rader": 447
+          }
+        },
+        "ovrige_alle": {
+          "ablasjon_uten_f13_f14": {
+            "andel_30": 0.517068,
+            "mae_min": 129.9927,
+            "median_min": 27.6773,
+            "n": 996,
+            "treff_30": 515,
+            "varsel": {
+              "f1": 0.098039,
+              "forsinket": 194,
+              "n": 996,
+              "presisjon": 1.0,
+              "recall": 0.051546,
+              "treff": 10,
+              "varsler": 10
+            }
+          },
+          "baseline": {
+            "andel_30": 0.465863,
+            "mae_min": 135.8337,
+            "median_min": 34.3417,
+            "n": 996,
+            "treff_30": 464,
+            "varsel": {
+              "f1": null,
+              "forsinket": 194,
+              "n": 996,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          },
+          "modell": {
+            "andel_30": 0.535141,
+            "mae_min": 124.0043,
+            "median_min": 26.5012,
+            "n": 996,
+            "treff_30": 533,
+            "varsel": {
+              "f1": 0.189655,
+              "forsinket": 194,
+              "n": 996,
+              "presisjon": 0.578947,
+              "recall": 0.113402,
+              "treff": 22,
+              "varsler": 38
+            }
+          },
+          "varsle_alle": {
+            "f1": 0.32605,
+            "forsinket": 194,
+            "n": 996,
+            "presisjon": 0.194779,
+            "recall": 1.0,
+            "treff": 194,
+            "varsler": 996
+          }
+        },
+        "ovrige_modellutvalg": {
+          "ablasjon_uten_f13_f14": {
+            "andel_30": 0.6603,
+            "mae_min": 83.9978,
+            "median_min": 15.7851,
+            "n": 733,
+            "treff_30": 484,
+            "varsel": {
+              "f1": 0.298507,
+              "forsinket": 57,
+              "n": 733,
+              "presisjon": 1.0,
+              "recall": 0.175439,
+              "treff": 10,
+              "varsler": 10
+            }
+          },
+          "baseline": {
+            "andel_30": 0.590723,
+            "mae_min": 91.9345,
+            "median_min": 21.5,
+            "n": 733,
+            "treff_30": 433,
+            "varsel": {
+              "f1": null,
+              "forsinket": 57,
+              "n": 733,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          },
+          "modell": {
+            "andel_30": 0.684857,
+            "mae_min": 75.8608,
+            "median_min": 14.6667,
+            "n": 733,
+            "treff_30": 502,
+            "varsel": {
+              "f1": 0.463158,
+              "forsinket": 57,
+              "n": 733,
+              "presisjon": 0.578947,
+              "recall": 0.385965,
+              "treff": 22,
+              "varsler": 38
+            }
+          },
+          "varsle_alle": {
+            "f1": 0.144304,
+            "forsinket": 57,
+            "n": 733,
+            "presisjon": 0.077763,
+            "recall": 1.0,
+            "treff": 57,
+            "varsler": 733
+          }
+        },
+        "passasjer": {
+          "baseline": {
+            "andel_30": 0.795824,
+            "mae_min": 22.513,
+            "median_min": 5.7333,
+            "n": 431,
+            "treff_30": 343,
+            "varsel": {
+              "f1": null,
+              "forsinket": 2,
+              "n": 431,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          }
+        }
+      }
+    },
+    "kilder": {
+      "anlop_sha256": "8450e8d557b6bc74a8039f24304778f0767b6e52ce20e1d8e72ed9ccc71203ca",
+      "artefakter_sha256": {
+        "modell_24t.joblib": "07c01ba6a4fc43252c8ebb6c945851ab6eec0aa2121a82ba6e3d5533effc93da",
+        "modell_24t_uten_f13_f14.joblib": "12fe9fff711e8063a1578f56f36cc4a05556c048d57d89848989431ea3494c69",
+        "modell_6t.joblib": "2cd0ad2e9866c7529473710fccc52a7f7efaeed844cdf7e7c88bb2b08ae3c1ba",
+        "modell_6t_uten_f13_f14.joblib": "2fa15e8b9a2737edb453915b5fd6bbefecb7960ed78e98701013f4ea9bb79877"
+      },
+      "baseline_sha256": "ac1bdf4aea64c9c1341598b0a212452ab33a41e8da46dd2fba291daa174ab5c1",
+      "commit": "8920acb92cda52c9ed03992cb404def7d03f9fdc",
+      "features_sha256": "351c707ac282bd38a02826cbffbb75d09bceb3ab4f84bec614dbc179b0cb685b"
+    },
+    "split": "test"
+  },
+  "test_bare_baseline": {
+    "antall_anlop": 1566,
+    "horisonter": {
+      "24": {
+        "andel_modellutvalg": {
+          "alle_rader": 0.732797,
+          "med_fasit": 0.74498
+        },
+        "antall": {
+          "ovrige": {
+            "f6": 191,
+            "f6_med_fasit": 188,
+            "med_fasit": 996,
+            "med_tilstand": 1011,
+            "med_tilstand_med_fasit": 930,
+            "modellutvalg": 820,
+            "modellutvalg_med_fasit": 742,
+            "rader": 1119
+          },
+          "passasjer": {
+            "med_fasit": 431,
+            "rader": 447
+          }
+        },
+        "ovrige_alle": {
+          "baseline": {
+            "andel_30": 0.465863,
+            "mae_min": 135.8337,
+            "median_min": 34.3417,
+            "n": 996,
+            "treff_30": 464,
+            "varsel": {
+              "f1": null,
+              "forsinket": 194,
+              "n": 996,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          },
+          "varsle_alle": {
+            "f1": 0.32605,
+            "forsinket": 194,
+            "n": 996,
+            "presisjon": 0.194779,
+            "recall": 1.0,
+            "treff": 194,
+            "varsler": 996
+          }
+        },
+        "ovrige_modellutvalg": {
+          "baseline": {
+            "andel_30": 0.563342,
+            "mae_min": 102.4276,
+            "median_min": 23.4083,
+            "n": 742,
+            "treff_30": 418,
+            "varsel": {
+              "f1": null,
+              "forsinket": 78,
+              "n": 742,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          },
+          "varsle_alle": {
+            "f1": 0.190244,
+            "forsinket": 78,
+            "n": 742,
+            "presisjon": 0.105121,
+            "recall": 1.0,
+            "treff": 78,
+            "varsler": 742
+          }
+        },
+        "passasjer": {
+          "baseline": {
+            "andel_30": 0.795824,
+            "mae_min": 22.513,
+            "median_min": 5.7333,
+            "n": 431,
+            "treff_30": 343,
+            "varsel": {
+              "f1": null,
+              "forsinket": 2,
+              "n": 431,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          }
+        }
+      },
+      "6": {
+        "andel_modellutvalg": {
+          "alle_rader": 0.725648,
+          "med_fasit": 0.735944
+        },
+        "antall": {
+          "ovrige": {
+            "f6": 200,
+            "f6_med_fasit": 195,
+            "med_fasit": 996,
+            "med_tilstand": 1012,
+            "med_tilstand_med_fasit": 928,
+            "modellutvalg": 812,
+            "modellutvalg_med_fasit": 733,
+            "rader": 1119
+          },
+          "passasjer": {
+            "med_fasit": 431,
+            "rader": 447
+          }
+        },
+        "ovrige_alle": {
+          "baseline": {
+            "andel_30": 0.465863,
+            "mae_min": 135.8337,
+            "median_min": 34.3417,
+            "n": 996,
+            "treff_30": 464,
+            "varsel": {
+              "f1": null,
+              "forsinket": 194,
+              "n": 996,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          },
+          "varsle_alle": {
+            "f1": 0.32605,
+            "forsinket": 194,
+            "n": 996,
+            "presisjon": 0.194779,
+            "recall": 1.0,
+            "treff": 194,
+            "varsler": 996
+          }
+        },
+        "ovrige_modellutvalg": {
+          "baseline": {
+            "andel_30": 0.590723,
+            "mae_min": 91.9345,
+            "median_min": 21.5,
+            "n": 733,
+            "treff_30": 433,
+            "varsel": {
+              "f1": null,
+              "forsinket": 57,
+              "n": 733,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          },
+          "varsle_alle": {
+            "f1": 0.144304,
+            "forsinket": 57,
+            "n": 733,
+            "presisjon": 0.077763,
+            "recall": 1.0,
+            "treff": 57,
+            "varsler": 733
+          }
+        },
+        "passasjer": {
+          "baseline": {
+            "andel_30": 0.795824,
+            "mae_min": 22.513,
+            "median_min": 5.7333,
+            "n": 431,
+            "treff_30": 343,
+            "varsel": {
+              "f1": null,
+              "forsinket": 2,
+              "n": 431,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          }
+        }
+      }
+    },
+    "kilder": {
+      "anlop_sha256": "8450e8d557b6bc74a8039f24304778f0767b6e52ce20e1d8e72ed9ccc71203ca",
+      "baseline_sha256": "ac1bdf4aea64c9c1341598b0a212452ab33a41e8da46dd2fba291daa174ab5c1",
+      "features_sha256": "351c707ac282bd38a02826cbffbb75d09bceb3ab4f84bec614dbc179b0cb685b"
+    },
+    "split": "test"
+  },
+  "testkjoringer": 1,
+  "testkjoringer_logg": [
+    {
+      "commit": "8920acb92cda52c9ed03992cb404def7d03f9fdc",
+      "dato": "2026-11-13",
+      "nr": 1
+    }
+  ],
+  "treff_min": 30.0,
+  "validering": {
+    "antall_anlop": 1252,
+    "horisonter": {
+      "24": {
+        "andel_modellutvalg": {
+          "alle_rader": 0.645283,
+          "med_fasit": 0.682853
+        },
+        "antall": {
+          "ovrige": {
+            "f6": 175,
+            "f6_med_fasit": 171,
+            "med_fasit": 659,
+            "med_tilstand": 688,
+            "med_tilstand_med_fasit": 621,
+            "modellutvalg": 513,
+            "modellutvalg_med_fasit": 450,
+            "rader": 795
+          },
+          "passasjer": {
+            "med_fasit": 414,
+            "rader": 457
+          }
+        },
+        "ovrige_alle": {
+          "ablasjon_uten_f13_f14": {
+            "andel_30": 0.433991,
+            "mae_min": 159.3915,
+            "median_min": 44.8416,
+            "n": 659,
+            "treff_30": 286,
+            "varsel": {
+              "f1": 0.138211,
+              "forsinket": 228,
+              "n": 659,
+              "presisjon": 0.944444,
+              "recall": 0.074561,
+              "treff": 17,
+              "varsler": 18
+            }
+          },
+          "baseline": {
+            "andel_30": 0.400607,
+            "mae_min": 165.9967,
+            "median_min": 48.2,
+            "n": 659,
+            "treff_30": 264,
+            "varsel": {
+              "f1": null,
+              "forsinket": 228,
+              "n": 659,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          },
+          "modell": {
+            "andel_30": 0.455235,
+            "mae_min": 156.4573,
+            "median_min": 36.501,
+            "n": 659,
+            "treff_30": 300,
+            "varsel": {
+              "f1": 0.244275,
+              "forsinket": 228,
+              "n": 659,
+              "presisjon": 0.941176,
+              "recall": 0.140351,
+              "treff": 32,
+              "varsler": 34
+            }
+          },
+          "varsle_alle": {
+            "f1": 0.514092,
+            "forsinket": 228,
+            "n": 659,
+            "presisjon": 0.345979,
+            "recall": 1.0,
+            "treff": 228,
+            "varsler": 659
+          }
+        },
+        "ovrige_modellutvalg": {
+          "ablasjon_uten_f13_f14": {
+            "andel_30": 0.566667,
+            "mae_min": 111.2965,
+            "median_min": 23.9136,
+            "n": 450,
+            "treff_30": 255,
+            "varsel": {
+              "f1": 0.373626,
+              "forsinket": 73,
+              "n": 450,
+              "presisjon": 0.944444,
+              "recall": 0.232877,
+              "treff": 17,
+              "varsler": 18
+            }
+          },
+          "baseline": {
+            "andel_30": 0.517778,
+            "mae_min": 120.9694,
+            "median_min": 28.5583,
+            "n": 450,
+            "treff_30": 233,
+            "varsel": {
+              "f1": null,
+              "forsinket": 73,
+              "n": 450,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          },
+          "modell": {
+            "andel_30": 0.597778,
+            "mae_min": 106.9995,
+            "median_min": 25.0787,
+            "n": 450,
+            "treff_30": 269,
+            "varsel": {
+              "f1": 0.598131,
+              "forsinket": 73,
+              "n": 450,
+              "presisjon": 0.941176,
+              "recall": 0.438356,
+              "treff": 32,
+              "varsler": 34
+            }
+          },
+          "varsle_alle": {
+            "f1": 0.279159,
+            "forsinket": 73,
+            "n": 450,
+            "presisjon": 0.162222,
+            "recall": 1.0,
+            "treff": 73,
+            "varsler": 450
+          }
+        },
+        "passasjer": {
+          "baseline": {
+            "andel_30": 0.615942,
+            "mae_min": 28.2899,
+            "median_min": 13.175,
+            "n": 414,
+            "treff_30": 255,
+            "varsel": {
+              "f1": null,
+              "forsinket": 6,
+              "n": 414,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          }
+        }
+      },
+      "6": {
+        "andel_modellutvalg": {
+          "alle_rader": 0.664151,
+          "med_fasit": 0.69651
+        },
+        "antall": {
+          "ovrige": {
+            "f6": 182,
+            "f6_med_fasit": 175,
+            "med_fasit": 659,
+            "med_tilstand": 710,
+            "med_tilstand_med_fasit": 634,
+            "modellutvalg": 528,
+            "modellutvalg_med_fasit": 459,
+            "rader": 795
+          },
+          "passasjer": {
+            "med_fasit": 414,
+            "rader": 457
+          }
+        },
+        "ovrige_alle": {
+          "ablasjon_uten_f13_f14": {
+            "andel_30": 0.477997,
+            "mae_min": 158.2936,
+            "median_min": 32.7142,
+            "n": 659,
+            "treff_30": 315,
+            "varsel": {
+              "f1": 0.051282,
+              "forsinket": 228,
+              "n": 659,
+              "presisjon": 1.0,
+              "recall": 0.026316,
+              "treff": 6,
+              "varsler": 6
+            }
+          },
+          "baseline": {
+            "andel_30": 0.400607,
+            "mae_min": 165.9967,
+            "median_min": 48.2,
+            "n": 659,
+            "treff_30": 264,
+            "varsel": {
+              "f1": null,
+              "forsinket": 228,
+              "n": 659,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          },
+          "modell": {
+            "andel_30": 0.485584,
+            "mae_min": 152.7731,
+            "median_min": 32.0978,
+            "n": 659,
+            "treff_30": 320,
+            "varsel": {
+              "f1": 0.167331,
+              "forsinket": 228,
+              "n": 659,
+              "presisjon": 0.913043,
+              "recall": 0.092105,
+              "treff": 21,
+              "varsler": 23
+            }
+          },
+          "varsle_alle": {
+            "f1": 0.514092,
+            "forsinket": 228,
+            "n": 659,
+            "presisjon": 0.345979,
+            "recall": 1.0,
+            "treff": 228,
+            "varsler": 659
+          }
+        },
+        "ovrige_modellutvalg": {
+          "ablasjon_uten_f13_f14": {
+            "andel_30": 0.679739,
+            "mae_min": 90.0415,
+            "median_min": 15.9704,
+            "n": 459,
+            "treff_30": 312,
+            "varsel": {
+              "f1": 0.218182,
+              "forsinket": 49,
+              "n": 459,
+              "presisjon": 1.0,
+              "recall": 0.122449,
+              "treff": 6,
+              "varsler": 6
+            }
+          },
+          "baseline": {
+            "andel_30": 0.568627,
+            "mae_min": 101.101,
+            "median_min": 24.3,
+            "n": 459,
+            "treff_30": 261,
+            "varsel": {
+              "f1": null,
+              "forsinket": 49,
+              "n": 459,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          },
+          "modell": {
+            "andel_30": 0.690632,
+            "mae_min": 82.1155,
+            "median_min": 15.9439,
+            "n": 459,
+            "treff_30": 317,
+            "varsel": {
+              "f1": 0.583333,
+              "forsinket": 49,
+              "n": 459,
+              "presisjon": 0.913043,
+              "recall": 0.428571,
+              "treff": 21,
+              "varsler": 23
+            }
+          },
+          "varsle_alle": {
+            "f1": 0.192913,
+            "forsinket": 49,
+            "n": 459,
+            "presisjon": 0.106754,
+            "recall": 1.0,
+            "treff": 49,
+            "varsler": 459
+          }
+        },
+        "passasjer": {
+          "baseline": {
+            "andel_30": 0.615942,
+            "mae_min": 28.2899,
+            "median_min": 13.175,
+            "n": 414,
+            "treff_30": 255,
+            "varsel": {
+              "f1": null,
+              "forsinket": 6,
+              "n": 414,
+              "presisjon": null,
+              "recall": null,
+              "treff": 0,
+              "varsler": 0
+            }
+          }
+        }
+      }
+    },
+    "kilder": {
+      "anlop_sha256": "8450e8d557b6bc74a8039f24304778f0767b6e52ce20e1d8e72ed9ccc71203ca",
+      "artefakter_sha256": {
+        "modell_24t.joblib": "07c01ba6a4fc43252c8ebb6c945851ab6eec0aa2121a82ba6e3d5533effc93da",
+        "modell_24t_uten_f13_f14.joblib": "12fe9fff711e8063a1578f56f36cc4a05556c048d57d89848989431ea3494c69",
+        "modell_6t.joblib": "2cd0ad2e9866c7529473710fccc52a7f7efaeed844cdf7e7c88bb2b08ae3c1ba",
+        "modell_6t_uten_f13_f14.joblib": "2fa15e8b9a2737edb453915b5fd6bbefecb7960ed78e98701013f4ea9bb79877"
+      },
+      "baseline_sha256": "ac1bdf4aea64c9c1341598b0a212452ab33a41e8da46dd2fba291daa174ab5c1",
+      "features_sha256": "351c707ac282bd38a02826cbffbb75d09bceb3ab4f84bec614dbc179b0cb685b",
+      "modellvalg_sha256": "b154638488c61d7cb5388772a3ff47740fb1466f3414fe351d5725b3e0240305"
+    },
+    "merknad": "Modell- og ablasjonsarmen på valideringsdelen er den valgte konfigurasjonen (valgt_config i modellvalg.json) fittet på nytt i minnet, bare på treningsdelen, med fartoy_*_modellvalg-historikken, som ved modellvalget i E2-S05. Valideringsradene er altså holdt ute. De committede endelige artefaktene (trent på trening + validering) brukes bare i testkjøringen.",
+    "split": "validering"
+  },
+  "varsel_min": 120.0
+}

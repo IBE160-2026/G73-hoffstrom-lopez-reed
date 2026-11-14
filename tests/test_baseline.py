@@ -102,6 +102,8 @@ def test_naiv_eta_gir_valueerror():
 
 @pytest.mark.parametrize("verdi", [None, "", "  ", "auto", "baseline", " Baseline ", "modell"])
 def test_velg_prediktor_gir_baseline(monkeypatch, verdi):
+    """Uten ``naa`` regnes vinduet som testperiode, og før testkjøringen (``testkjoringer = 0``) gir alle verdiene
+    baselinen (E2-S08, beslutning 1). Modellen i valideringsvinduet og etter testkjøringen: ``tests/test_ruter.py``."""
     if verdi is None:
         monkeypatch.delenv("PREDIKTOR", raising=False)
     else:

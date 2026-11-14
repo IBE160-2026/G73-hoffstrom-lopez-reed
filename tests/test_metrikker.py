@@ -4,7 +4,8 @@ import datetime as dt
 import pytest
 
 from app.data import Anlop
-from app.metrikker import Treffandel, andel_innenfor, dekning
+from app.metrikker import (Feilstatistikk, Treffandel, Varselmetrikker, absolutt_feil, andel_innenfor,
+                           dekning, er_forsinket, varselmetrikker, varsle_alle)
 from app.prediksjon import Prediksjon
 
 UTC = dt.timezone.utc
@@ -20,8 +21,8 @@ def anlop(voyageid, status="ok", faktisk=FAKTISK):
     )
 
 
-def prediksjon(voyageid, predikert):
-    return Prediksjon(voyageid, 6, predikert, None, {"metode": "test", "gruppe": "Øvrige"})
+def prediksjon(voyageid, predikert, varsel=None):
+    return Prediksjon(voyageid, 6, predikert, varsel, {"metode": "test", "gruppe": "Øvrige"})
 
 
 @pytest.mark.parametrize("avvik, treff", [
@@ -95,3 +96,85 @@ def test_dekning_teller_per_status():
     anlopene = [anlop(1), anlop(2), anlop(3, status="empty"), anlop(4, status="not_detected")]
     assert dekning(anlopene) == {"ok": 2, "empty": 1, "not_detected": 1}
     assert dekning([]) == {}
+
+
+# --- E2-S06: støttetall og varsel ------------------------------------------------------
+
+MIN = dt.timedelta(minutes=1)
+
+
+def test_absolutt_feil_mae_og_median():
+    p = [prediksjon(1, FAKTISK + 10 * MIN), prediksjon(2, FAKTISK - 20 * MIN),
+         prediksjon(3, FAKTISK + 90 * MIN), prediksjon(4, FAKTISK)]
+    r = absolutt_feil(p, [anlop(1), anlop(2), anlop(3), anlop(4, status="empty")])
+    assert r == Feilstatistikk(3, 40.0, 20.0)
+
+
+def test_absolutt_feil_uavrundet_og_partall_median():
+    p = [prediksjon(1, FAKTISK + dt.timedelta(seconds=30)), prediksjon(2, FAKTISK + 3 * MIN)]
+    assert absolutt_feil(p, [anlop(1), anlop(2)]) == Feilstatistikk(2, 1.75, 1.75)
+
+
+@pytest.mark.parametrize("prediksjoner, anlopene, tekst", [
+    ([prediksjon(4242, FAKTISK), prediksjon(4242, FAKTISK)], [anlop(4242)], "4242"),
+    ([prediksjon(1, FAKTISK)], [anlop(1), anlop(4242)], "4242"),
+    ([prediksjon(4242, FAKTISK)], [anlop(1)], "4242"),
+    ([], [anlop(1, status="empty")], "ingen anløp med fasit"),
+])
+def test_absolutt_feil_samme_kontrakt_som_andel(prediksjoner, anlopene, tekst):
+    with pytest.raises(ValueError, match=tekst):
+        absolutt_feil(prediksjoner, anlopene)
+
+
+def test_er_forsinket_er_signert_og_streng():
+    """Beslutning 06: bare senere enn kalibrert baseline, og strengt over 120 min."""
+    kal = FAKTISK - 120 * MIN
+    assert not er_forsinket(anlop(1), prediksjon(1, kal))
+    assert er_forsinket(anlop(1), prediksjon(1, kal - dt.timedelta(seconds=1)))
+    assert not er_forsinket(anlop(1), prediksjon(1, FAKTISK + 300 * MIN))  # tidlig er ikke forsinket
+    with pytest.raises(ValueError):
+        er_forsinket(anlop(1), prediksjon(2, kal))
+
+
+def _kalibrert(forsinket):
+    """Kalibrerte prediksjoner: anløp i ``forsinket`` kom 3 t etter baselinen, resten på minuttet."""
+    return [prediksjon(v, FAKTISK - (180 * MIN if v in forsinket else dt.timedelta(0))) for v in range(1, 6)]
+
+
+def test_varselmetrikker_presisjon_recall_f1():
+    anlopene = [anlop(v) for v in range(1, 6)]
+    kal = _kalibrert({1, 2})
+    p = [prediksjon(1, FAKTISK, True), prediksjon(2, FAKTISK, False), prediksjon(3, FAKTISK, True),
+         prediksjon(4, FAKTISK, None), prediksjon(5, FAKTISK, False)]
+    r = varselmetrikker(p, anlopene, kal)
+    assert r == Varselmetrikker(5, 2, 2, 1, 0.5, 0.5, 0.5)
+
+
+def test_baseline_kan_ikke_varsle_gir_none():
+    anlopene = [anlop(v) for v in range(1, 6)]
+    kal = _kalibrert({1})
+    r = varselmetrikker(kal, anlopene, kal)
+    assert (r.presisjon, r.recall, r.f1) == (None, None, None)
+    assert (r.n, r.forsinket, r.varsler) == (5, 1, 0)
+
+
+def test_ingen_varsler_gir_null_presisjon():
+    anlopene = [anlop(v) for v in range(1, 6)]
+    p = [prediksjon(v, FAKTISK, False) for v in range(1, 6)]
+    assert varselmetrikker(p, anlopene, _kalibrert({1})) == Varselmetrikker(5, 1, 0, 0, 0.0, 0.0, 0.0)
+
+
+def test_varsle_alle_er_grunnraten():
+    anlopene = [anlop(v) for v in range(1, 6)] + [anlop(9, status="empty")]
+    kal = _kalibrert({1}) + [prediksjon(9, FAKTISK)]
+    r = varsle_alle(anlopene, kal)
+    assert (r.n, r.forsinket, r.varsler, r.treff) == (5, 1, 5, 1)
+    assert r.presisjon == pytest.approx(0.2) and r.recall == 1.0
+    assert r.f1 == pytest.approx(2 * 0.2 / 1.2)
+
+
+def test_varsel_kalibrert_ma_dekke_samme_anlop():
+    anlopene = [anlop(v) for v in range(1, 6)]
+    p = [prediksjon(v, FAKTISK, False) for v in range(1, 6)]
+    with pytest.raises(ValueError, match="5"):
+        varselmetrikker(p, anlopene, _kalibrert(set())[:4])

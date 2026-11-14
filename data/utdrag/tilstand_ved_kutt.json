@@ -1,0 +1,26 @@
+{
+  "anlop": "data/utdrag/anlop.csv",
+  "anlop_sha256": "8450e8d557b6bc74a8039f24304778f0767b6e52ce20e1d8e72ed9ccc71203ca",
+  "anlop_ugyldig_mmsi": 63,
+  "antall_per_horisont": {
+    "24": {
+      "ikke_hentet": 0,
+      "ingen_posisjon": 1247,
+      "manglende_dag": 10,
+      "ok": 6569
+    },
+    "6": {
+      "ikke_hentet": 0,
+      "ingen_posisjon": 959,
+      "manglende_dag": 1,
+      "ok": 6866
+    }
+  },
+  "kilde": "pipeline/data/ais_kutt_cache",
+  "kilde_antall_filer": 7826,
+  "kilde_antall_tomme_svar": 551,
+  "kilde_sha256": "bac55f435574410ee6b8d199cfb8fb658bd61a5e15c3359606324feac0191dec",
+  "laget": "2026-11-06",
+  "rader": 15652,
+  "utdrag_sha256": "467d9376d3c2414647e1aa6d20900af83c2bcc69c0da71fba58421ac7bd54428"
+}

@@ -115,3 +115,166 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
   - Samme mønster som tidsstempeltesten 22.10: et resultat som ser riktig ut, er ikke et bevis før man har sjekket hva som faktisk kjørte.
   - En klone-test må starte i en mappe som garantert ikke finnes fra før, ellers kan et feilet første steg skjules av en gammel kopi.
   - Les hele utskriften, ikke bare siste linje.
+
+## 2026-11-03 — Røyktesten mot ekte data fant søppelposisjoner som alle fixture-testene hadde godkjent (E2-S03)
+
+- **Hva:** `scripts/lag_tilstand.py` hadde 14 grønne tester og en mutasjonssjekk der alle mutasjonene ble fanget. Tre uavhengige reviewere hadde gått gjennom koden. Likevel ville utdraget ha fått rader med status `ok` og «siste posisjon» 7 000–17 000 km fra Bergen, 6 timer før ankomst. Alle seilasene det gjaldt, hadde MMSI 0, og API-et svarer da med posisjoner fra alle fartøy i verden som sender 0. 63 seilaser i datasettet har MMSI 0.
+- **Hvordan det ble oppdaget:** Claude kjørte scriptet mot den delvise AIS-cachen. Cachen ble bare lest, og resultatet ble skrevet til scratchpad. Formålet var å sjekke kolonnerekkefølgen mot ekte API-punkter, etter at en reviewer hadde påpekt at testene og koden delte samme antakelse om kolonnene. Maksdistansen på 15 000 km falt ut i oppsummeringen, og alle de rare radene hadde MMSI 0.
+- **Resultat:** Felipe bestemte at en posisjon er gyldig bare hvis MMSI-en i punktet er lik seilasens MMSI og har 9 sifre. Regelen har en egen test og er mutasjonssjekket. Etter endringen er maksdistansen 645 km ved 24 t. Funnet står i beslutning 07: 63 av de 935 tomme seilasene, og hva det ikke forklarer. Se `git log --oneline --grep E2-S03`.
+- **Lærdom (råt):**
+  - Fixtures tester det vi tenkte på. Ekte data inneholder det vi ikke tenkte på.
+  - Alle testene og mutasjonene var grønne fordi ingen fixture hadde et punkt som tilhørte et annet fartøy.
+  - En mutasjonssjekk viser at testene fanger feil i koden, ikke at koden dekker dataene.
+  - Kjør på ekte data før commit, og se på ytterpunktene (min og maks), ikke bare medianen.
+
+
+## 2026-11-05 — Stoppregelen tolket et permanent datahull som et API-brudd, og hentingen sto stille i nesten to døgn (E2-S02)
+
+- **Hva:** Fullkjøringen av `pipeline/fetch_ais_kutt.py` stoppet 03.11 kl. 19:42 etter 2 185 av 7 826 seilaser. Utskriften sa «API-et er trolig nede». Det var feil. De ti siste feilene var alle `42P01: relation "ais202407.ais_20240730" does not exist`: dagstabellen for 30.07.2024 mangler hos Kystdatahuset. Seilasene hentes i tidsrekkefølge, så ti seilaser på rad hadde vinduer over den samme dagen, og stoppregelen («10 feil på rad») slo til. Scriptet ble skrevet med Claude i E2-S02 (`85021b9`). Der var 42P01 allerede sett i piloten og merket som varig, så det ikke ble prøvd på nytt, men det talte likevel mot stoppregelen. I tillegg ga hver slik feil opp hele seilasen, selv om bare én av fire dager i vinduet manglet.
+- **Hvordan det ble oppdaget:** Felipe leste kjøreloggen 05.11, nesten to døgn senere. I mellomtiden hadde ingen sett at hentingen sto stille.
+- **Resultat:** `0a85cd4`. 42P01 teller ikke lenger mot stoppregelen. Vinduet deles rundt den manglende dagen, og resten hentes. Prøvekall 05.11 viste at API-et velger dagstabeller etter datoen i forespørselen, og delvinduene forlenges til minst 25 t på grunn av midnattskuttet (funn B). De manglende dagene lagres i cachen og telles i `ais_kutt_dekning.csv`. Alle de 11 seilasene som hadde feilet med 42P01, er hentet på nytt uten feil (9 `ok`, 2 `tom`), og fullkjøringen ble startet igjen 05.11 kl. 14:17.
+- **Lærdom (råt):**
+  - Sjekk loggen til en lang kjøring samme kveld eller neste morgen. En stoppet jobb er stille.
+  - En stoppregel må skille mellom «API-et svarer ikke» og «API-et svarer at dataene ikke finnes». Det siste er et permanent datahull, ikke et brudd.
+  - Feilen var kjent fra piloten, men ble bare håndtert ett sted (ikke nytt forsøk) og ikke tenkt gjennom for stoppregelen. Et kjent spesialtilfelle må følges gjennom alle steder det påvirker.
+  - Meldingen «API-et er trolig nede» var en påstand scriptet ikke hadde grunnlag for, og den kunne fått oss til å vente i stedet for å se etter.
+
+## 2026-11-06 — To tester var lovet i specene, men fantes ikke (E2-S03, E2-S04)
+
+- **Hva:** E2-S03-specen lovet `test_committet_tilstand`, og E2-S04-specen lovet `test_committet_features`. Begge sto som oppgaver «etter hentingen», og E2-S03 sto til og med som `status: 'done'`. Ingen av testene fantes. Hadde utdragene blitt committet uten dem, ville ingenting ha låst radantall, sha256 eller grensen på 10 MB. Det er andre gang mønsteret oppstår: tidsstempeltesten 22.10 var «spesifisert, men aldri implementert» på samme måte.
+- **Hvordan det ble oppdaget:** etter `lag_tilstand.py` søkte Claude etter `def test_committet` i `tests/` og fikk ingen treff. Deretter leste Claude oppgavene i specene, der testene sto beskrevet.
+- **Resultat:** begge testene ble skrevet og committet sammen med utdragene: `910028c` og `47a2c02`.
+- **Lærdom (råt):**
+  - At en test står i specen, er ikke det samme som at den finnes. Sjekk at en lovet test finnes med `pytest --collect-only` eller grep i `tests/`, ikke ved å lese specen.
+  - En spec kan stå som `done` med åpne oppgaver. Sjekk avkrysningene, ikke statusfeltet.
+  - Lærdommen fra 22.10 ble ikke overført av seg selv. Den må inn som et fast steg når en story settes til ✅.
+
+## 2026-11-06 — Review-funnet hadde feil forventet antall kall (E2-S02)
+
+- **Hva:** I review av `0a85cd4` (05.11) sto det at en test der samme dag alltid kommer igjen, skulle gi «exactly 3 calls». Det riktige er 2: hele vinduet, og så første delvindu, som gir samme dag igjen, og da gir koden opp. Claude skrev i tillegg selv feil forventning, 3 kall, i `test_maks_delinger`. Det riktige var 5, fordi delvinduene til venstre lykkes mellom delingene.
+- **Hvordan det ble oppdaget:** testene feilet mot koden, og kallene ble talt opp for hånd.
+- **Resultat:** `8694a48`. Begge forventningene er rettet, med en kommentar som viser kallene. Avviket fra review-funnet er ført i E2-S02-specen.
+- **Lærdom (råt):** Et tall i et review-funn er en påstand, ikke en fasit. Samme mønster som «Feil forventning i en review-rettelse» 22.10. Spor kallene for hånd før forventningen skrives inn.
+
+## 2026-11-09 — Fem testhull i treningsskriptet, og commits med feil forfatter (E2-S05)
+
+- **Hva:** implementeringssubagenten skrev `scripts/tren.py` med 8 grønne tester og meldte at mutasjonssjekken var gjort. Verification Gap-revieweren fant likevel fem endringer som ingen test fanget:
+  - fortegnet på målet snudd, og offseten lagt til i stedet for trukket fra
+  - valgregelen sortert på MAE først
+  - historikken i modellvalget slått av, som ville lekket valideringshistorikk inn i valget
+  - treffgrensen endret fra 30 til 60 min
+  - ingen sjekk av de committede artefaktene
+
+  I tillegg committet subagenten med Theodor som forfatter, selv om økta skulle ha Felipe.
+- **Hvordan det ble oppdaget:** reviewen etter implementeringen, med tre lag i parallell, og Claude som kontrollerte `git log` før push.
+- **Resultat:** `36eebb0` har fem nye tester, og artefaktene har fått offset og sha for baseline. Forfatteren ble skrevet om med rebase før push.
+- **Lærdom (råt):**
+  - Testene sjekket at to kjøringer ga samme resultat og at strukturen stemte, men ikke at verdiene var riktige. Et program kan være feil på samme måte to ganger.
+  - Mutasjonssjekken dekket filtrene implementeringen selv tenkte på, ikke målet eller metrikken.
+  - En subagent vet ikke om forfatterregelen i økta. Sjekk `git log --format='%an'` før push.
+
+
+## 2026-11-09 — Specen ba om valideringstall målt på treningsrader, og varselstreken ble senket uten at det sto noe sted (E2-S06)
+
+- **Hva:**
+  - Claude skrev E2-S06-specen slik at valideringsdelen skulle evalueres med de endelige artefaktene. De er trent på trening + validering, så modelltallene ble målt på rader modellen hadde sett. Modellutvalget viste 78,2 % og 72,4 % innenfor ±30 min, mot 69,1 % og 59,8 % holdt ut.
+  - Da bestått/ikke bestått ble flyttet til modellutvalget, fulgte varselstreken med. «Varsle alle» gikk fra F1 0,33 til 0,14 og 0,19, fordi 137 av 194 forsinkede anløp (6 t) ligger utenfor utvalget. Det skjedde etter at valideringstallene var kjent, men verken specen eller endringsloggene sa det.
+  - Subagenten committet igjen med Theodor som forfatter.
+- **Hvordan det ble oppdaget:** implementeringssubagenten meldte at tallene var målt på treningsrader og la inn en merknad. Blind Hunter fant varselstreken. Claude sjekket `git log` før review.
+- **Resultat:** Felipe valgte at validering skal bruke en modell trent på nytt i minnet, bare på treningsdelen (beslutning 4), og at briefen og PRD skal si rett ut at varselstreken er lavere, hvorfor, og når den ble flyttet (beslutning 5). Rettet i `d36964c` og `78a6a02`. Tallene på validering er nå lik `modellvalg.json`, og en test låser det.
+- **Lærdom (råt):**
+  - Et artefakt som er trent på hele treningsperioden, kan ikke brukes til å evaluere en del av den. Det burde vært sett da specen ble skrevet, fordi `tren.py` sier rett ut at den endelige modellen trenes på begge delene.
+  - Når et kriterium flyttes, flytter alle delene av det seg. Sjekk hver strek for seg, både for ±30 og for varsel, og skriv det ned hvis en strek blir lettere.
+  - Forfatterfeilen skjedde for andre gang. Det må stå i oppdraget til subagenten, ikke bare sjekkes etterpå.
+
+## 2026-11-10 — Implementeringsagenten kjørte modellen på testradene utover den avtalte grensen (E2-S07)
+
+- **Hva:** Felipe hadde satt grensen at modellens treff i testperioden er låst til E2-S10, og at kontrakttestene kan kjøre på testanløp bare for å sjekke kontrakt og lekkasje. For å vise at artefaktene var uendret etter at kodingen (`matrise`) ble flyttet til `app/prediksjon/koding.py`, trente implementeringssubagenten likevel modellen på nytt i en midlertidig mappe og kjørte de rå modellene på alle radene i `features.csv`, også testradene. Den sammenlignet bare prediksjon mot prediksjon med de committede artefaktene og leste ikke fasiten, så modellens treff i testperioden er fortsatt ukjent.
+- **Hvordan det ble oppdaget:** subagenten skrev det selv i rapporten. Claude (orkestratoren) løftet det til Felipe før commit, og ba om en vurdering.
+- **Resultat:** ingen endring i repoet (`git diff --quiet data/`). Felipe bestemte at agenten fremover skal stoppe og spørre før den bruker testrader til noe annet enn det som er avtalt. Regelen står nå i E2-S08, E2-S09 og E2-S10 i `docs/epics.md`, så specene arver den. Se `git log --oneline --grep E2-S07`.
+- **Lærdom (råt):**
+  - Grensen ble tolket av agenten i stedet for å bli spurt om. «Bare prediksjon mot prediksjon» virket uskyldig, men det var ikke blant de tillatte formålene.
+  - En sjekk av at artefaktene er uendret kan gjøres på valideringsrader. Det var ingen grunn til å bruke testradene.
+  - Grenser for testdata må stå som en uttømmende liste over hva som er lov, ikke som et forbud mot én ting (scoring).
+
+## 2026-11-10 — Fjerde grensefeil: varselterskelen `> 120` mot `>= 121` overlevde første mutasjonssjekk (E2-S07)
+
+- **Hva:** `ModellPrediktor` varsler når predikert avvik er `> 120` min (beslutning 06). En mutant som gjorde det om til `>= 121` overlevde alle testene. Ingen valideringsrad har predikert avvik mellom 120 og 121 min, så ekvivalenstesten mot `evaluer.py` kunne ikke skille dem. Tre reviewere hadde gått gjennom koden før uten å melde det.
+- **Hvordan det ble oppdaget:** Claudes mutasjonssjekk etter reviewen. 16 av 17 mutanter ble fanget, og denne overlevde.
+- **Resultat:** ny test `test_varselterskelen_er_strengt_over_120` med en stub-modell som predikerer nøyaktig 120,0 og 120,001 min. Ny kjøring med en ekstra mutant (`>=`): 18 av 18 fanget.
+- **Lærdom (råt):**
+  - Samlet så langt: tidsstempeltesten (22.10), hullgrensen (`<=` mot `<`), og nå varselterskelen. Mutasjonssjekken har fanget alle, ikke reviewerne.
+  - En test mot ekte data dekker bare grenser som dataene tilfeldigvis treffer. En terskel trenger en egen test med verdier rett på og rett over grensen.
+
+## 2026-11-10 — Rettelsen brøt to andre tester, og låsen tålte bare én feiltype (E2-S08)
+
+- **Hva:**
+  - Implementeringssubagenten la inn en autouse-fixture som skriver en låst `metrikker.json` i hver tests `tmp_path`. To tester i `tests/test_fetch_ais_kutt.py`, som forventer en tom `tmp_path`, feilet da. Subagenten var bedt om å kjøre bare testene for filene den endret, og meldte grønt.
+  - Låsen for testperioden skal regne vinduet som låst når testperiodens start ikke kan leses. Testen kastet bare `ValueError`, så en mutant som bare fanget `ValueError` overlevde. Et uleselig utdrag (`OSError`) ville gitt HTTP 500.
+- **Hvordan det ble oppdaget:** Claude kjørte hele suiten etter rettelsene (2 feilet), og deretter mutasjonssjekken (1 av 24 overlevde utenom en ekvivalent mutant). Ingen av de tre reviewerne hadde meldt noen av delene.
+- **Resultat:** fixturen bruker nå en egen mappe fra `tmp_path_factory`, og testen er parametrisert med `OSError`. 24 av 25 mutanter fanges; den siste er ekvivalent. En autouse-vakt i `tests/conftest.py` stopper `ModellPrediktor.prediker` før den kjører på en testrad. Da låsen ble slått av i mutasjonssjekken, var det vakten som stoppet modellen, så den kjørte aldri på testanløpene i standardvinduet. Se `git log --oneline --grep E2-S08`.
+- **Lærdom (råt):**
+  - «Kjør bare testene for filene du endrer» er riktig for subagenten, men da må orkestratoren alltid kjøre hele suiten etterpå. En autouse-fixture virker på alle testene, ikke bare på filene som ble endret.
+  - Igjen fanget mutasjonssjekken det reviewerne ikke så: en reservevei er bare testet for den feiltypen testen tilfeldigvis kaster.
+  - Mutasjonssjekk av en lås for testdata kan selv bryte låsen. Vakten måtte på plass før lås-mutantene ble kjørt.
+  - **Tillegg 11.11:** Felipe ba om en test som viser at låsen alene holder. Lås-mutantene var fanget av vakten, ikke av låsetestene. `test_laasen_alene_stopper_modellen_paa_testvindu` bytter vakten ut med en spion som aldri kjører modellen, og fanger alle tre lås-mutantene uten vakten. Den ekvivalente mutanten (teksten om at modellen er trent på anløpene, uten `kan_varsle`) skyldtes at malen sjekket samme regel en gang til. Regelen står nå bare i `app/__init__.py`, og mutanten fanges. Etter dette: 25 av 25. Låsen og vakten er to sperrer som skal holde hver for seg (beslutning 6 i specen).
+
+## 2026-11-11 — Panelet: tre testhull bare mutasjonssjekken fant, og en «fanget» mutant som ikke var fanget (E2-S09)
+
+- **Hva:**
+  - Etter review og rettelser hadde panelet 409 grønne tester. Mutasjonssjekken fant likevel tre endringer ingen test fanget:
+    - F1-dommen med `>=` i stedet for `>`: ingen fixture hadde lik F1 for modellen og «varsle alle».
+    - Modell-F1 lik `null` ga «Tall mangler» i stedet for «kan ikke sammenlignes».
+    - Setningen om at bestått/ikke bestått først avgjøres på testperioden.
+  - I første kjøring rapporterte Claudes mutasjonsskript at `>=`-mutanten var fanget. Ved ny kjøring overlevde den tre ganger på rad, og «fanget» i første kjøring kunne ikke gjenskapes.
+- **Hvordan det ble oppdaget:** Claudes mutasjonssjekk etter reviewen, og at den ble kjørt på nytt etter at testene var endret.
+- **Resultat:** tre nye tester (`test_lik_f1_er_ikke_bestatt`, `test_f1_differanse_uten_modell_f1_kan_ikke_sammenlignes`, `test_panel_foer_testkjoringen_sier_at_dommen_venter`). 25 av 26 fanget; den siste er ekvivalent (`d == 0` returnerer «likt» før ordet velges). Se `git log --oneline --grep E2-S09`.
+- **Lærdom (råt):**
+  - Femte grensefeil i samme mønster: `>` mot `>=`, og igjen fant ikke reviewerne den.
+  - Et resultat fra én mutasjonskjøring er ikke et bevis. Mutantene må kjøres på nytt når testene endres, og en overraskende endring (fanget → overlever) må gjenskapes før den regnes med.
+
+## 2026-11-13 — Implementeringsagenten committet og pushet før reviewen (E2-S10)
+
+- **Hva:** I E2-S10 skulle koden før testkjøringen gjennom review før den ble committet og pushet. Steget for implementering i BMAD-flyten sier «No push». Implementeringssubagenten committet og pushet likevel `fbaa7ca` (git-vakt, commit-hash i loggen og resultattabellene) med en gang den var ferdig. Den meldte commiten som klar til sjekklista før testkjøringen, uten at review var kjørt.
+- **Hvordan det ble oppdaget:** Claude (orkestratoren) så det i `git log` da diffen skulle leses før reviewen. Commiten lå allerede på `origin/epic/e2-modell`.
+- **Konsekvens og retting:**
+  - Reviewen ble kjørt på den pushede koden. Tre reviewere fant 16 funn, og 7 ble rettet. To av dem gjaldt selve kjøringen:
+    - den vellykkede `--test`-veien var ikke testet, så commiten kunne mangle i `test.kilder` uten at noen test feilet, og feilen ville først vist seg etter den ene kjøringen
+    - vakta kunne omgås med egne filstier
+  - Rettelsene kom i `8920acb`. Testkjøringen ble bygd på den commiten, ikke på `fbaa7ca`.
+  - Ingenting ble kjørt mot testperioden før rettingen. Hadde Felipe sagt ja til sjekklista subagenten foreslo, ville kjøringen bygd på kode uten review.
+- **Lærdom (råt):**
+  - Et forbud i en stegfil når ikke fram til en subagent som bare får specen. Specen sa «commit A» før kjøringen, og subagenten fulgte specen.
+  - Orkestratoren må si «ikke commit, ikke push» i oppdraget når review gjenstår. Det ble gjort ved rettelsene.
+  - Sjekk `git log` mot origin før du stoler på en subagents rapport om at noe er «klart».
+
+## 2026-11-13 — Claude stoppet og spurte før testradene ble lest på nytt for McNemar (E2-S10)
+
+- **Hva:** Etter testkjøringen ba Felipe om McNemars test for ±30 min ved begge horisontene. Testen trenger antall uenige par per anløp, og `metrikker.json` har bare summene. Testradene måtte altså leses på nytt med modellen. Specen sa at alt etter kjøringen bare skulle lese `test`-blokken.
+- **Hva Claude gjorde:** Claude stoppet og spurte før noe ble kjørt, i tråd med regelen om testrader fra E2-S07 («testrader brukes bare til det som står eksplisitt … ellers stopp og spør»). Det la fram to valg: et eget gjennomløp med låste artefakter og kode, eller ingen McNemar-test.
+  - Claude rettet også en feil i forespørselen: F13–F14 er ikke A1, men en egen begrensning ved siden av A1 (beslutning 11).
+- **Hva Felipe avgjorde:** eget gjennomløp (1A), fordi alt var låst: samme artefakter, samme kode, ingen endringer, og dommen endres ikke. Bare krysstabellen og p-verdien lagres, ikke prediksjoner per anløp. Notatet sier at testradene ble lest på nytt, og hvorfor.
+- **Resultat:** `scripts/mcnemar.py` sjekker først at de låste filene er uendret siden kjøringens commit (`8920acb`), og etterpå at summene blir nøyaktig de samme som i `metrikker.json`. Det ble kjørt én gang.
+  - Første versjon avrundet p-verdien til 6 desimaler, og 6 t ble lagret som `0.0`. Det ble rettet ved å regne p på nytt fra den lagrede krysstabellen, uten nytt gjennomløp av testradene.
+- **Lærdom (råt):**
+  - Regelen fra E2-S07 virket: en ny bruk av testrader ble oppdaget før den skjedde, ikke etterpå.
+  - «Avrund til 6 desimaler» er feil for p-verdier. Bruk gjeldende siffer.
+
+## 2026-11-13 — To grener besto UU6 hver for seg, men feilet sammen etter sammenslåingen (E2-S10, PR #6)
+
+- **Hva:**
+  - PR #6 (E1-S18, E1-S19) innførte visningsnavnet «Spesialfartøy» og målte ingen horisontal rulling ved 360, 640, 1280 og 1920 px, med baselinen i standardvinduet.
+  - `epic/e2-modell` målte heller ingen rulling. Der viste standardvinduet modellen med varseltekstene etter testkjøringen, men med «Auxiliary» som gruppenavn.
+  - Etter sammenslåingen av `main` inn i `epic/e2-modell` (`c6f1dbd`) var siden 649 px bred ved 640 px, altså 200 % zoom (UU6). Årsaken var «Spesialfartøy» i Gruppe-kolonnen, ett ord som ikke kan brytes, sammen med de lengre tekstene i varselkolonnen med modellen.
+- **Hvordan det ble oppdaget:** skjermbildeskriptet (`scripts/ta_skjermbilder.py`) stoppet med «Horisontal rulling på 640 px». Ingen test fanget det, fordi `pytest` ikke måler layout, og hele suiten var grønn (457) etter sammenslåingen. Claude isolerte årsaken med fire målinger:
+  - før sammenslåingen: 640
+  - etter, med baselinen: 640
+  - etter, med modellen: 649
+  - etter, med modellen og uten «Spesialfartøy»: 640
+- **Resultat:**
+  - En myk bindestrek i visningsnavnet (`"Spesial­fartøy"`), godkjent av Felipe.
+  - En test om at navnet uten myke bindestreker er «Spesialfartøy» og ikke har synlige bindestreker.
+  - Målingen gir 640 px. Skjermbildene er tatt på nytt med modellen.
+- **Lærdom (råt):**
+  - En UU-sjekk som er bestått på hver gren, gjelder ikke for sammenslåingen. Mål på nytt etter hver merge.
+  - Skjermbildeskriptet er den eneste layoutsjekken vi har, og det kjøres ikke av `pytest`. Det bør kjøres etter hver merge som endrer maler, CSS eller tekst på skjermen.

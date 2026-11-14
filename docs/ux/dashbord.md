@@ -2,7 +2,7 @@
 title: "UX-skisser: dashbordet"
 status: aktiv
 created: 2026-10-16
-updated: 2026-10-27
+updated: 2026-11-11
 bygger_på: docs/prd.md
 ---
 
@@ -77,8 +77,15 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 - **Horisont:** ≤ 6 t / 6–24 t fra «nå» til **rapportert ETA**, ikke predikert ankomst (PRD FR2). Det er her 6 t- og 24 t-modellene fra E2 kobles inn. Med horisonten regnet fra rapportert ETA ligger kuttpunktet aldri etter «nå». Skissen ble rettet etter PRD-valideringen: første versjon regnet fra predikert ankomst, og det ville latt 6 t-modellen bruke AIS-data fra etter «nå».
 - **Skjemaet sendes bare med «Oppdater».** Det sendes ikke automatisk når et felt endres (WCAG 3.2.2), så tastatur- og skjermleserbrukere ikke får siden lastet på nytt midt i utfyllingen.
 - **Tilstand i URL:** `/?naa=2025-10-08T08:00&vis=alle&fasit=0&sorter=predikert`. Den kan bokmerkes, deles og testes med Flask-klienten.
-- **Prediktor-stripa** (FR3) er alltid synlig, også når modellen er i bruk. Da står det «MODELL v1 (6 t / 24 t)», og varselteksten forsvinner.
-- **Treffsikkerhet** er for hele testperioden, ikke for vinduet. Den viser naiv og kalibrert baseline for begge grupper og hvor mange anløp som har fasit. «Hva betyr tallene?» lenker til `/metode`. 15 anløp er for få til et meningsfullt tall, og panelet sier det med «hele testperioden».
+- **Prediktor-stripa** (FR3) er alltid synlig, også når modellen er i bruk. Da står det «MODELL v1 — 6 t / 24 t, …», og baselineteksten byttes ut med dekningsgrensen: modellen varsler bare for anløp utenfor havneområdet med AIS-posisjon ved kuttet, under halvparten av de forsinkede anløpene (57 av 194 ved 6 t og 78 av 194 ved 24 t). Fotnoten forklarer ▲ VARSEL og «–» (E2-S08).
+- **Treffsikkerhet med naiv ETA** (E1-S12, KAN, ikke bygd): panelet i skissen over. Det er for hele testperioden, ikke for vinduet. Den viser naiv og kalibrert baseline for begge grupper og hvor mange anløp som har fasit. «Hva betyr tallene?» lenker til `/metode`. 15 anløp er for få til et meningsfullt tall, og panelet sier det med «hele testperioden».
+- **Treffsikkerhet: modell mot baseline** (E2-S09, FR10) er bygd slik. Panelet står i høyre kolonne fra 1024 px og under lista ellers. Det leser bare `data/modell/metrikker.json` og regner ingenting fra utdrag eller prediksjoner:
+  - **Periode øverst, alltid synlig.** Før testkjøringen (`testkjoringer` = 0) vises `validering`-blokken med etiketten «Validering (mai–sep 2025) — utviklingstall, ikke testresultat». Etter testkjøringen i E2-S10 vises `test`-blokken med «Testperioden (14.09.2025–15.03.2026)». Under står antall anløp i perioden, og per horisont hvor mange Øvrige og Passasjer som har fasit.
+  - **Per horisont (6 t, 24 t)** står modellandelen av Øvrige med fasit (f.eks. «69,7 % (459/659)») og tre tabeller: Øvrige i modellutvalget (Modell, Baseline, «Varsle alle»), all Øvrige-trafikk med delegering (samme kolonner) og Passasjer (bare Baseline). Radene er «Innenfor ±30 min», «Presisjon», «Recall» og «F1».
+  - **Tallformat:** andeler som prosent med én desimal og antallet i parentes (`69,1 % (317/459)`), F1 med to desimaler. Et tall brytes aldri over to linjer; blir tabellen for bred, ruller den inne i panelet. `null` vises som «kan ikke varsle», aldri som 0. Uten varsler står det «ingen varsler (0/0)», og uten forsinkede «ingen forsinkede (0/0)». «Varsle alle» har ingen ±30 min-verdi («–», lest som «ikke aktuelt»).
+  - **Lik tydelighet.** Modell og baseline har samme stil. Under tabellene for Øvrige står to linjer: «Modell − baseline, innenfor ±30 min: +12,2 pp (modellen bedre)» og «Modell − «varsle alle», varsel-F1: −0,35 (modellen dårligere)». Ordet følger den uavrundede differansen: «likt» bare når verdiene er like, og «<0,1 pp» når differansen runder til 0. Er en F1 `null`, står «kan ikke sammenlignes». Ingen søyler i v1, så ingen farge bærer mening. Fotnoten forklarer «pp» (prosentpoeng) og «Modellandel».
+  - **Dom bare etter testkjøringen.** Da står bestått/ikke bestått per horisont på modellutvalget: ±30 min over baseline, og varsel-F1 over «varsle alle» (vist med tre desimaler). De to avgjøres hver for seg. Er F1 for «varsle alle» `null`, står «kan ikke avgjøres». Valideringsvisningen har ingen dom.
+  - **Vises ikke:** ablasjonen uten F13–F14 (resultatnotatet, E2-S10) og `test_bare_baseline`, så perioder aldri blandes i én tabell. Naiv ETA og lenka «Hva betyr tallene?» er ikke med (E1-S12, KAN).
 
 ### A2 — Samme skjerm med fasit på
 
@@ -202,8 +209,16 @@ Ugyldig tidspunkt:                         Tomt vindu:
 | `naa` utenfor testperioden eller ugyldig | Skjemaet med feilmelding over (UU5). Lista viser standardtidspunktet, ikke ingenting. |
 | 0 anløp i vinduet | Boksen over |
 | Anløp uten fasit | Årsaken står i fasitkolonnene: `empty` → «Fasit mangler (ingen AIS-data hentet)», `not_detected` → «… (ankomst ikke funnet i AIS-sporet)», `avkortet_av_neste_seilas` → «… (avkortet av neste seilas, trolig stort avvik)» |
-| [E2] Ingen AIS-tilstand ved kuttpunktet | Raden viser baselinens prediksjon, og varselkolonnen viser «– (ingen AIS-tilstand)» |
+| [E2] Modellen varsler (`forventet_forsinket = True`) | Varselkolonnen viser ▲ + «VARSEL» i `--varsel`, ikon og tekst, aldri bare farge (UU3) |
+| [E2] Modellen varsler ikke (`False`) | «–», og skjermleseren får «Ingen varsel» |
+| [E2] Raden er delegert til baselinen (`None`) | Raden viser baselinens prediksjon, og varselkolonnen viser grunnen: Passasjer «– (rutegående: bare baseline)», ingen tilstand «– (ingen AIS-tilstand)», i sonen ved kuttet (F6) «– (allerede i havneområdet)», ingen featurerad «– (ingen modelldata ved kuttet)» |
 | [E2] Modellartefakt mangler | Faller tilbake til baseline, og prediktor-stripa sier «Modell ikke funnet — viser kalibrert baseline» |
+| [E2] Vindu i testperioden før testkjøringen (E2-S10) | `PREDIKTOR=modell` viser baselinen, og prediktor-stripa sier «Modellen vises ikke for testperioden før den ene testkjøringen (E2-S10) — viser kalibrert baseline». Et vindu er testperiode når slutten (nå + 24 t) er etter testperiodens første rapporterte ETA. `auto` viser baselinen uten merknad til testkjøringen er gjort. |
+| [E2] Modellen vist for et vindu før testperioden (trening eller validering) | Prediktor-stripa sier i tillegg «Modellen er trent på disse anløpene, så treffene ser bedre ut enn de er. Ekte resultater finnes først for testperioden.» Etter testkjøringen vises ikke teksten for vinduer i testperioden. |
+| [E2] Panelet før testkjøringen | Valideringstallene med etiketten «Validering (mai–sep 2025) — utviklingstall, ikke testresultat», differansen modell − baseline og ingen dom |
+| [E2] Panelet etter testkjøringen | Testperiodens tall med bestått/ikke bestått per horisont på modellutvalget. Et tap vises like tydelig som en seier. |
+| [E2] Baselinen kan ikke varsle (`null`) | «kan ikke varsle» i Presisjon, Recall og F1, aldri 0 |
+| [E2] `metrikker.json` mangler, kan ikke leses, mangler blokken eller har tall som ikke er endelige (NaN, uendelig) | Panelet viser periodeetiketten og «Tall mangler». Siden svarer fortsatt 200, og lista er urørt. |
 | [E3] Ekte modus feiler (nett/nøkkel) | Viser testmodus-tekst med merket «Testmodus (ekte kall feilet)» |
 
 ## 6. Sjekkliste for universell utforming
@@ -212,12 +227,12 @@ Kjøres manuelt i E1-S15 og på nytt før levering (fase 6). Resultat og dato f�
 
 | Krav | Sjekk | Test | Resultat |
 |---|---|---|---|
-| UU1 | Alle tokenpar under ≥ 4,5:1 (tekst) / 3:1 (kant) | `tests/test_kontrast.py` (E1-S06: tokens = tabellen i §7, kontrast regnet på nytt) | ✅ 03.11.2026: testen er grønn. Mørkt tema, `--varsel` og `--ok` er ikke bygd (KAN, E1-S13). |
+| UU1 | Alle tokenpar under ≥ 4,5:1 (tekst) / 3:1 (kant) | `tests/test_kontrast.py` (E1-S06: tokens = tabellen i §7, kontrast regnet på nytt) | ✅ 03.11.2026: testen er grønn. `--varsel` (lyst tema) er tatt i bruk i E2-S08, og testen er grønn 10.11.2026. Mørkt tema og `--ok` er ikke bygd (KAN, E1-S13). |
 | UU2 | Hele skjerm A og C kan brukes med bare tastatur. Fokus synlig hele veien. Hopp-lenke virker. | manuell | ✅ 03.11.2026, skjerm A (Thomas Kvile-Reed, full bredde). Hopp-lenken får fokus først, og fokus er tydelig synlig. Enter på hopp-lenken går til `#anlopslista`, som får fokusramme. Hopp-lenken er foreløpig det eneste interaktive elementet. **Funn:** hopp-lenken dekker overskriften når den har fokus (E1-S18). **Rettet og sjekket 05.11.2026 (E1-S18, Theodor Gimming, mot `fix/e1-s18-s19`):** hopp-lenken dekker ikke lenger «ANKOMSTPREDIKSJON» eller «Anløp» når den har fokus, fokusrammen er tydelig, og Enter går til `#anlopslista`. G O SARS vises som «Spesialfartøy» (E1-S19). Skjerm C: ikke bygd (KAN, E1-S11). |
-| UU3 | Skjermbilde i gråtoner: FORSINKET og varsel kan fortsatt skilles ut | manuell | Ikke bygd (KAN, E1-S13). Skjermen viser verken FORSINKET eller varselfarge ennå, bare «–» i varselkolonnen. |
+| UU3 | Skjermbilde i gråtoner: FORSINKET og varsel kan fortsatt skilles ut | manuell | Delvis bygd. Varselet (E2-S08) er ▲ + «VARSEL» i `--varsel`, så det kan skilles ut uten farge (`tests/test_ruter.py::test_varselkolonnen_med_modellen`). Gråtoneskjermbildet er ikke tatt. FORSINKET er ikke bygd (E1-S09). |
 | UU4 | Alle `<img>`/`<svg>` med mening har tekstalternativ | `tests/test_uu_struktur.py` (E1-S06: `img alt`, `svg` med tittel, pyntetegn `aria-hidden`), `tests/test_ruter.py::test_varselkolonnen_forklarer_seg` | ✅ 03.11.2026: testene er grønne. |
 | UU5 | Alle `<input>` har `<label for>`, og feil har `aria-describedby` | `tests/test_uu_struktur.py` | Ikke bygd (KAN, E1-S07). Skjermen har ingen skjemafelt ennå. Testen er grønn. |
-| UU6 | 360 px, 1280 px, 1920 px og 200 % zoom uten horisontal rulling | manuell + skjermbilder (`docs/ux/skjermbilder/`, E1-S06) | ✅ 03.11.2026 (Thomas Kvile-Reed). Full bredde og smal skjerm: under 640 px vises anløpene som kort, uten sidelengs rulling. 200 % zoom er lesbart uten sidelengs rulling. Breddene i piksler er ikke oppgitt, så 1920 px er ikke bekreftet. |
+| UU6 | 360 px, 1280 px, 1920 px og 200 % zoom uten horisontal rulling | manuell + skjermbilder (`docs/ux/skjermbilder/`, E1-S06) | ✅ 03.11.2026 (Thomas Kvile-Reed). Full bredde og smal skjerm: under 640 px vises anløpene som kort, uten sidelengs rulling. 200 % zoom er lesbart uten sidelengs rulling. Breddene i piksler er ikke oppgitt i den manuelle sjekken, så den bekreftet ikke 1920 px. **13.11.2026 (E2-S10):** etter sammenslåingen med PR #6 rullet siden ved 640 px (649 px) med modellen i standardvinduet. Rettet med en myk bindestrek i «Spesialfartøy». Skriptet måler nå 360, 640, 1280 og 1920 px uten rulling. 200 % zoom er dekket av målingen ved 640 px, ikke av en ny manuell zoomsjekk. |
 | UU7 | `lang="nb"`, én `h1`, `th scope`, `aria-sort`, landemerker | `tests/test_uu_struktur.py` (E1-S06: `lang`, én `h1` uten hoppede nivåer, `th scope`, `header`/`main`, hopp-lenke, `data-label`, viewport, tastaturnåbare elementer; `aria-sort` kommer med E1-S10) | ✅ 03.11.2026: testen er grønn. `aria-sort` er ikke bygd (KAN, E1-S10). |
 | — | Skjermleser (VoiceOver): les opp én rad og detaljsiden | manuell | ✅ 03.11.2026, én rad (Thomas Kvile-Reed, VoiceOver i mobilvisning). Overskriften leses opp, kortene leses med kolonnenavn, og varselkolonnen er forståelig. Detaljsiden: ikke bygd (KAN, E1-S11). |
 
@@ -267,3 +282,7 @@ Fokusring: 3 px `--aksent` med 2 px avstand, aldri `outline: none` uten erstatni
   - Mobil: tabellen har eksplisitte ARIA-roller (`table`, `rowgroup`, `row`, `columnheader`, `cell`). `display: block` under 640 px fjerner tabellsemantikken i Safari/VoiceOver, og uten rollene ville ikke skjermlesere sett en tabell, slik §3 lover.
   - Mobil: toppen viser også «Ankomstprediksjon · Bergen Havn» og «Avspilling av historiske data», som på desktop.
 - **2026-11-05** — E1-S18 og E1-S19: skissen i A2 viser «Spesialfartøy» i stedet for «Auxiliary», og Gruppe-kolonnen er 3 tegn bredere. UU2 har fått en merknad om rettelsen av hopp-lenken, som Theodor Gimming sjekket manuelt samme dag. Skjermbildene er tatt på nytt, og ingen bredde gir horisontal rulling (360, 640, 1280 og 1920 px).
+- **2026-11-10** — E2-S08, modellen i dashbordet: §5 har fått tilstandene for varsel, ingen varsel, delegerte rader (fire tekster, «havneområdet» i stedet for det interne «ankomstsone») og låst testperiode. Skjerm A-merknaden om prediktor-stripa beskriver modellteksten. `--varsel` er tatt i bruk i stilarket. Kolonnen Prediksjonsfeil er flyttet til E1-S09 (fasit på), etter E2-S10.
+- **2026-11-11** — E2-S09, panelet «modell mot baseline»: §2 beskriver panelet slik det er bygd (høyre kolonne fra 1024 px, under lista på mobil), og §5 har fått tilstandene før og etter testkjøringen, «kan ikke varsle» og «Tall mangler». Avvik fra skissen: panelet viser modell og kalibrert baseline fra `metrikker.json` per horisont og radsett, ikke naiv ETA, og har ingen søyler og ingen lenke til `/metode` ennå (E1-S12).
+- **2026-11-11** — E2-S09: raden for all Øvrige-trafikk i panelet sier «Systemet», ikke «Modell», med en kort forklaring om turene inne i havneområdet (Felipe).
+- **2026-11-13** — E2-S10: skjermbildene er tatt på nytt med modellen i standardvinduet («Modell v1», ▲ VARSEL og testblokken med dom i panelet), etter sammenslåingen med PR #6. UU6 har fått en merknad om rullingen ved 640 px og rettingen. «Spesialfartøy» kan nå brytes som «Spesial-fartøy» der kolonnen er smal.

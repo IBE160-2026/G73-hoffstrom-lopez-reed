@@ -9,11 +9,20 @@
     <strong class="prediktor-navn">{{ prediktor_navn }}</strong>
     {%- if prediktor_beskrivelse %} — {{ prediktor_beskrivelse }}{% endif %}
   </p>
+  {% if prediktor_merknad %}
+  <p class="prediktor-merknad">{{ prediktor_merknad }}</p>
+  {% endif %}
   {% if not kan_varsle %}
-  <p class="prediktor-varsel">Baselinen kan ikke varsle avvik. Varselkolonnen fylles når modellen kommer.</p>
+  <p class="prediktor-varsel">Baselinen kan ikke varsle avvik. Varselkolonnen fylles når modellen kommer. Modellen vil bare kunne varsle for anløp utenfor havneområdet med AIS-posisjon ved kuttet. I testperioden var det under halvparten av de forsinkede anløpene.</p>
+  {% else %}
+  <p class="prediktor-varsel">Modellen varsler bare for anløp utenfor havneområdet med AIS-posisjon ved kuttet. I testperioden var det under halvparten av de forsinkede anløpene: 57 av 194 ved 6 t og 78 av 194 ved 24 t. Andre anløp får kalibrert baseline og varsles ikke.</p>
+  {% endif %}
+  {% if i_utvalg %}
+  <p class="prediktor-merknad">Modellen er trent på disse anløpene, så treffene ser bedre ut enn de er. Ekte resultater finnes først for testperioden.</p>
   {% endif %}
 </section>
 
+<div class="hovedrad">
 <section id="anlopslista" class="liste" aria-labelledby="vindu-tittel" tabindex="-1">
   <h2 id="vindu-tittel">{{ rader|length }} anløp · {{ vindu_fra }} – {{ vindu_til }} (norsk tid)</h2>
   {% if rader %}
@@ -38,14 +47,86 @@
         <td role="cell" data-label="Predikert" class="tid">{{ r.predikert }}
           {%- if r.for_naa %}<span aria-hidden="true">*</span> <span class="hjelpetekst">predikert før valgt tidspunkt</span>{% endif %}</td>
         <td role="cell" data-label="Horisont">{{ r.horisont }}</td>
-        <td role="cell" data-label="Varsel" class="varsel"><span aria-hidden="true">–</span><span class="visually-hidden">Ingen varsel: baselinen varsler ikke avvik</span></td>
+        <td role="cell" data-label="Varsel" class="varsel">
+          {%- if not kan_varsle %}<span aria-hidden="true">–</span><span class="visually-hidden">Ingen varsel: baselinen varsler ikke avvik</span>
+          {%- elif r.varsel %}<span class="varsel-merke"><span aria-hidden="true">▲</span> VARSEL</span>
+          {%- elif r.varsel is sameas false %}<span aria-hidden="true">–</span><span class="visually-hidden">Ingen varsel</span>
+          {%- elif r.varsel_grunn %}<span aria-hidden="true">–</span> <span class="visually-hidden">Ingen varsel:</span> <span class="varsel-grunn">({{ r.varsel_grunn }})</span>
+          {%- else %}<span aria-hidden="true">–</span> <span class="visually-hidden">Ingen varsel:</span> <span class="varsel-grunn">(ingen modellvurdering)</span>
+          {%- endif %}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  {% if kan_varsle %}
+  <p class="fotnote">▲ VARSEL: modellen venter at anløpet kommer mer enn 2 timer senere enn kalibrert baseline. «–» i Varsel: ingen varsel, med grunnen i parentes når anløpet bare har baseline. Alle tider er norsk tid, avrundet til nærmeste minutt.</p>
+  {% else %}
   <p class="fotnote">«–» i Varsel: baselinen varsler ikke. Alle tider er norsk tid, avrundet til nærmeste minutt.</p>
+  {% endif %}
   {% else %}
   <p class="tomt">Ingen anløp med rapportert ETA i dette vinduet. Prøv et annet tidspunkt.</p>
   {% endif %}
 </section>
+
+<section id="treffsikkerhet" class="panel" aria-labelledby="panel-tittel">
+  <h2 id="panel-tittel">Treffsikkerhet: modell mot baseline</h2>
+  <p class="panel-periode">{{ panel.periode }}</p>
+  {% if panel.mangler %}
+  <p class="panel-mangler">Tall mangler. Modell- og baselinetallene for denne perioden kunne ikke leses.</p>
+  {% else %}
+  <p class="panel-hjelp">{{ panel.antall_anlop }} anløp i perioden. Tallene gjelder hele perioden, ikke vinduet i lista.{% if not panel.etter_test %} Bestått eller ikke bestått avgjøres først på testperioden (E2-S10).{% endif %}</p>
+  {% for h in panel.horisonter %}
+  <h3>Horisont {{ h.etikett }}</h3>
+  <p class="panel-hjelp">Med fasit: Øvrige {{ h.fasit_ovrige }}, Passasjer {{ h.fasit_passasjer }}.
+    Modellandel av Øvrige med fasit: {{ h.modellandel }}. Resten får baseline.</p>
+  {% for g in h.grupper %}
+  <div class="panel-gruppe">
+  <div class="panel-rull">
+  <table class="panel-tabell">
+    <caption>{{ g.navn }}</caption>
+    <thead>
+      <tr>
+        <th scope="col">Mål</th>
+        {%- for k in g.kolonner %}
+        <th scope="col">{{ k }}</th>
+        {%- endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in g.rader %}
+      <tr>
+        <th scope="row">{{ r.maal }}</th>
+        {%- for c in r.celler %}
+        <td class="verdi" data-arm="{{ c.arm }}">
+          {%- if c.ikke_aktuelt %}<span aria-hidden="true">–</span><span class="visually-hidden">ikke aktuelt</span>
+          {%- else %}{% for d in c.deler %}{% if not loop.first %} {% endif %}{% if d.tall %}<span class="tall">{{ d.tekst }}</span>{% else %}{{ d.tekst }}{% endif %}{% endfor %}{% endif %}</td>
+        {%- endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if g.differanse %}
+  <p class="panel-differanse">{{ g.arm }} − baseline, innenfor ±30 min: {{ g.differanse }}</p>
+  {% endif %}
+  {% if g.differanse_f1 %}
+  <p class="panel-differanse">{{ g.arm }} − «varsle alle», varsel-F1: {{ g.differanse_f1 }}</p>
+  {% endif %}
+  {% if g.forklaring %}
+  <p class="panel-hjelp">{{ g.forklaring }}</p>
+  {% endif %}
+  {% if g.dom %}
+  <ul class="panel-dom">
+    {% for d in g.dom %}
+    <li>{{ d }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  </div>
+  {% endfor %}
+  {% endfor %}
+  <p class="fotnote">Modellandel: andelen av Øvrige-anløpene med fasit som modellen selv vurderer (modellutvalget). Resten får kalibrert baseline. pp: prosentpoeng, forskjellen mellom to prosenter. Presisjon: treff/varsler. Recall: treff/forsinkede. «Varsle alle» er referansen som varsler hvert anløp. «Kan ikke varsle»: baselinen varsler aldri.</p>
+  {% endif %}
+</section>
+</div>
 {% endblock %}
