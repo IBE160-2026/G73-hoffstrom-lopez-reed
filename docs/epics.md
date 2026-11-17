@@ -49,6 +49,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | E0-S17 | Omfangssjekk for E1: MÅ/KAN, UU-minimum lagt inn i MÅ, avhengigheter koblet om | `docs/epics.md` | ✅ |
 | E0-S18 | To avgjørelser før E1-S06: vinduet velger på rapportert ETA i v1, og tider vises avrundet til nærmeste minutt (bare visning) | `docs/epics.md`, `docs/ux/dashbord.md` | ✅ |
 | E0-S19 | Resten av faglærers tilbakemelding på PRD-en (punkt 4.2–4.5 og kapittel 5): FR11a og FR11b (feil og kostnad i AI-laget, mock-fallback), UJ-1 og UJ-2, testbare kriterier for FR5–FR7 og FR14, ordliste, FR9 før FR9a, A1 inline | `docs/prd.md` | ✅ |
+| E0-S20 | Refleksjonsrapporten opprettet etter kursmalen, med utkast til svar på faglærers to refleksjonsspørsmål. De individuelle refleksjonene står tomme. | `docs/refleksjon/rapport.md` | ◐ utkast |
 
 ---
 
@@ -479,3 +480,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-13** — E2-S10 er ferdig: én testkjøring av `scripts/evaluer.py --test` på commit `8920acb`. Commiten står i `metrikker.json`. Notatet `docs/resultater.md` er skrevet, cellene i briefen er fylt inn, og `auto` viser modellen. Etter kjøringen godkjente Felipe McNemars test som tilleggsanalyse (`scripts/mcnemar.py`, testradene ble lest på nytt). Etter sammenslåingen med `main` (PR #6) ga «Spesialfartøy» og varseltekstene horisontal rulling ved 640 px (UU6). Det er rettet med en myk bindestrek i visningsnavnet (Felipe).
 - **2026-11-17** — E2-S11 er ferdig: suksesskriteriet for ±30 min har fått margin og konfidensintervall etter faglærers tilbakemelding på PRD-en. Ny dom: bestått ved 6 t, ikke påvist ved 24 t. Panelet avgjør dommen fra `konfidensintervall.json` (Theodor Gimming).
 - **2026-11-17** — E0-S19 er ferdig: resten av faglærers tilbakemelding på PRD-en er ført inn. FR11a og FR11b har sporbarhet til E3-S03 (Theodor Gimming).
+- **2026-11-17** — E0-S20 er lagt til: refleksjonsrapporten er opprettet med utkast til svar på faglærers to refleksjonsspørsmål. Den står som ◐ til gruppa har skrevet ferdig (Theodor Gimming).
