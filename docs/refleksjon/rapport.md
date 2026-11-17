@@ -81,6 +81,7 @@
   - KI-en foreslo ikke selv en margin da kriteriet ble skrevet. Det var faglærer som så hullet.
   - Det som fungerte, var regelen om å stoppe og spørre før testrader brukes til noe nytt (fra E2-S07). Den gjorde at McNemar-gjennomløpet ble godkjent og dokumentert før det skjedde, ikke forklart etterpå.
   - Ved første lagring ble p-verdien ved 6 t avrundet til `0.0`, fordi skriptet runder til 6 desimaler. Den ble regnet på nytt fra krysstabellen.
+  - Regelen ble først skrevet strengere enn faglærer foreslo: nedre grense i intervallet måtte også ligge over marginen. Den ble implementert slik (`7f69bd2`), og rettet samme dag til faglærers regel, der punktestimatet avgjør og intervallet bare rapporteres. Dommen ble ikke endret, fordi begge reglene gir samme svar (nedre grense 6,0 og −2,0).
 - **Lærdom (utkast):** Margin og rapporteringsregel må låses *før* den første testkjøringen. «Høyere» er ikke et kriterium når forskjellen kan være seks anløp. Når et kriterium likevel endres etterpå, må begge dommene stå, sammen med hvilken vei endringen gikk.
 
 ### 3.2 Samarbeidsutfordringer

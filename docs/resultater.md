@@ -4,7 +4,7 @@ Testperioden (14.09.2025–15.03.2026) er kjørt én gang, 13.11.2026, med `scri
 
 ## Oppsummering
 
-- **Dommen: bestått ved 6 t, ikke påvist ved 24 t.** Etter det gjeldende kriteriet lykkes modellen på ±30 min bare hvis den er minst 3 prosentpoeng bedre enn baselinen på modellutvalget, og nedre grense i 95 % konfidensintervall (bootstrap over anløp) ligger over marginen. Ved 6 t er differansen +9,4 prosentpoeng [6,0; 12,8]. Ved 24 t er den +0,8 [−2,0; 3,6], under marginen og med et intervall som går under null. Varsel-F1 er over «varsle alle» ved begge horisontene. Se [Ny dom: margin og konfidensintervall](#ny-dom-margin-og-konfidensintervall-e2-s11).
+- **Dommen: bestått ved 6 t, ikke påvist ved 24 t.** Etter det gjeldende kriteriet, faglærers regel, lykkes modellen på ±30 min hvis forskjellen fra baselinen på modellutvalget er minst 3,0 prosentpoeng. Forskjellen rapporteres med 95 % konfidensintervall (bootstrap over anløp), men intervallet er ikke en del av dommen. Ved 6 t er forskjellen +9,4 prosentpoeng [6,0; 12,8]. Ved 24 t er den +0,8 [−2,0; 3,6], altså under marginen. Varsel-F1 er over «varsle alle» ved begge horisontene. Se [Ny dom: margin og konfidensintervall](#ny-dom-margin-og-konfidensintervall-e2-s11).
 - **Den opprinnelige dommen var bestått ved begge horisonter**, etter kriteriene som var låst før testkjøringen: høyere andel innenfor ±30 min enn baselinen og høyere varsel-F1 enn «varsle alle» på modellutvalget. Kriteriet ble endret *etter* testkjøringen (13.11.2026), etter faglærers tilbakemelding på PRD-en ([`docs/tilbakemelding-prd.md`](tilbakemelding-prd.md) punkt 4.1, commit `2fbc096`). Tilbakemeldingen lå på `main` fra 12.11, dagen før kjøringen, men ble lest etter den. Endringen gikk i strengere retning: den gjorde resultatet svakere (24 t gikk fra bestått til ikke påvist), ikke sterkere. Modellen, konfigurasjonen, valgreglene og testkjøringen er ikke endret, og testradene er ikke lest på nytt for intervallene.
 - **6 t er en klar forbedring.** Modellen treffer innenfor ±30 min på 68,5 % mot baselinens 59,1 % (+9,4 prosentpoeng, 502 mot 433 av 733 anløp). McNemars test (tilleggsanalyse, se under) gir p ≈ 2,3 · 10⁻⁷.
 - **24 t er formelt bestått, men forskjellen er seks anløp, og den hviler på data vi ikke kan verifisere.** Modellen treffer 57,1 % mot baselinens 56,3 % (424 mot 418 av 742). McNemars test gir p = 0,64, så forskjellen kan ikke skilles fra tilfeldig variasjon.
@@ -14,7 +14,7 @@ Testperioden (14.09.2025–15.03.2026) er kjørt én gang, 13.11.2026, med `scri
 
 ## Kriteriene
 
-**Gjeldende kriterium (fra 17.11.2026, E2-S11):** modellen lykkes på ±30 min hvis andelen er minst 3 prosentpoeng høyere enn baselinen på modellutvalget for den aktuelle horisonten, og nedre grense i 95 % konfidensintervall (bootstrap over anløp) ligger over marginen. Ellers rapporteres resultatet som «ikke påvist». Varsel-F1 har ingen margin (faglærer foreslo ingen) og avgjøres som før. Intervallet for F1 rapporteres likevel.
+**Gjeldende kriterium (fra 17.11.2026, E2-S11, ordrett etter faglærers tilbakemelding punkt 4.1):** modellen lykkes på ±30 min hvis andelen er minst 3 prosentpoeng høyere enn baselinen på modellutvalget for den aktuelle horisonten. Det er punktestimatet som teller, og nøyaktig 3,0 er bestått. Forskjellen rapporteres med 95 % konfidensintervall (bootstrap over anløp), men intervallet avgjør ikke dommen. Er forskjellen mindre enn 3,0, rapporteres resultatet som «ikke påvist». Første versjon av E2-S11 (`7f69bd2`) krevde i tillegg at nedre grense i intervallet lå over marginen, som er strengere enn faglærer skrev. Det ble rettet samme dag, og dommen ble ikke endret. Varsel-F1 har ingen margin (faglærer foreslo ingen) og avgjøres som før. Intervallet for F1 rapporteres likevel.
 
 **Opprinnelig kriterium (låst før testkjøringen, gjaldt dommen 13.11):** står ordrett i specen. Kort: bestått/ikke bestått avgjøres på **modellutvalget** (Øvrige-anløp med AIS-posisjon ved kuttet som er utenfor ankomstsonen, beslutning 12). Modellen må ha (1) høyere andel innenfor ±30 min enn den kalibrerte baselinen på de samme anløpene, og (2) høyere varsel-F1 enn regelen «varsle alle» på de samme anløpene. Dommen sammenligner de uavrundede verdiene.
 
@@ -46,20 +46,21 @@ Tabellen har samme form som i briefen. Raden for modellutvalget avgjør dommen. 
 
 ## Ny dom: margin og konfidensintervall (E2-S11)
 
-**Regnet 17.11.2026, etter testkjøringen og etter faglærers tilbakemelding. Kriteriet er strengere enn det opprinnelige.** Intervallene er regnet med `scripts/konfidensintervall.py` fra filer som allerede er committet: krysstabellen i `data/modell/mcnemar.json` for ±30 min, og varseltallene (treff, varsler, forsinkede, n) i `test`-blokken i `data/modell/metrikker.json` for F1. Testradene er ikke lest. Å trekke anløp med tilbakelegging er det samme som å trekke fra de fire feltene i krysstabellen, fordi differansen bare avhenger av hvilket felt hvert anløp ligger i. Det samme gjelder forvekslingsmatrisen for varsel, og F1 for «varsle alle» avhenger bare av antall forsinkede i det samme trekket, så også F1-differansen er parret. Bootstrap har fast seed (160) og 10 000 trekk, og intervallet er persentilintervallet. Det analytiske intervallet er differansen ± 1,96 · SE for parrede andeler. Resultatet ligger i `data/modell/konfidensintervall.json`.
+**Regnet 17.11.2026, etter testkjøringen og etter faglærers tilbakemelding. Kriteriet er strengere enn det opprinnelige.** Dommen avgjøres av forskjellen (punktestimatet) mot marginen. Intervallene står ved siden av. Intervallene er regnet med `scripts/konfidensintervall.py` fra filer som allerede er committet: krysstabellen i `data/modell/mcnemar.json` for ±30 min, og varseltallene (treff, varsler, forsinkede, n) i `test`-blokken i `data/modell/metrikker.json` for F1. Testradene er ikke lest. Å trekke anløp med tilbakelegging er det samme som å trekke fra de fire feltene i krysstabellen, fordi differansen bare avhenger av hvilket felt hvert anløp ligger i. Det samme gjelder forvekslingsmatrisen for varsel, og F1 for «varsle alle» avhenger bare av antall forsinkede i det samme trekket, så også F1-differansen er parret. Bootstrap har fast seed (160) og 10 000 trekk, og intervallet er persentilintervallet. Det analytiske intervallet er differansen ± 1,96 · SE for parrede andeler. Resultatet ligger i `data/modell/konfidensintervall.json`.
 
-| Horisont | n | Modell − baseline, ±30 min (pp) | 95 % KI, bootstrap | 95 % KI, analytisk | Krav | Dom |
+| Horisont | n | Modell − baseline, ±30 min (pp) | 95 % KI, bootstrap | 95 % KI, analytisk | Krav (punktestimat) | Dom |
 |---|---|---|---|---|---|---|
-| 6 t | 733 | +9,4 | [6,0; 12,8] | [5,9; 12,9] | nedre grense > 3,0 pp | bestått |
-| 24 t | 742 | +0,8 | [−2,0; 3,6] | [−2,0; 3,6] | nedre grense > 3,0 pp | ikke påvist |
+| 6 t | 733 | +9,4 | [6,0; 12,8] | [5,9; 12,9] | minst +3,0 pp | bestått |
+| 24 t | 742 | +0,8 | [−2,0; 3,6] | [−2,0; 3,6] | minst +3,0 pp | ikke påvist |
 
 | Horisont | F1 modell | F1 «varsle alle» | Differanse | 95 % KI, bootstrap |
 |---|---|---|---|---|
 | 6 t | 0,463 | 0,144 | +0,319 | [0,19; 0,44] |
 | 24 t | 0,436 | 0,190 | +0,246 | [0,12; 0,36] |
 
-- **6 t:** nedre grense (6,0 pp) ligger godt over marginen. Bootstrap og analytisk intervall er nesten like.
-- **24 t:** differansen er under marginen, og intervallet inneholder null. Vi kan ikke si at modellen er bedre enn baselinen ved 24 t. Det stemmer med McNemar (p = 0,64) og med ablasjonen uten F13–F14, som ville vært dårligere enn baselinen.
+- **6 t:** forskjellen (+9,4 pp) er godt over marginen. Bootstrap og analytisk intervall er nesten like.
+- **24 t:** forskjellen (+0,8 pp) er under marginen, og intervallet inneholder null. Vi kan ikke si at modellen er bedre enn baselinen ved 24 t. Det stemmer med McNemar (p = 0,64) og med ablasjonen uten F13–F14, som ville vært dårligere enn baselinen.
+- En strengere variant, der nedre grense i intervallet må være minst 3 pp, gir samme dom (6 t: nedre grense 6,0; 24 t: −2,0). Dommen er dermed ikke avhengig av hvilken av de to reglene som brukes.
 - **Varsel-F1:** intervallet for differansen ligger over null ved begge horisonter. Det endrer ikke at systemet for all Øvrige-trafikk har lavere F1 enn «varsle alle» (se begrensningene).
 - To horisonter er vurdert hver for seg, uten korreksjon for flere sammenligninger.
 
@@ -148,7 +149,7 @@ Anløp i testperioden: 1566.
 - **A1: rapportert ETA ved `t_H`.** Datasettet har én rapportert ETA per seilas og ingen tidsstempel for når den ble meldt. Er den oppdatert etter `t_H`, har både modell og baseline fått mer informasjon enn vakta hadde. Det kan ikke verifiseres i dataene (beslutning 11).
 - **Avgangshavn og ETD (F13–F14).** De kommer fra en seilaspost som kan være satt sammen i etterkant, og kan ikke verifiseres. ETD brukes bare når den ligger før `t_H`. Bestått ved 24 t avhenger av disse feltene (ablasjonen over).
 - **Én testperiode, én kjøring.** Konfidensintervallene for den parvise forskjellen (E2-S11) og McNemar-testen er regnet etter kjøringen, fra krysstabellen, uten korreksjon for to horisonter. Det er ikke regnet intervaller for hver andel for seg.
-- **Kriteriet ble endret etter kjøringen.** Margin og konfidensintervall kom fra faglærers tilbakemelding og ble tatt inn etter at tallene var kjent. Endringen gjorde dommen strengere, ikke mildere, og den opprinnelige dommen står i notatet.
+- **Kriteriet ble endret etter kjøringen.** Marginen på 3 prosentpoeng og rapporteringen med konfidensintervall kom fra faglærers tilbakemelding og ble tatt inn etter at tallene var kjent. Endringen gjorde dommen strengere, ikke mildere, og den opprinnelige dommen står i notatet.
 
 ## Ble målene nådd?
 

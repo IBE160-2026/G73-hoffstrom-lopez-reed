@@ -1,8 +1,8 @@
 """95 % konfidensintervall for parret differanse, modell mot baseline på modellutvalget (E2-S11).
 
 Etter faglærers tilbakemelding på PRD-en (``docs/tilbakemelding-prd.md`` punkt 4.1, 12.11.2026) lykkes modellen på
-±30 min bare hvis nedre grense i 95 % KI for differansen ligger over marginen på 3 prosentpoeng.
-Ellers er resultatet «ikke påvist». Kriteriet ble endret etter testkjøringen, i strengere retning.
+±30 min hvis forskjellen modell − baseline (punktestimatet) er minst 3,0 prosentpoeng. Forskjellen rapporteres med
+95 % KI, men intervallet avgjør ikke dommen. Er forskjellen under 3,0, er resultatet «ikke påvist». Kriteriet ble endret etter testkjøringen, i strengere retning.
 
 Skriptet leser **ikke** testradene. Alt regnes fra filer som allerede er committet:
 
@@ -39,8 +39,8 @@ TREKK = 10_000
 MARGIN = 0.03
 Z = 1.959963984540054
 MERKNAD = ("Regnet 17.11.2026, etter testkjøringen, fra krysstabellen i mcnemar.json og varseltallene i "
-           "metrikker.json. Testradene er ikke lest. Kriteriet (margin 3 prosentpoeng og nedre KI-grense over "
-           "marginen) kom fra faglærers tilbakemelding på PRD-en (12.11.2026) og ble tatt inn etter testkjøringen, "
+           "metrikker.json. Testradene er ikke lest. Kriteriet (forskjellen minst 3 prosentpoeng; KI rapporteres, men "
+           "avgjør ikke dommen) kom fra faglærers tilbakemelding på PRD-en (12.11.2026) og ble tatt inn etter testkjøringen, "
            "i strengere retning.")
 
 
@@ -92,10 +92,11 @@ def _r(x):
     return round(float(x), 6)
 
 
-def dom_treff(nedre):
-    """Bestått bare hvis nedre grense i 95 % KI er over marginen (strengt). Ellers «ikke påvist». Samme regel som
-    ``app.panel.dom_treff``, som avgjør dommen på skjermen fra den lagrede fila."""
-    return "bestått" if nedre > MARGIN else "ikke påvist"
+def dom_treff(differanse_antall, n, margin=MARGIN):
+    """Bestått hvis forskjellen (punktestimatet) er minst marginen: (bare modell − bare baseline) / n ≥ margin.
+    Ellers «ikke påvist». Intervallet er ikke med. Sammenligningen gjøres på heltall (100 · differanse ≥ 3 · n), så
+    nøyaktig 3,0 pp alltid gir bestått, uansett avrunding i flyttall. Samme regel som ``app.panel.dom_treff``."""
+    return "bestått" if 100 * differanse_antall >= round(margin * 100, 6) * n else "ikke påvist"
 
 
 def beregn(mcnemar, metrikker):
@@ -112,7 +113,7 @@ def beregn(mcnemar, metrikker):
         ut[h] = {
             "n": tab["n"],
             "treff_30": {"differanse": _r(d), "bootstrap": [_r(b_lo), _r(b_hi)], "analytisk": [_r(a_lo), _r(a_hi)],
-                         "dom": dom_treff(b_lo)},
+                         "dom": dom_treff(tab["bare_modell"] - tab["bare_baseline"], tab["n"])},
             "varsel_f1": {"modell": f1_m, "varsle_alle": f1_a, "differanse": _r(f1_m - f1_a),
                           "bootstrap": [_r(f_lo), _r(f_hi)], "forveksling": fv},
         }
@@ -132,12 +133,12 @@ def _iv(par, pp=True):
 
 def tabell(data):
     """Markdown-tabellene til resultatnotatet: ny dom på ±30 min, og F1-intervallet."""
-    linjer = ["| Horisont | n | Modell − baseline, ±30 min (pp) | 95 % KI, bootstrap | 95 % KI, analytisk | Krav | Dom |",
+    linjer = ["| Horisont | n | Modell − baseline, ±30 min (pp) | 95 % KI, bootstrap | 95 % KI, analytisk | Krav (punktestimat) | Dom |",
               "|---|---|---|---|---|---|---|"]
     for h in HORISONTER:
         v = data["horisonter"][h]["treff_30"]
         linjer.append(f"| {h} t | {data['horisonter'][h]['n']} | {_pp(v['differanse'])} | {_iv(v['bootstrap'])} | "
-                      f"{_iv(v['analytisk'])} | nedre grense > 3,0 pp | {v['dom']} |")
+                      f"{_iv(v['analytisk'])} | minst +3,0 pp | {v['dom']} |")
     linjer += ["", "| Horisont | F1 modell | F1 «varsle alle» | Differanse | 95 % KI, bootstrap |", "|---|---|---|---|---|"]
     for h in HORISONTER:
         v = data["horisonter"][h]["varsel_f1"]

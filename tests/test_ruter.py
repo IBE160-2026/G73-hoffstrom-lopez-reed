@@ -743,10 +743,10 @@ def test_panel_etter_testkjoringen(monkeypatch, tmp_path):
     dommer = [_ren(li.tekst()).replace("\u00a0", " ") for li in panel.finn_alle("li")]
     assert dommer == [  # én dom per horisont, på modellutvalget; 24 t har egne tall
         "Innenfor ±30 min: bestått (modell 75,0 %, baseline 62,5 %; +12,5 pp, 95 % KI [9,5; 15,5], "
-        "krav: nedre grense over 3,0 pp)",
+        "krav: minst +3,0 pp)",
         "Varsel-F1: bestått (modell 0,600, «varsle alle» 0,261)",
         "Innenfor ±30 min: bestått (modell 80,0 %, baseline 65,0 %; +15,0 pp, 95 % KI [12,0; 18,0], "
-        "krav: nedre grense over 3,0 pp)",
+        "krav: minst +3,0 pp)",
         "Varsel-F1: bestått (modell 0,582, «varsle alle» 0,298)",
     ]
 

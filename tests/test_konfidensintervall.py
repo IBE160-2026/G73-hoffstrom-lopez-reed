@@ -27,21 +27,27 @@ def test_ingen_uenige_gir_null_bredde():
     assert np.all(ki.bootstrap_treff(tab, np.random.default_rng(0), trekk=200) == 0)
 
 
-@pytest.mark.parametrize("nedre, dom", [
-    (0.060, "bestått"),
-    (0.030001, "bestått"),       # rett over marginen
-    (0.030, "ikke påvist"),      # lik marginen er ikke over (gruppa, 17.11.2026)
-    (0.029999, "ikke påvist"),   # rett under
-    (-0.020, "ikke påvist"),
-])
-def test_dom_grenser(nedre, dom):
-    assert ki.dom_treff(nedre) == dom
+GRENSER = [
+    (69, 733, "bestått"),        # 6 t i testperioden: +9,4 pp
+    (6, 742, "ikke påvist"),     # 24 t: +0,8 pp
+    (3, 100, "bestått"),         # nøyaktig 3,0 pp er bestått (minst, ikke over)
+    (12, 400, "bestått"),        # nøyaktig 3,0 pp
+    (11, 400, "ikke påvist"),    # 2,75 pp
+    (22, 733, "bestått"),        # 3,001 pp
+    (21, 733, "ikke påvist"),    # 2,86 pp
+    (-30, 100, "ikke påvist"),
+]
+
+
+@pytest.mark.parametrize("diff, n, dom", GRENSER)
+def test_dom_grenser(diff, n, dom):
+    assert ki.dom_treff(diff, n) == dom
 
 
 def test_samme_regel_som_panelet():
     from app.panel import dom_treff
-    for nedre in (0.060, 0.030001, 0.030, 0.029999, -0.020):
-        assert ki.dom_treff(nedre) == dom_treff(nedre, ki.MARGIN)
+    for diff, n, _ in GRENSER:
+        assert ki.dom_treff(diff, n) == dom_treff(diff, n, ki.MARGIN)
 
 
 def test_f1_varsle_alle():
@@ -81,16 +87,16 @@ def test_tabellen_i_notatet():
         REPO_ROT / "docs" / "resultater.md").read_text(encoding="utf-8")
 
 
-def test_dommen_bruker_bootstrap_ikke_analytisk(monkeypatch):
-    """Dommen i fila følger nedre grense fra bootstrap. Et analytisk intervall langt over marginen endrer den ikke
-    (mutasjonssjekken, E2-S11)."""
+def test_intervallet_avgjor_ikke_dommen(monkeypatch):
+    """Dommen i fila følger punktestimatet (faglærers regel). Intervaller langt over marginen gjør ikke en
+    forskjell på 0 til «bestått» (E2-S11)."""
     monkeypatch.setattr(ki, "analytisk_ki", lambda b, c, n: (0.0, 0.9, 0.95))
+    monkeypatch.setattr(ki, "bootstrap_treff", lambda tab, rng, trekk=ki.TREKK: np.full(100, 0.5))
     tab = {"n": 200, "begge": 80, "bare_modell": 20, "bare_baseline": 20, "ingen": 80}
     varsel = {"treff": 5, "varsler": 10, "forsinket": 20, "n": 200, "f1": 1 / 3}
     blokk = {"modell": {"varsel": varsel}, "varsle_alle": {"f1": 40 / 220}}
     data = ki.beregn({"testkjoring_commit": "x", "horisonter": {h: tab for h in ki.HORISONTER}},
                      {"test": {"horisonter": {h: {ki.RADSETT: blokk} for h in ki.HORISONTER}}})
     for v in data["horisonter"].values():
-        assert v["treff_30"]["analytisk"][0] == 0.9
-        assert v["treff_30"]["bootstrap"][0] < ki.MARGIN
+        assert v["treff_30"]["analytisk"][0] == 0.9 and v["treff_30"]["bootstrap"][0] == 0.5
         assert v["treff_30"]["dom"] == "ikke påvist"

@@ -287,3 +287,14 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Lærdom (råt):**
   - Samme mønster som før: en test mot de ekte tallene dekker bare forskjeller som tallene tilfeldigvis får fram. To regler som gir samme svar på dataene, må skilles med et konstruert tilfelle.
   - Grensen ble avklart med gruppa før testene ble skrevet. Den første meldingen sa «over marginen», og den neste sa «minst». Det ble spurt om, ikke valgt.
+
+## 2026-11-17 — Regelen ble formulert strengere enn faglærer skrev, og rettet etter at den var implementert (E2-S11)
+
+- **Hva:** Faglærers forslag (tilbakemelding 4.1) var at modellen lykkes hvis andelen er minst 3 prosentpoeng høyere enn baselinen, at forskjellen rapporteres med 95 % KI, og at resultatet er «ikke påvist» når forskjellen er mindre. Theodor skrev regelen slik at nedre grense i intervallet *også* måtte ligge over marginen, og brukte «over» og «minst» om hverandre. Claude implementerte det slik i skriptet, panelet, testene, notatet, FR10 og begge briefene (`7f69bd2`), og spurte om grensen var «over» eller «minst». Claude sjekket derimot ikke at regelen var den faglærer faktisk skrev, selv om tilbakemeldingen var lest i sin helhet først.
+  - Oppføringen over (mutanten som overlevde) bygger på den strengere regelen, og den er ikke lenger gjeldende.
+- **Hvordan det ble oppdaget:** Theodor leste faglærers tekst på nytt etter at E2-S11 var pushet.
+- **Resultat:** regelen er nå faglærers: punktestimatet ≥ 3,0 pp, og intervallet rapporteres uten å avgjøre dommen. Dommen er uendret, fordi den strengere varianten gir samme svar (nedre grense 6,0 ved 6 t og −2,0 ved 24 t). Grensetesten viser at nøyaktig 3,0 pp gir bestått. Sammenligningen gjøres på heltall (treff og n), fordi 59/100 − 56/100 er 0,0299… i flyttall og ellers ville gitt «ikke påvist». Se `git log --oneline --grep E2-S11`.
+- **Lærdom (råt):**
+  - Når en regel kommer fra en kilde, skal den sjekkes ordrett mot kilden, ikke bare mot instruksen om den. Spørsmålet om «over» eller «minst» var riktig å stille, men det burde vært stilt mot faglærers tekst.
+  - En strengere regel enn kilden er også en endring av kriteriet. Det gikk bra her bare fordi begge reglene gir samme dom.
+  - En grense som skal være «minst», må testes med en verdi som er nøyaktig på grensen, og helst en som er vanskelig i flyttall.

@@ -63,7 +63,7 @@
   },
   "intervall": "95 % persentil (bootstrap over anløp); analytisk: Wald for parrede andeler",
   "margin": 0.03,
-  "merknad": "Regnet 17.11.2026, etter testkjøringen, fra krysstabellen i mcnemar.json og varseltallene i metrikker.json. Testradene er ikke lest. Kriteriet (margin 3 prosentpoeng og nedre KI-grense over marginen) kom fra faglærers tilbakemelding på PRD-en (12.11.2026) og ble tatt inn etter testkjøringen, i strengere retning.",
+  "merknad": "Regnet 17.11.2026, etter testkjøringen, fra krysstabellen i mcnemar.json og varseltallene i metrikker.json. Testradene er ikke lest. Kriteriet (forskjellen minst 3 prosentpoeng; KI rapporteres, men avgjør ikke dommen) kom fra faglærers tilbakemelding på PRD-en (12.11.2026) og ble tatt inn etter testkjøringen, i strengere retning.",
   "radsett": "ovrige_modellutvalg",
   "seed": 160,
   "testkjoring_commit": "8920acb92cda52c9ed03992cb404def7d03f9fdc",

@@ -7,9 +7,9 @@ differansen modell − baseline i prosentpoeng og dommen, som sammenligner verdi
 
 - Før testkjøringen (``testkjoringer() < 1``, samme funksjon som låsen) vises ``validering``-blokken, uten dom.
 - Etter testkjøringen vises ``test``-blokken, med dom per horisont på modellutvalget:
-  - ±30 min (E2-S11, PRD FR10): «bestått» bare når nedre grense i 95 % KI for differansen er over marginen i
-    ``konfidensintervall.json`` (3 pp), ellers «ikke påvist». Mangler fila, eller passer den ikke med
-    ``metrikker.json`` (annen n eller differanse), står «kan ikke avgjøres».
+  - ±30 min (E2-S11, PRD FR10): «bestått» når forskjellen modell − baseline (punktestimatet) er minst marginen
+    i ``konfidensintervall.json`` (3,0 pp), ellers «ikke påvist». 95 % KI vises, men avgjør ikke dommen. Mangler
+    fila, eller passer den ikke med ``metrikker.json`` (annen n eller differanse), står «kan ikke avgjøres».
   - Varsel-F1: «bestått» når modellens F1 er over «varsle alle», ellers «ikke bestått». Ingen margin.
 - ``test_bare_baseline`` og ablasjonen (``ablasjon_uten_f13_f14``) vises aldri her.
 - Mangler fila eller blokken, eller har blokken feil form, sier panelet «Tall mangler».
@@ -148,7 +148,8 @@ def les_ki(sti: Optional[Path]) -> Optional[dict]:
 
 def _ki_treff(ki: Optional[dict], h: str, modell: dict, baseline: dict):
     """(differanse, nedre, øvre, margin) for horisonten, eller ``None`` hvis intervallet mangler eller ikke passer
-    med ``metrikker.json``: samme n, og samme differanse modell − baseline (til 6 desimaler, som i filene)."""
+    med ``metrikker.json``: samme n, samme differanse modell − baseline (til 6 desimaler, som i filene), og andeler
+    som er lik treff/n."""
     try:
         v = ki["horisonter"][h]
         t = v["treff_30"]
@@ -157,6 +158,8 @@ def _ki_treff(ki: Optional[dict], h: str, modell: dict, baseline: dict):
         d = _endelig(t["differanse"], "differanse")
         if v["n"] != modell["n"] or v["n"] != baseline["n"]:
             return None
+        if any(abs(arm["andel_30"] - arm["treff_30"] / arm["n"]) > 1e-6 for arm in (modell, baseline)):
+            return None  # dommen regnes på antall treff, så andelene som vises, må være de samme tallene
         if abs(d - (modell["andel_30"] - baseline["andel_30"])) > 2e-6:
             return None
         return d, nedre, ovre, margin
@@ -164,14 +167,19 @@ def _ki_treff(ki: Optional[dict], h: str, modell: dict, baseline: dict):
         return None
 
 
-def dom_treff(nedre: float, margin: float) -> str:
-    """±30 min (E2-S11): bestått bare når nedre grense i 95 % KI er over marginen. Ellers «ikke påvist»."""
-    return BESTATT if nedre > margin else IKKE_PAVIST
+def dom_treff(differanse_antall: int, n: int, margin: float) -> str:
+    """±30 min (E2-S11, faglærers regel): bestått når forskjellen (punktestimatet) er minst marginen,
+    (treff modell − treff baseline) / n ≥ margin. Ellers «ikke påvist». Intervallet er ikke med. Sammenligningen
+    gjøres på heltall, så nøyaktig 3,0 pp alltid gir bestått: 59/100 − 56/100 er 0,0299… i flyttall."""
+    for x in (differanse_antall, n):
+        if isinstance(x, bool) or not isinstance(x, int):
+            raise TypeError(f"antall må være et heltall, ikke {x!r}")
+    return BESTATT if 100 * differanse_antall >= round(margin * 100, 6) * n else IKKE_PAVIST
 
 
 def _dom(modell: dict, baseline: dict, varsle_alle: dict, ki: Optional[dict] = None, h: str = "") -> list:
-    """Dommen på modellutvalget (FR10). ±30 min avgjøres av konfidensintervallet (``dom_treff``), varsel-F1 av
-    F1 over «varsle alle». F1 vises med tre desimaler i dommen. Er F1 for «varsle alle» ``null``, kan F1-dommen
+    """Dommen på modellutvalget (FR10). ±30 min avgjøres av forskjellen mot marginen (``dom_treff``), og
+    intervallet vises ved siden av. Varsel-F1 avgjøres av F1 over «varsle alle». F1 vises med tre desimaler i dommen. Er F1 for «varsle alle» ``null``, kan F1-dommen
     ikke avgjøres."""
     andeler = f"modell {_pst(modell['andel_30'])}, baseline {_pst(baseline['andel_30'])}"
     treff = _ki_treff(ki, h, modell, baseline)
@@ -179,9 +187,10 @@ def _dom(modell: dict, baseline: dict, varsle_alle: dict, ki: Optional[dict] = N
         linje_treff = f"Innenfor ±30 min: {KAN_IKKE_AVGJORES} ({andeler}; konfidensintervallet mangler eller passer ikke)"
     else:
         d, nedre, ovre, margin = treff
-        linje_treff = (f"Innenfor ±30 min: {dom_treff(nedre, margin)} ({andeler}; "
+        dom = dom_treff(modell["treff_30"] - baseline["treff_30"], modell["n"], margin)
+        linje_treff = (f"Innenfor ±30 min: {dom} ({andeler}; "
                        f"{'+' if d >= 0 else ''}{_pp(d)} pp, 95 % KI [{_pp(nedre)}; {_pp(ovre)}], "
-                       f"krav: nedre grense over {_pp(margin)} pp)")
+                       f"krav: minst +{_pp(margin)} pp)")
     f1_modell, f1_alle = modell["varsel"]["f1"], varsle_alle["f1"]
     if f1_alle is None:
         f1_dom = KAN_IKKE_AVGJORES

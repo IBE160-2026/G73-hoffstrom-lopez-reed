@@ -111,10 +111,10 @@ def test_etter_testkjoringen_test_med_dom(tmp_path):
     assert "301/400" not in json.dumps(panel, ensure_ascii=False)
     assert [h["grupper"][0]["dom"] for h in panel["horisonter"]] == [
         ["Innenfor ±30 min: bestått (modell 75,0\u00a0%, baseline 62,5\u00a0%; +12,5 pp, 95 % KI [9,5; 15,5], "
-         "krav: nedre grense over 3,0 pp)",
+         "krav: minst +3,0 pp)",
          "Varsel-F1: bestått (modell 0,600, «varsle alle» 0,261)"],
         ["Innenfor ±30 min: bestått (modell 80,0\u00a0%, baseline 65,0\u00a0%; +15,0 pp, 95 % KI [12,0; 18,0], "
-         "krav: nedre grense over 3,0 pp)",
+         "krav: minst +3,0 pp)",
          "Varsel-F1: bestått (modell 0,582, «varsle alle» 0,298)"],
     ]
     for h in panel["horisonter"]:
@@ -135,14 +135,14 @@ def test_dom_kriteriene_er_uavhengige(tmp_path):
     treff_feil = lag_panel(_fil(tmp_path, {"testkjoringer": 1, "test": syntetisk_blokk(modell_treff=200)}))
     assert treff_feil["horisonter"][0]["grupper"][0]["dom"] == [
         "Innenfor ±30 min: ikke påvist (modell 50,0\u00a0%, baseline 62,5\u00a0%; −12,5 pp, 95 % KI [−15,5; −9,5], "
-        "krav: nedre grense over 3,0 pp)",
+        "krav: minst +3,0 pp)",
         "Varsel-F1: bestått (modell 0,600, «varsle alle» 0,261)",
     ]
     f1_feil = lag_panel(_fil(tmp_path, {"testkjoringer": 1,
                                         "test": syntetisk_blokk(modell_varsler=100, modell_varseltreff=5)}))
     assert f1_feil["horisonter"][0]["grupper"][0]["dom"] == [
         "Innenfor ±30 min: bestått (modell 75,0\u00a0%, baseline 62,5\u00a0%; +12,5 pp, 95 % KI [9,5; 15,5], "
-        "krav: nedre grense over 3,0 pp)",
+        "krav: minst +3,0 pp)",
         "Varsel-F1: ikke bestått (modell 0,062, «varsle alle» 0,261)",
     ]
 
@@ -176,15 +176,15 @@ def test_lik_f1_er_ikke_bestatt(tmp_path):
 
 
 def test_differanse_ord_folger_uavrundet_fortegn(tmp_path):
-    """Runder differansen til 0,0, står det «<0,1 pp» med riktig ord, aldri «likt». En så liten differanse er
-    «ikke påvist» (E2-S11)."""
+    """Runder differansen til 0,0, står det «<0,1 pp» med riktig ord, aldri «likt». Andelen er endret uten at
+    antall treff er det, så ±30 min-dommen kan ikke avgjøres (E2-S11)."""
     blokk = syntetisk_blokk()
     utvalg = blokk["horisonter"]["6"]["ovrige_modellutvalg"]
     utvalg["modell"]["andel_30"] = utvalg["baseline"]["andel_30"] + 0.0004
     utvalg["modell"]["varsel"]["f1"] = utvalg["varsle_alle"]["f1"] - 0.004
     g = lag_panel(_fil(tmp_path, {"testkjoringer": 1, "test": blokk}))["horisonter"][0]["grupper"][0]
     assert g["differanse"] == "<0,1 pp (modellen bedre)"
-    assert g["dom"][0].startswith("Innenfor ±30 min: ikke påvist")
+    assert g["dom"][0].startswith(f"Innenfor ±30 min: {KAN_IKKE_AVGJORES}")
     assert g["differanse_f1"] == "<0,01 (modellen dårligere)"
     assert g["dom"][1].startswith("Varsel-F1: ikke bestått")
 
@@ -286,32 +286,36 @@ def _ord(linje):
     return linje.removeprefix("Innenfor ±30 min: ").split(" (")[0]
 
 
-def test_ki_begge_utfall(tmp_path):
-    """Samme differanse (+12,5 pp ved 6 t), ulik nedre grense: 6,0 pp gir «bestått», −2,0 pp gir «ikke påvist».
-    Ordet følger av intervallet, ikke av differansen."""
+def test_ki_avgjor_ikke_dommen(tmp_path):
+    """Faglærers regel: intervallet vises, men dommen følger punktestimatet. +12,5 og +15,0 pp er bestått selv med
+    nedre grense −50 pp, og +0,25 og +2,75 pp er ikke påvist selv med nedre grense +10 pp."""
     blokk = syntetisk_blokk()
-    dommer = _treffdom(tmp_path, syntetisk_ki(blokk, nedre={"6": 0.06, "24": -0.02}), blokk)
-    assert [_ord(d) for d in dommer] == [BESTATT, IKKE_PAVIST]
-    assert "95 % KI [6,0; 15,5]" in dommer[0] and "95 % KI [−2,0; 18,0]" in dommer[1]
+    dommer = _treffdom(tmp_path, syntetisk_ki(blokk, nedre={"6": -0.5, "24": -0.5}), blokk)
+    assert [_ord(d) for d in dommer] == [BESTATT, BESTATT]
+    assert "95 % KI [−50,0; 15,5]" in dommer[0]
+    blokk = syntetisk_blokk(modell_treff=251)  # 6 t: 251 mot 250, 24 t: 271 mot 260 av 400
+    dommer = _treffdom(tmp_path, syntetisk_ki(blokk, nedre={"6": 0.10, "24": 0.10}), blokk)
+    assert [_ord(d) for d in dommer] == [IKKE_PAVIST, IKKE_PAVIST]
 
 
-@pytest.mark.parametrize("nedre, ventet", [
-    (0.030001, BESTATT),      # rett over marginen
-    (0.03, IKKE_PAVIST),      # lik marginen er ikke over (gruppa, 17.11.2026)
-    (0.029999, IKKE_PAVIST),  # rett under
+@pytest.mark.parametrize("modell_treff, baseline_treff, n, ventet", [
+    (262, 250, 400, BESTATT),      # nøyaktig 3,0 pp (12 av 400) er bestått
+    (261, 250, 400, IKKE_PAVIST),  # 2,75 pp
+    (59, 56, 100, BESTATT),        # nøyaktig 3,0 pp, men 0,59 − 0,56 er 0,0299… i flyttall
+    (58, 56, 100, IKKE_PAVIST),    # 2,0 pp
 ])
-def test_ki_grensen(tmp_path, nedre, ventet):
-    blokk = syntetisk_blokk()
-    assert _ord(_treffdom(tmp_path, syntetisk_ki(blokk, nedre={"6": nedre}), blokk)[0]) == ventet
-    assert dom_treff(nedre, 0.03) == ventet
+def test_grensen_noyaktig_3_pp_er_bestatt(tmp_path, modell_treff, baseline_treff, n, ventet):
+    blokk = syntetisk_blokk(modell_treff=modell_treff, baseline_treff=baseline_treff, n=n)
+    assert _ord(_treffdom(tmp_path, syntetisk_ki(blokk), blokk)[0]) == ventet
+    assert dom_treff(modell_treff - baseline_treff, n, 0.03) == ventet
 
 
 def test_ki_marginen_leses_fra_fila(tmp_path):
-    """Marginen er ikke hardkodet: med margin 0,10 i fila er nedre grense 9,5 pp ikke nok."""
+    """Marginen er ikke hardkodet: med margin 0,13 i fila er +12,5 pp ikke nok, mens +15,0 pp er det."""
     blokk = syntetisk_blokk()
-    dommer = _treffdom(tmp_path, syntetisk_ki(blokk, margin=0.10), blokk)
-    assert [_ord(d) for d in dommer] == [IKKE_PAVIST, BESTATT]  # nedre 9,5 og 12,0 pp
-    assert "krav: nedre grense over 10,0 pp" in dommer[0]
+    dommer = _treffdom(tmp_path, syntetisk_ki(blokk, margin=0.13), blokk)
+    assert [_ord(d) for d in dommer] == [IKKE_PAVIST, BESTATT]
+    assert "krav: minst +13,0 pp" in dommer[0]
 
 
 def test_ki_mangler_gir_kan_ikke_avgjores(tmp_path):
@@ -324,7 +328,7 @@ def test_ki_mangler_gir_kan_ikke_avgjores(tmp_path):
         assert f1.startswith("Varsel-F1: bestått")
 
 
-@pytest.mark.parametrize("feil", ["n", "differanse", "uleselig", "nan"])
+@pytest.mark.parametrize("feil", ["n", "differanse", "uleselig", "nan", "andel_mot_treff"])
 def test_ki_som_ikke_passer_gir_kan_ikke_avgjores(tmp_path, feil):
     """Et intervall for andre tall enn dem som vises (annen n eller differanse), eller en ødelagt fil, avgjør
     ingenting."""
@@ -336,6 +340,8 @@ def test_ki_som_ikke_passer_gir_kan_ikke_avgjores(tmp_path, feil):
         ki["horisonter"]["6"]["treff_30"]["differanse"] += 0.001
     elif feil == "nan":
         ki["horisonter"]["6"]["treff_30"]["bootstrap"][0] = float("nan")
+    elif feil == "andel_mot_treff":  # treff_30 stemmer ikke lenger med andel_30 (313/400 mot 0,75)
+        blokk["horisonter"]["6"]["ovrige_modellutvalg"]["modell"]["treff_30"] += 13
     innhold = "{ikke json" if feil == "uleselig" else json.dumps(ki)
     assert _ord(_treffdom(tmp_path, innhold, blokk)[0]) == KAN_IKKE_AVGJORES
 
