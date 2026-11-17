@@ -36,3 +36,23 @@ Følge opp faglærers tilbakemelding på PRD-en (`docs/tilbakemelding-prd.md`, `
 - Refleksjonsrapporten: utkastene i 3.1 må skrives om med egne ord. Resten av malen, student-ID-ene og de individuelle refleksjonene i 7.4 står tomme.
 - E3-arkitekturen må avgjøre hvordan siden unngår å vente på språkmodellkallet (FR11a).
 - PRD 4.5 og kapittel 5 er ikke gjort: FR8 bør vise til `data/baseline.json` i stedet for å gjenta tallene, og filnavnene i FR8, NFR1 og NFR2 hører hjemme i arkitekturen.
+
+## 2026-11-17 kl. 12:10 — Theodor Gimming
+
+### Oppgave
+Rette regelen slik at den er nøyaktig faglærers (tilbakemelding 4.1). Modellen lykkes på ±30 min hvis forskjellen (punktestimatet) er minst 3,0 pp. 95 % KI rapporteres, men er ikke en del av dommen. Theodor hadde skrevet at nedre grense i intervallet også skulle telle, og hadde brukt «over» og «minst» om hverandre. Grensetesten skal vise at nøyaktig 3,0 gir bestått, og notatet skal si at den strengere varianten gir samme dom.
+
+### Plan
+- Regelen i skriptet og panelet: punktestimatet ≥ marginen, sammenlignet på heltall (treff og n), så nøyaktig 3,0 pp alltid er bestått.
+- Tester for grensen, også flyttallsfella (59/100 − 56/100), for at KI ikke avgjør dommen, og ny mutasjonssjekk.
+- Rette notatet, FR10, begge briefene, README, status, UX og epics. Føre rettelsen inn i notater.md og i utkastet i rapporten.
+
+### Resultat
+- `94f032d` E2-S11: regelen er rettet overalt, og endringsloggene har en linje om rettelsen. Dommen er uendret: bestått ved 6 t (+9,4 pp) og ikke påvist ved 24 t (+0,8 pp). Notatet har setningen om at den strengere varianten gir samme dom (nedre grense 6,0 og −2,0).
+- Panelet sjekker også at `andel_30` stemmer med `treff_30 / n`, siden dommen nå regnes på antall treff.
+- Mutasjonssjekken med kontrollkjøring fanget 14 av 16. De to som overlever, er ekvivalente flyttallsvarianter (`antall/n` og den lagrede differansen avrundet til 6 desimaler). Varianten med rå andeler fanges av flyttallstesten.
+- 492 tester grønne. Skjermbildene er tatt på nytt, uten rulling.
+- `notater.md` har en ny oppføring: regelen ble formulert strengere enn faglærer skrev, og ble rettet etter at den var implementert.
+
+### Åpne punkter
+- Uendret fra seksjonen over: Felipe og Thomas må godkjenne den nye dommen før merge. Punktet står allerede i `issues.md`.
