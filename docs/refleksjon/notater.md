@@ -298,3 +298,15 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
   - Når en regel kommer fra en kilde, skal den sjekkes ordrett mot kilden, ikke bare mot instruksen om den. Spørsmålet om «over» eller «minst» var riktig å stille, men det burde vært stilt mot faglærers tekst.
   - En strengere regel enn kilden er også en endring av kriteriet. Det gikk bra her bare fordi begge reglene gir samme dom.
   - En grense som skal være «minst», må testes med en verdi som er nøyaktig på grensen, og helst en som er vanskelig i flyttall.
+
+## 2026-11-17 — To påstander om Vercel-deployen som ikke var sjekket (E0-S21)
+
+- **Hva:**
+  1. **Om avhengighetene.** Claude la til en `pyproject.toml` med bare `[tool.vercel] entrypoint = "wsgi:app"`, og skrev i arkitektur §11, i commit-meldingen og i PR #7 at Vercel likevel installerer fra `requirements.txt`, fordi fila ikke har noen `[project]`-seksjon. Det sto ikke i Vercels dokumentasjon, som Claude hadde lest samme dag. Dokumentasjonen sier bare at avhengighetene kan stå i en av filene, ikke hvilken som vinner. Påstanden var en antakelse skrevet som et faktum.
+  2. **Om at deployen virket.** Da Vercel-sjekken på PR #7 ble grønn, skrev Claude at deployen «gikk gjennom uten feil», og at den gamle feilen dermed var borte. Men grønt betydde bare at bygget gikk. Både `/` og `/static/style.css` svarte 302 til Claude, så Claude hadde ikke sett at appen kjørte. Claude skrev riktignok at siden ikke var sett, men konklusjonen om at feilen var borte, var for sterk.
+- **Hvordan det ble oppdaget:** Theodor åpnet Vercel-loggen og fant `ModuleNotFoundError: No module named 'flask'` når `wsgi.py` importerer appen. Avhengighetene var ikke installert. Claude kunne ikke hente byggeloggen selv (Vercel-CLI-en ble stoppet av sikkerhetsreglene for kommandoer), så det er ikke bekreftet at årsaken var `pyproject.toml`.
+- **Resultat:** `pyproject.toml` er fjernet. Vercel finner `wsgi.py` i rotmappa av seg selv, og `requirements.txt` er eneste kilde til avhengighetene. `tests/test_wsgi.py` sjekker at det ikke finnes noen annen avhengighetsfil. Arkitektur §11 og PR #7 sier nå hva som skjedde. Se `git log --oneline --grep E0-S21`.
+- **Lærdom (råt):**
+  - Det dokumentasjonen *ikke* sier, er ikke en bekreftelse. «Avhengighetene kommer fra X fordi Y mangler» må stå som en antakelse til den er sett i en byggelogg.
+  - En grønn deploy-sjekk betyr at bygget gikk, ikke at appen svarer. Si aldri at noe virker før siden faktisk er åpnet.
+  - Samme mønster som tidligere i prosjektet («verified against live API» 22.10): en påstand om et eksternt system ble skrevet uten å være prøvd mot systemet.

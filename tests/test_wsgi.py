@@ -1,6 +1,7 @@
 """Inngangspunktet for produksjon (E0-S21, arkitektur §11).
 
-- ``wsgi.app`` er appen fra ``create_app()`` uten konfigurasjon, og ``pyproject.toml`` peker Vercel dit.
+- ``wsgi.app`` er appen fra ``create_app()`` uten konfigurasjon, i ``wsgi.py`` i rotmappa, der Vercel finner den selv.
+- ``requirements.txt`` er eneste kilde til avhengighetene: det finnes ingen ``pyproject.toml`` eller ``Pipfile``.
 - Appen skriver ingenting til disk når den svarer, også når modellartefaktene lastes (Vercel har et
   skrivebeskyttet filsystem). Modellen kjøres bare på valideringsvinduet (regelen om testrader).
 """
@@ -23,10 +24,19 @@ from app import create_app
 REPO_ROT = Path(__file__).resolve().parent.parent
 
 
-def test_pyproject_peker_paa_wsgi_app():
-    tekst = (REPO_ROT / "pyproject.toml").read_text(encoding="utf-8")
-    assert re.search(r'^\[tool\.vercel\]\s*\nentrypoint = "wsgi:app"\s*$', tekst, re.M)
-    assert not re.search(r"^\[project\]", tekst, re.M)  # avhengighetene skal komme fra requirements.txt
+def test_requirements_er_eneste_kilde_til_avhengighetene():
+    """Med en ``pyproject.toml`` (bare ``[tool.vercel]``) ble avhengighetene ikke installert på Vercel (E0-S21,
+    17.11.2026). Vercel finner ``wsgi.py`` uten den."""
+    for fil in ("pyproject.toml", "Pipfile", "Pipfile.lock", "setup.py", "uv.lock"):
+        assert not (REPO_ROT / fil).exists(), f"{fil} kan gjøre at Vercel ikke leser requirements.txt"
+    krav = (REPO_ROT / "requirements.txt").read_text(encoding="utf-8")
+    for pakke in ("flask", "scikit-learn==1.6.1", "numpy==2.0.2", "joblib==1.5.3"):
+        assert re.search(rf"^{re.escape(pakke)}", krav, re.M), pakke
+
+
+def test_wsgi_ligger_der_vercel_leter():
+    tekst = (REPO_ROT / "wsgi.py").read_text(encoding="utf-8")
+    assert re.search(r"^app = create_app\(\)$", tekst, re.M)
 
 
 def test_python_versjonen_er_312():

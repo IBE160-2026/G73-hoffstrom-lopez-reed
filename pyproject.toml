@@ -1,4 +1,0 @@
-# Bare Vercel-oppsett (E0-S21). Avhengighetene står i requirements.txt, og Python-versjonen i .python-version.
-# Ingen [project]-seksjon, så Vercel installerer fra requirements.txt.
-[tool.vercel]
-entrypoint = "wsgi:app"

@@ -166,7 +166,7 @@ tests/        fixtures/anlop_mini.csv + én testfil per modul
 pipeline/     + fetch_ais_kutt.py (E2-S02); øvrige uendret
 .env.example  requirements.txt  README.md
 wsgi.py       app = create_app(), inngangspunktet lokalt og på Vercel (§11)
-pyproject.toml  .python-version  vercel.json   Vercel-oppsett (§11)
+.python-version  vercel.json   Vercel-oppsett (§11)
 ```
 
 ## 6. Ruter
@@ -223,8 +223,9 @@ PRD-en beskriver kravene uten filnavn og ruter (faglærers tilbakemelding på PR
 
 ## 11. Drift på Vercel (E0-S21)
 
-- **Inngangspunkt:** `wsgi.py` bygger `app = create_app()` uten konfigurasjon, og `pyproject.toml` peker Vercel dit med `[tool.vercel] entrypoint = "wsgi:app"`. README starter appen lokalt med `flask --app wsgi run`, så det er samme objekt lokalt og på Vercel. `tests/conftest.py` har også en `app`, men det er en testfikstur og skal aldri brukes som inngangspunkt.
-- **Python 3.12**, låst i `.python-version`. numpy 2.0.2 har ingen ferdigbygde pakker for 3.13 eller 3.14, og de låste versjonene (scikit-learn 1.6.1, numpy 2.0.2, joblib 1.5.3) må beholdes for at modellartefaktene skal lastes slik de ble trent. Hele suiten er kjørt grønn på 3.12, og artefaktene lastes uten versjonsadvarsel. `pyproject.toml` har ingen `[project]`-seksjon, så avhengighetene kommer fra `requirements.txt`. scipy er ikke låst og løses av scikit-learn.
+- **Inngangspunkt:** `wsgi.py` i rotmappa bygger `app = create_app()` uten konfigurasjon. `wsgi.py` er et av filnavnene Vercel leter etter av seg selv, så det trengs ingen `pyproject.toml`. README starter appen lokalt med `flask --app wsgi run`, så det er samme objekt lokalt og på Vercel. `tests/conftest.py` har også en `app`, men det er en testfikstur og skal aldri brukes som inngangspunkt.
+- **Python 3.12**, låst i `.python-version`. numpy 2.0.2 har ingen ferdigbygde pakker for 3.13 eller 3.14, og de låste versjonene (scikit-learn 1.6.1, numpy 2.0.2, joblib 1.5.3) må beholdes for at modellartefaktene skal lastes slik de ble trent. Hele suiten er kjørt grønn på 3.12, og artefaktene lastes uten versjonsadvarsel. scipy er ikke låst og løses av scikit-learn.
+- **Én kilde til avhengighetene: `requirements.txt`.** Repoet har ingen `pyproject.toml`, `Pipfile` eller `uv.lock`, og `tests/test_wsgi.py` sjekker det. Første versjon av E0-S21 (`88f5eee`) hadde en `pyproject.toml` med bare `[tool.vercel] entrypoint`. Da sto det her at Vercel likevel installerer fra `requirements.txt` fordi fila ikke har noen `[project]`-seksjon. Det var en antakelse: Vercels dokumentasjon sier ikke hvilken fil som vinner. På Vercel ble avhengighetene ikke installert (`ModuleNotFoundError: No module named 'flask'`, sett av Theodor i Vercel-loggen 17.11.2026). Om årsaken var at Vercel leste `pyproject.toml`, er ikke bekreftet i byggeloggen. Fila er fjernet, så spørsmålet ikke oppstår.
 - **Størrelse:** grensen for en Python-funksjon er 500 MB. Pakkene for Linux med 3.12 er ca. 235 MB, og koden og `data/` er ca. 8 MB etter utelatelsene i `vercel.json` (`excludeFiles`: `tests/`, `docs/`, `_bmad*/`, `.logs/`, `.claude/`, `pipeline/`, `scripts/` og skjermbildene). Målt 17.11.2026.
 - **pytest blir i `requirements.txt`.** Den utgjør ca. 8 MB, så bunten holder seg godt under grensen uansett. README og klone-testen bygger på én `pip install -r requirements.txt` før `pytest`, og det skal ikke brytes.
 - **Skrivebeskyttet filsystem.** Appen skriver ingenting til disk når den kjører: den leser `data/` og maler, og modellartefaktene caches i minnet (`lru_cache`). `tests/test_wsgi.py` sperrer alle skrivekall mens forsiden, stilarket og modellen lastes. Den 17.11.2026 ble appen i tillegg kjørt fra en skrivebeskyttet kopi med Python 3.12 og de ekte filene: `/` svarte 200 med modellen, og ingen filer ble skrevet.
@@ -253,3 +254,4 @@ PRD-en beskriver kravene uten filnavn og ruter (faglærers tilbakemelding på PR
 - **2026-11-10** — E2-S08: `velg_prediktor` har fått `naa` og velger `ModellPrediktor` bak låsen for testperioden (til E2-S10) og med tilbakefall til baselinen når artefaktet mangler (§3). Testperiodens første ETA leses i `app/prediksjon/__init__.py`, som er grensen mot `app.data`.
 - **2026-11-17** — E0-S19, faglærers tilbakemelding på PRD-en (kapittel 5): ny §10 med filene, rutene og kommandoene som er flyttet ut av PRD FR8, NFR1 og NFR2. Raden for dataregresjon i §8 har fått dekningen 91,1 %, som før sto i FR8. Ingen krav er endret.
 - **2026-11-17** — E0-S21: ny §11 om drift på Vercel. Den dekker inngangspunktet `wsgi.py`, Python 3.12, størrelsen og utelatelsene, at filsystemet er skrivebeskyttet, at E3s caching må ligge i minnet, og de statiske filene. §5 har fått `wsgi.py` og Vercel-filene.
+- **2026-11-17** — E0-S21, rettelse: `pyproject.toml` er fjernet, og Vercel finner `wsgi.py` selv. §11 sa at Vercel installerer fra `requirements.txt` når `pyproject.toml` ikke har `[project]`. Det var ikke sjekket, og avhengighetene ble ikke installert. §11 forteller nå hva som skjedde.

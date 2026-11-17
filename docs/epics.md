@@ -50,7 +50,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | E0-S18 | To avgjørelser før E1-S06: vinduet velger på rapportert ETA i v1, og tider vises avrundet til nærmeste minutt (bare visning) | `docs/epics.md`, `docs/ux/dashbord.md` | ✅ |
 | E0-S19 | Resten av faglærers tilbakemelding på PRD-en (punkt 4.2–4.5 og kapittel 5): FR11a og FR11b (feil og kostnad i AI-laget, mock-fallback), UJ-1 og UJ-2, testbare kriterier for FR5–FR7 og FR14, ordliste, FR9 før FR9a, A1 inline | `docs/prd.md` | ✅ |
 | E0-S20 | Refleksjonsrapporten opprettet etter kursmalen, med utkast til svar på faglærers to refleksjonsspørsmål. De individuelle refleksjonene står tomme. | `docs/refleksjon/rapport.md` | ◐ utkast |
-| E0-S21 | Vercel-deploy: eget inngangspunkt (`wsgi.py`), Python 3.12, utelatelser i bunten, test av at appen ikke skriver til disk. Arkitektur §11. Venter på at forhåndsvisningen er sjekket. | `wsgi.py`, `pyproject.toml`, `.python-version`, `vercel.json`, `tests/test_wsgi.py`, `docs/arkitektur.md` | ◐ til forhåndsvisning |
+| E0-S21 | Vercel-deploy: eget inngangspunkt (`wsgi.py`), Python 3.12, utelatelser i bunten, test av at appen ikke skriver til disk. Arkitektur §11. Venter på at forhåndsvisningen er sjekket. | `wsgi.py`, `.python-version`, `vercel.json`, `tests/test_wsgi.py`, `docs/arkitektur.md` | ◐ til forhåndsvisning |
 
 ---
 
@@ -483,3 +483,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-17** — E0-S19 er ferdig: resten av faglærers tilbakemelding på PRD-en er ført inn. FR11a og FR11b har sporbarhet til E3-S03 (Theodor Gimming).
 - **2026-11-17** — E0-S20 er lagt til: refleksjonsrapporten er opprettet med utkast til svar på faglærers to refleksjonsspørsmål. Den står som ◐ til gruppa har skrevet ferdig (Theodor Gimming).
 - **2026-11-17** — E0-S21 er lagt til: Vercel-deploy fra `deploy/vercel`. Deployen av `main` feilet med `FLASK_ENTRYPOINT_NOT_FOUND`. Vercel foreslo `tests.conftest:app`, men det er en testfikstur og er ikke brukt (Theodor Gimming).
+- **2026-11-17** — E0-S21: `pyproject.toml` er fjernet etter at avhengighetene ikke ble installert på Vercel, og `requirements.txt` er eneste kilde. Vercel finner `wsgi.py` selv (Theodor Gimming).
