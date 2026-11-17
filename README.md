@@ -68,8 +68,10 @@ Kalibrert baseline treffer innenfor ±30 min for **46,6 %** av ikke-rutegående 
 **4. Start appen**
 
 ```
-flask --app app run --port 8000
+flask --app wsgi run --port 8000
 ```
+
+`wsgi.py` bygger appen med `create_app()`. Det er det samme inngangspunktet som Vercel bruker, så appen oppfører seg likt lokalt og i produksjon (arkitektur §11).
 
 Åpne <http://127.0.0.1:8000> i nettleseren (`http://localhost:8000` virker også). Stopp appen med Ctrl+C.
 
@@ -89,7 +91,7 @@ Skjermbildet lages med et eget skript som ikke er en del av testene. Se [`docs/u
 **Hvis noe går galt**
 
 - *`flask: command not found` eller `pytest: command not found`:* det virtuelle miljøet er ikke aktivert. Kjør `source .venv/bin/activate` (Windows: `.venv\Scripts\Activate.ps1`) i samme terminal.
-- *`Address already in use`:* et annet program bruker port 8000. Start med `flask --app app run --port 8001` og åpne <http://127.0.0.1:8001>.
+- *`Address already in use`:* et annet program bruker port 8000. Start med `flask --app wsgi run --port 8001` og åpne <http://127.0.0.1:8001>.
 - *`WARNING: You are using pip version …`:* advarselen er ufarlig. Installasjonen er ferdig når det står `Successfully installed`.
 
 ## Datakilder
