@@ -37,7 +37,7 @@ Følge opp faglærers tilbakemelding på PRD-en (`docs/tilbakemelding-prd.md`, `
 - E3-arkitekturen må avgjøre hvordan siden unngår å vente på språkmodellkallet (FR11a).
 - PRD 4.5 og kapittel 5 er ikke gjort: FR8 bør vise til `data/baseline.json` i stedet for å gjenta tallene, og filnavnene i FR8, NFR1 og NFR2 hører hjemme i arkitekturen.
 
-## 2026-11-17 kl. 12:10 — Theodor Gimming
+## 2026-11-17 kl. 11:31 — Theodor Gimming
 
 ### Oppgave
 Rette regelen slik at den er nøyaktig faglærers (tilbakemelding 4.1). Modellen lykkes på ±30 min hvis forskjellen (punktestimatet) er minst 3,0 pp. 95 % KI rapporteres, men er ikke en del av dommen. Theodor hadde skrevet at nedre grense i intervallet også skulle telle, og hadde brukt «over» og «minst» om hverandre. Grensetesten skal vise at nøyaktig 3,0 gir bestått, og notatet skal si at den strengere varianten gir samme dom.
