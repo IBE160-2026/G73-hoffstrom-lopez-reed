@@ -56,3 +56,23 @@ Rette regelen slik at den er nøyaktig faglærers (tilbakemelding 4.1). Modellen
 
 ### Åpne punkter
 - Uendret fra seksjonen over: Felipe og Thomas må godkjenne den nye dommen før merge. Punktet står allerede i `issues.md`.
+
+## 2026-11-17 kl. 11:48 — Theodor Gimming
+
+### Oppgave
+Ta det som gjenstod av faglærers punkt 4.5 og kapittel 5. FR8 skal vise til en kilde i stedet for å gjenta tallene, og filnavn og ruter skal flyttes fra FR8, NFR1 og NFR2 til arkitekturen, med en henvisning fra PRD-en. Ingen tall eller krav skal endres.
+
+### Plan
+- Sjekke at `data/baseline.json` har tallene FR8 gjentar. Den har dem ikke, bare offset, splitt og sha256. Theodor valgte da at FR8 viser til regresjonstesten og beslutning 04.
+- Ny arkitektur §10 med filene, rutene og kommandoene. PRD-en viser dit.
+
+### Resultat
+- `cbe5bea` E0-S19:
+  - FR8 viser til `tests/test_dataregresjon.py` (arkitektur §8) og beslutning 04, og `baseline.json` er kilde for offset og splitt.
+  - FR8, NFR1 og NFR2 har ingen filnavn eller ruter lenger, og arkitektur §10 samler dem.
+  - Dekningen 91,1 % er flyttet til arkitektur §8. NFR3 viser til regresjonstesten.
+  - Endringslogger i PRD-en og arkitekturen. 492 tester grønne.
+- Punktet om 4.5 og kapittel 5 i `issues.md` er lukket.
+
+### Åpne punkter
+- Uendret: Felipe og Thomas må godkjenne den nye dommen før merge.
