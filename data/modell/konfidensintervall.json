@@ -1,0 +1,71 @@
+{
+  "horisonter": {
+    "24": {
+      "n": 742,
+      "treff_30": {
+        "analytisk": [
+          -0.019862,
+          0.036035
+        ],
+        "bootstrap": [
+          -0.020216,
+          0.036388
+        ],
+        "differanse": 0.008086,
+        "dom": "ikke påvist"
+      },
+      "varsel_f1": {
+        "bootstrap": [
+          0.123208,
+          0.362626
+        ],
+        "differanse": 0.24612,
+        "forveksling": {
+          "fn": 54,
+          "fp": 8,
+          "tn": 656,
+          "tp": 24
+        },
+        "modell": 0.436364,
+        "varsle_alle": 0.190244
+      }
+    },
+    "6": {
+      "n": 733,
+      "treff_30": {
+        "analytisk": [
+          0.059219,
+          0.129049
+        ],
+        "bootstrap": [
+          0.060027,
+          0.12824
+        ],
+        "differanse": 0.094134,
+        "dom": "bestått"
+      },
+      "varsel_f1": {
+        "bootstrap": [
+          0.190191,
+          0.44047
+        ],
+        "differanse": 0.318854,
+        "forveksling": {
+          "fn": 35,
+          "fp": 16,
+          "tn": 660,
+          "tp": 22
+        },
+        "modell": 0.463158,
+        "varsle_alle": 0.144304
+      }
+    }
+  },
+  "intervall": "95 % persentil (bootstrap over anløp); analytisk: Wald for parrede andeler",
+  "margin": 0.03,
+  "merknad": "Regnet 17.11.2026, etter testkjøringen, fra krysstabellen i mcnemar.json og varseltallene i metrikker.json. Testradene er ikke lest. Kriteriet (margin 3 prosentpoeng og nedre KI-grense over marginen) kom fra faglærers tilbakemelding på PRD-en (12.11.2026) og ble tatt inn etter testkjøringen, i strengere retning.",
+  "radsett": "ovrige_modellutvalg",
+  "seed": 160,
+  "testkjoring_commit": "8920acb92cda52c9ed03992cb404def7d03f9fdc",
+  "trekk": 10000
+}

@@ -1,10 +1,11 @@
-# Resultatnotat: modell mot kalibrert baseline (E2-S10)
+# Resultatnotat: modell mot kalibrert baseline (E2-S10, ny dom i E2-S11)
 
-Testperioden (14.09.2025–15.03.2026) er kjørt én gang, 13.11.2026, med `scripts/evaluer.py --test` på commit `8920acb92cda52c9ed03992cb404def7d03f9fdc`. Før kjøringen var modellen, konfigurasjonen, valgreglene og suksesskriteriene låst. Kriteriene ble kopiert ordrett fra `docs/brief.md` inn i specen (`_bmad-output/implementation-artifacts/spec-e2-s10-resultatnotat.md`) og committet før tallene var kjent. Ingenting i modellen, konfigurasjonen, valgreglene eller kriteriene er endret etter kjøringen, og testkjøringen er ikke gjort på nytt. Testradene er lest én gang til, for McNemar-tilleggsanalysen, med de samme låste artefaktene (se under), og det endrer ikke dommen. Alle tall i tabellene under er hentet fra `data/modell/metrikker.json` og `data/modell/mcnemar.json`, og `tests/test_resultater.py` og `tests/test_mcnemar.py` sjekker at tabellene er ordrett like filene.
+Testperioden (14.09.2025–15.03.2026) er kjørt én gang, 13.11.2026, med `scripts/evaluer.py --test` på commit `8920acb92cda52c9ed03992cb404def7d03f9fdc`. Før kjøringen var modellen, konfigurasjonen, valgreglene og suksesskriteriene låst. Kriteriene ble kopiert ordrett fra `docs/brief.md` inn i specen (`_bmad-output/implementation-artifacts/spec-e2-s10-resultatnotat.md`) og committet før tallene var kjent. Ingenting i modellen, konfigurasjonen, valgreglene eller kriteriene er endret etter kjøringen, og testkjøringen er ikke gjort på nytt. Testradene er lest én gang til, for McNemar-tilleggsanalysen, med de samme låste artefaktene (se under), og det endrer ikke dommen. Alle tall i tabellene under er hentet fra `data/modell/metrikker.json`, `data/modell/mcnemar.json` og `data/modell/konfidensintervall.json`, og `tests/test_resultater.py`, `tests/test_mcnemar.py` og `tests/test_konfidensintervall.py` sjekker at tabellene er ordrett like filene.
 
 ## Oppsummering
 
-- **Dommen: bestått ved begge horisonter**, slik kriteriene i briefen sier. På modellutvalget har modellen høyere andel innenfor ±30 min enn den kalibrerte baselinen og høyere varsel-F1 enn «varsle alle», både ved 6 t og 24 t.
+- **Dommen: bestått ved 6 t, ikke påvist ved 24 t.** Etter det gjeldende kriteriet lykkes modellen på ±30 min bare hvis den er minst 3 prosentpoeng bedre enn baselinen på modellutvalget, og nedre grense i 95 % konfidensintervall (bootstrap over anløp) ligger over marginen. Ved 6 t er differansen +9,4 prosentpoeng [6,0; 12,8]. Ved 24 t er den +0,8 [−2,0; 3,6], under marginen og med et intervall som går under null. Varsel-F1 er over «varsle alle» ved begge horisontene. Se [Ny dom: margin og konfidensintervall](#ny-dom-margin-og-konfidensintervall-e2-s11).
+- **Den opprinnelige dommen var bestått ved begge horisonter**, etter kriteriene som var låst før testkjøringen: høyere andel innenfor ±30 min enn baselinen og høyere varsel-F1 enn «varsle alle» på modellutvalget. Kriteriet ble endret *etter* testkjøringen (13.11.2026), etter faglærers tilbakemelding på PRD-en ([`docs/tilbakemelding-prd.md`](tilbakemelding-prd.md) punkt 4.1, commit `2fbc096`). Tilbakemeldingen lå på `main` fra 12.11, dagen før kjøringen, men ble lest etter den. Endringen gikk i strengere retning: den gjorde resultatet svakere (24 t gikk fra bestått til ikke påvist), ikke sterkere. Modellen, konfigurasjonen, valgreglene og testkjøringen er ikke endret, og testradene er ikke lest på nytt for intervallene.
 - **6 t er en klar forbedring.** Modellen treffer innenfor ±30 min på 68,5 % mot baselinens 59,1 % (+9,4 prosentpoeng, 502 mot 433 av 733 anløp). McNemars test (tilleggsanalyse, se under) gir p ≈ 2,3 · 10⁻⁷.
 - **24 t er formelt bestått, men forskjellen er seks anløp, og den hviler på data vi ikke kan verifisere.** Modellen treffer 57,1 % mot baselinens 56,3 % (424 mot 418 av 742). McNemars test gir p = 0,64, så forskjellen kan ikke skilles fra tilfeldig variasjon.
 - **Bestått ved 24 t avhenger av avgangshavn og ETD (F13–F14).** Ablasjonen uten dem treffer 53,8 % mot baselinens 56,3 %, og ville altså **ikke bestått**. F13–F14 er de to featurene vi ikke kan verifisere (avgangshavn og ETD, begrensningen ved siden av A1 i beslutning 11): de kommer fra en seilaspost som kan være satt sammen i etterkant.
@@ -13,7 +14,9 @@ Testperioden (14.09.2025–15.03.2026) er kjørt én gang, 13.11.2026, med `scri
 
 ## Kriteriene
 
-Kriteriene står ordrett i specen. Kort: bestått/ikke bestått avgjøres på **modellutvalget** (Øvrige-anløp med AIS-posisjon ved kuttet som er utenfor ankomstsonen, beslutning 12). Modellen må ha (1) høyere andel innenfor ±30 min enn den kalibrerte baselinen på de samme anløpene, og (2) høyere varsel-F1 enn regelen «varsle alle» på de samme anløpene. Dommen sammenligner de uavrundede verdiene.
+**Gjeldende kriterium (fra 17.11.2026, E2-S11):** modellen lykkes på ±30 min hvis andelen er minst 3 prosentpoeng høyere enn baselinen på modellutvalget for den aktuelle horisonten, og nedre grense i 95 % konfidensintervall (bootstrap over anløp) ligger over marginen. Ellers rapporteres resultatet som «ikke påvist». Varsel-F1 har ingen margin (faglærer foreslo ingen) og avgjøres som før. Intervallet for F1 rapporteres likevel.
+
+**Opprinnelig kriterium (låst før testkjøringen, gjaldt dommen 13.11):** står ordrett i specen. Kort: bestått/ikke bestått avgjøres på **modellutvalget** (Øvrige-anløp med AIS-posisjon ved kuttet som er utenfor ankomstsonen, beslutning 12). Modellen må ha (1) høyere andel innenfor ±30 min enn den kalibrerte baselinen på de samme anløpene, og (2) høyere varsel-F1 enn regelen «varsle alle» på de samme anløpene. Dommen sammenligner de uavrundede verdiene.
 
 ### Testkjøringer
 
@@ -23,7 +26,7 @@ Antall testkjøringer: 1.
 |---|---|---|
 | 1 | 2026-11-13 | `8920acb92cda52c9ed03992cb404def7d03f9fdc` |
 
-### Dom per horisont (modellutvalget)
+### Opprinnelig dom per horisont (modellutvalget, kriteriet før 17.11)
 
 | Horisont | Krav (briefen) | Modell | Referanse | Dom |
 |---|---|---|---|---|
@@ -41,9 +44,28 @@ Tabellen har samme form som i briefen. Raden for modellutvalget avgjør dommen. 
 | **Modellutvalget** (avgjør bestått/ikke bestått) | 733 / 742 | 73,6 % / 74,5 % | 59,1 % (433/733) / 56,3 % (418/742) | 68,5 % (502/733) / 57,1 % (424/742) | 7,8 % (57/733) / 10,5 % (78/742) | 0,14 / 0,19 | 0,46 / 0,44 |
 | **All Øvrige-trafikk, med delegering** | 996 / 996 | 73,6 % / 74,5 % | 46,6 % (464/996) / 46,6 % (464/996) | 53,5 % (533/996) / 47,2 % (470/996) | 19,5 % (194/996) / 19,5 % (194/996) | 0,33 / 0,33 | 0,19 / 0,21 |
 
+## Ny dom: margin og konfidensintervall (E2-S11)
+
+**Regnet 17.11.2026, etter testkjøringen og etter faglærers tilbakemelding. Kriteriet er strengere enn det opprinnelige.** Intervallene er regnet med `scripts/konfidensintervall.py` fra filer som allerede er committet: krysstabellen i `data/modell/mcnemar.json` for ±30 min, og varseltallene (treff, varsler, forsinkede, n) i `test`-blokken i `data/modell/metrikker.json` for F1. Testradene er ikke lest. Å trekke anløp med tilbakelegging er det samme som å trekke fra de fire feltene i krysstabellen, fordi differansen bare avhenger av hvilket felt hvert anløp ligger i. Det samme gjelder forvekslingsmatrisen for varsel, og F1 for «varsle alle» avhenger bare av antall forsinkede i det samme trekket, så også F1-differansen er parret. Bootstrap har fast seed (160) og 10 000 trekk, og intervallet er persentilintervallet. Det analytiske intervallet er differansen ± 1,96 · SE for parrede andeler. Resultatet ligger i `data/modell/konfidensintervall.json`.
+
+| Horisont | n | Modell − baseline, ±30 min (pp) | 95 % KI, bootstrap | 95 % KI, analytisk | Krav | Dom |
+|---|---|---|---|---|---|---|
+| 6 t | 733 | +9,4 | [6,0; 12,8] | [5,9; 12,9] | nedre grense > 3,0 pp | bestått |
+| 24 t | 742 | +0,8 | [−2,0; 3,6] | [−2,0; 3,6] | nedre grense > 3,0 pp | ikke påvist |
+
+| Horisont | F1 modell | F1 «varsle alle» | Differanse | 95 % KI, bootstrap |
+|---|---|---|---|---|
+| 6 t | 0,463 | 0,144 | +0,319 | [0,19; 0,44] |
+| 24 t | 0,436 | 0,190 | +0,246 | [0,12; 0,36] |
+
+- **6 t:** nedre grense (6,0 pp) ligger godt over marginen. Bootstrap og analytisk intervall er nesten like.
+- **24 t:** differansen er under marginen, og intervallet inneholder null. Vi kan ikke si at modellen er bedre enn baselinen ved 24 t. Det stemmer med McNemar (p = 0,64) og med ablasjonen uten F13–F14, som ville vært dårligere enn baselinen.
+- **Varsel-F1:** intervallet for differansen ligger over null ved begge horisonter. Det endrer ikke at systemet for all Øvrige-trafikk har lavere F1 enn «varsle alle» (se begrensningene).
+- To horisonter er vurdert hver for seg, uten korreksjon for flere sammenligninger.
+
 ## Tilleggsanalyse: McNemars test for ±30 min
 
-**Regnet etter testkjøringen, og endrer ikke dommen.** Modell og baseline er målt på de samme anløpene, så forskjellen i treffandel kan testes parvis. McNemar trenger antall uenige par: anløp der bare modellen eller bare baselinen treffer. `metrikker.json` har bare summene. Testradene ble derfor lest på nytt med `scripts/mcnemar.py` (godkjent av Felipe 13.11.2026), med de samme committede artefaktene og den samme prediksjonskoden som testkjøringen (funksjonene i `scripts/evaluer.py`). Treffregelen per anløp (|faktisk − predikert| ≤ 30 min) er skrevet i skriptet, lik den i `app/metrikker.py`. Skriptet sjekket først at de låste filene var uendret siden kjøringens commit, og etterpå at summene ble nøyaktig de samme som i `metrikker.json`. Bare krysstabellen og p-verdien er lagret (`data/modell/mcnemar.json`), ikke prediksjoner per anløp. p-verdien er den eksakte tosidige binomialtesten på de uenige parene. Det er ikke regnet effektstørrelse eller konfidensintervall for den parvise forskjellen, og p-verdiene er ikke korrigert for at to horisonter er testet. Skriptet stopper nå hvis `mcnemar.json` finnes, så analysen ikke kan gjøres på nytt ved et uhell.
+**Regnet etter testkjøringen, og endrer ikke dommen.** Modell og baseline er målt på de samme anløpene, så forskjellen i treffandel kan testes parvis. McNemar trenger antall uenige par: anløp der bare modellen eller bare baselinen treffer. `metrikker.json` har bare summene. Testradene ble derfor lest på nytt med `scripts/mcnemar.py` (godkjent av Felipe 13.11.2026), med de samme committede artefaktene og den samme prediksjonskoden som testkjøringen (funksjonene i `scripts/evaluer.py`). Treffregelen per anløp (|faktisk − predikert| ≤ 30 min) er skrevet i skriptet, lik den i `app/metrikker.py`. Skriptet sjekket først at de låste filene var uendret siden kjøringens commit, og etterpå at summene ble nøyaktig de samme som i `metrikker.json`. Bare krysstabellen og p-verdien er lagret (`data/modell/mcnemar.json`), ikke prediksjoner per anløp. p-verdien er den eksakte tosidige binomialtesten på de uenige parene. Konfidensintervall for den parvise forskjellen er regnet senere fra den samme krysstabellen (E2-S11, over). p-verdiene er ikke korrigert for at to horisonter er testet. Skriptet stopper nå hvis `mcnemar.json` finnes, så analysen ikke kan gjøres på nytt ved et uhell.
 
 | Horisont | n | Begge riktige | Bare modell | Bare baseline | Ingen | Uenige par | p (eksakt) |
 |---|---|---|---|---|---|---|---|
@@ -125,11 +147,12 @@ Anløp i testperioden: 1566.
 - **AIS-hull.** Anløp uten gyldig posisjon i døgnet før kuttet får baselinen (107 og 108 Øvrige-anløp ved 6 t og 24 t). Modellen er bare målt der den har AIS.
 - **A1: rapportert ETA ved `t_H`.** Datasettet har én rapportert ETA per seilas og ingen tidsstempel for når den ble meldt. Er den oppdatert etter `t_H`, har både modell og baseline fått mer informasjon enn vakta hadde. Det kan ikke verifiseres i dataene (beslutning 11).
 - **Avgangshavn og ETD (F13–F14).** De kommer fra en seilaspost som kan være satt sammen i etterkant, og kan ikke verifiseres. ETD brukes bare når den ligger før `t_H`. Bestått ved 24 t avhenger av disse feltene (ablasjonen over).
-- **Én testperiode, én kjøring.** Det er ikke regnet konfidensintervaller for andelene eller effektstørrelse for den parvise forskjellen. McNemar-testen er en tilleggsanalyse regnet etter kjøringen, uten korreksjon for to horisonter.
+- **Én testperiode, én kjøring.** Konfidensintervallene for den parvise forskjellen (E2-S11) og McNemar-testen er regnet etter kjøringen, fra krysstabellen, uten korreksjon for to horisonter. Det er ikke regnet intervaller for hver andel for seg.
+- **Kriteriet ble endret etter kjøringen.** Margin og konfidensintervall kom fra faglærers tilbakemelding og ble tatt inn etter at tallene var kjent. Endringen gjorde dommen strengere, ikke mildere, og den opprinnelige dommen står i notatet.
 
 ## Ble målene nådd?
 
-- **Hovedmålet (±30 min på modellutvalget):** ja, ved begge horisonter. Ved 6 t er forbedringen klar. Ved 24 t er den seks anløp, kan ikke skilles fra tilfeldig variasjon (p = 0,64), og forsvinner uten F13–F14.
+- **Hovedmålet (±30 min på modellutvalget):** ja ved 6 t (+9,4 pp, 95 % KI [6,0; 12,8]). Ved 24 t er det ikke påvist: +0,8 pp [−2,0; 3,6], seks anløp, p = 0,64, og forskjellen forsvinner uten F13–F14. Etter det opprinnelige kriteriet var begge bestått.
 - **Varsel (F1 over «varsle alle» på modellutvalget):** ja, ved begge horisonter (0,46 mot 0,14 og 0,44 mot 0,19). For all Øvrige-trafikk er systemet dårligere enn «varsle alle» (0,19 og 0,21 mot 0,33).
 - **Datakvalitet:** AIS-dekningen ved kuttet er logget (over og i `data/utdrag/ais_kutt_dekning.csv`).
 - **Produkt (den daglige briefen for havnevakta):** avgjøres ikke av denne kjøringen. Det hører til E3.
@@ -142,4 +165,4 @@ Anløp i testperioden: 1566.
 
 ## Reproduksjon
 
-Testkjøringen skal ikke gjøres på nytt (`--ny-testkjoring` er ikke brukt). Tabellene lages fra de committede filene med `.venv/bin/python scripts/resultattabeller.py`, og McNemar-tabellen med `.venv/bin/python scripts/mcnemar.py --bare-tabell` fra `data/modell/mcnemar.json`. Ingen av dem leser testradene.
+Testkjøringen skal ikke gjøres på nytt (`--ny-testkjoring` er ikke brukt). Tabellene lages fra de committede filene med `.venv/bin/python scripts/resultattabeller.py`, McNemar-tabellen med `.venv/bin/python scripts/mcnemar.py --bare-tabell` fra `data/modell/mcnemar.json`, og intervallene med `.venv/bin/python scripts/konfidensintervall.py` (fast seed, gir den samme fila). Ingen av dem leser testradene.

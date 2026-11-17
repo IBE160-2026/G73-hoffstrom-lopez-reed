@@ -54,3 +54,15 @@ def test_etter_testkjoringen_viser_appen_modellen(monkeypatch):
     assert panel["etter_test"] and panel["periode"] == PERIODE_TEST and not panel["mangler"]
     monkeypatch.setattr(prediksjon, "METRIKKER_FIL", METRIKKER)
     assert isinstance(prediksjon.velg_prediktor("auto", STANDARD_NAA), ModellPrediktor)
+
+
+def test_panelet_viser_den_nye_dommen():
+    """E2-S11: med de committede filene (metrikker.json og konfidensintervall.json, ingen testrader) gir panelet
+    «bestått» ved 6 t og «ikke påvist» ved 24 t på ±30 min, og F1 er bestått ved begge."""
+    _data()
+    from app.panel import BESTATT, IKKE_PAVIST, lag_panel
+
+    dommer = [h["grupper"][0]["dom"] for h in lag_panel(METRIKKER)["horisonter"]]
+    assert [d[0].removeprefix("Innenfor ±30 min: ").split(" (")[0] for d in dommer] == [BESTATT, IKKE_PAVIST]
+    assert all(d[1].startswith(f"Varsel-F1: {BESTATT} (") for d in dommer)
+    assert "95 % KI [6,0; 12,8]" in dommer[0][0] and "95 % KI [−2,0; 3,6]" in dommer[1][0]

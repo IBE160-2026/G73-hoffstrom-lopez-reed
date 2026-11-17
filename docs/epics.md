@@ -341,7 +341,19 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** tallene i notatet er lik `metrikker.json` (sjekkes i PR). Tabellene sjekkes også av testene: `tests/test_resultater.py::test_notat_lik_metrikker`, `::test_testkjoringen_har_full_commit` og `::test_etter_testkjoringen_viser_appen_modellen`, og `tests/test_mcnemar.py`.
 
-**Resultat (13.11.2026):** én testkjøring, på commit `8920acb`. Modellen består ved begge horisontene: ±30 min er 68,5 % mot 59,1 % ved 6 t og 57,1 % mot 56,3 % ved 24 t. Varsel-F1 er 0,46 mot 0,14 og 0,44 mot 0,19. Ved 24 t er forskjellen seks anløp, McNemar gir p = 0,64 (tilleggsanalyse), og ablasjonen uten F13–F14 ville ikke bestått. Se `docs/resultater.md`.
+**Resultat (13.11.2026):** én testkjøring, på commit `8920acb`. *Dommen nedenfor er etter det opprinnelige kriteriet. Den gjeldende dommen står i E2-S11.* Modellen består ved begge horisontene: ±30 min er 68,5 % mot 59,1 % ved 6 t og 57,1 % mot 56,3 % ved 24 t. Varsel-F1 er 0,46 mot 0,14 og 0,44 mot 0,19. Ved 24 t er forskjellen seks anløp, McNemar gir p = 0,64 (tilleggsanalyse), og ablasjonen uten F13–F14 ville ikke bestått. Se `docs/resultater.md`.
+
+### E2-S11 — Margin og konfidensintervall i suksesskriteriet ✅
+**Krav:** PRD FR10, brief Success Criteria, NFR3 · **Avhenger av:** E2-S10 · **Grunnlag:** [`docs/tilbakemelding-prd.md`](tilbakemelding-prd.md) punkt 4.1 (faglærer, 12.11.2026)
+- Gruppa følger faglærer: modellen lykkes på ±30 min bare hvis den er minst 3 prosentpoeng bedre enn baselinen på modellutvalget, og nedre grense i 95 % KI (bootstrap over anløp) ligger over marginen. Ellers «ikke påvist». Varsel-F1 har ingen margin.
+- Intervallene regnes fra krysstabellen i `mcnemar.json` og varseltallene i `metrikker.json`, med fast seed og 10 000 trekk, og det analytiske intervallet står ved siden av. Testradene leses ikke.
+- Resultatnotatet har den nye dommen først, med den opprinnelige rett under, og sier at kriteriet ble endret etter testkjøringen, i strengere retning. PRD FR10 og begge briefene er oppdatert, med en linje i endringsloggene.
+- Panelet leser `konfidensintervall.json` og avgjør ±30 min med samme regel: «bestått» bare når nedre grense er over marginen fra fila, ellers «ikke påvist». Mangler fila, eller passer den ikke med `metrikker.json`, står «kan ikke avgjøres». README, `docs/status.md` og UX §2 og §5 er rettet, og skjermbildene er tatt på nytt (Theodor Gimming, 17.11.2026).
+- Grensen: nedre grense lik marginen er «ikke påvist» (over, ikke minst; gruppa, 17.11.2026).
+
+**Test:** `tests/test_konfidensintervall.py` (grenser i dommen, samme regel som panelet, kjente verdier, den committede fila er lik en ny beregning, og tabellen står ordrett i notatet), `tests/test_panel.py::test_ki_*` (begge utfall, grensen, marginen fra fila, manglende og feil fil), de oppdaterte dommene i `tests/test_ruter.py`, og `tests/test_resultater.py::test_panelet_viser_den_nye_dommen` (de committede filene). Mutasjonssjekk med kontrollkjøring: 13 av 13 fanget.
+
+**Resultat (17.11.2026):** bestått ved 6 t (+9,4 pp, 95 % KI [6,0; 12,8], analytisk [5,9; 12,9]), ikke påvist ved 24 t (+0,8 pp [−2,0; 3,6]). Varsel-F1 over «varsle alle» ved begge (+0,32 [0,19; 0,44] og +0,25 [0,12; 0,36]).
 
 ---
 
@@ -419,7 +431,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 | FR8 | E1-S05, E1-S12 |
 | FR9a | E2-S02, E2-S03, E2-S04, E2-S07 |
 | FR9 | E2-S05, E2-S07, E2-S08 |
-| FR10 | E2-S06, E2-S09, E2-S10 |
+| FR10 | E2-S06, E2-S09, E2-S10, E2-S11 |
 | FR11 | E3-S02, E3-S03, E3-S04 |
 | FR12 | E3-S05 |
 | FR13 | E3-S01, E3-S06 |
@@ -463,3 +475,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-10** — E2-S08 er ferdig: `velg_prediktor` velger `ModellPrediktor` bak en lås for testperioden til testkjøringen i E2-S10 (vinduer før testperioden viser modellen med teksten om at den er trent på anløpene), og faller tilbake til baselinen med melding når artefaktet mangler. Stripa viser «Modell v1» og dekningsgrensen, og varselkolonnen viser ▲ + «VARSEL», «–» eller grunnen til delegeringen. Vinduet velger fortsatt på rapportert ETA. Prediksjonsfeil er flyttet til E1-S09 (Felipe).
 - **2026-11-11** — E2-S09 er ferdig: panelet «Treffsikkerhet: modell mot baseline» står i høyre kolonne på hovedskjermen og leser bare `data/modell/metrikker.json` (`app/panel.py`). Før testkjøringen viser det valideringsblokken, merket som utviklingstall og uten dom. Etter E2-S10 viser det `test`-blokken med bestått/ikke bestått per horisont på modellutvalget. Per horisont står modellutvalget, all Øvrige-trafikk med delegering og Passasjer (bare baseline), med ±30 min, presisjon, recall og F1 mot «varsle alle», og modellandelen. `null` vises som «kan ikke varsle». Ablasjonen og `test_bare_baseline` vises ikke. Testene er `tests/test_ruter.py::test_panel_modell_mot_baseline`, de andre `test_panel_*`-testene i `tests/test_ruter.py` og `tests/test_panel.py` (Felipe).
 - **2026-11-13** — E2-S10 er ferdig: én testkjøring av `scripts/evaluer.py --test` på commit `8920acb`. Commiten står i `metrikker.json`. Notatet `docs/resultater.md` er skrevet, cellene i briefen er fylt inn, og `auto` viser modellen. Etter kjøringen godkjente Felipe McNemars test som tilleggsanalyse (`scripts/mcnemar.py`, testradene ble lest på nytt). Etter sammenslåingen med `main` (PR #6) ga «Spesialfartøy» og varseltekstene horisontal rulling ved 640 px (UU6). Det er rettet med en myk bindestrek i visningsnavnet (Felipe).
+- **2026-11-17** — E2-S11 er ferdig: suksesskriteriet for ±30 min har fått margin og konfidensintervall etter faglærers tilbakemelding på PRD-en. Ny dom: bestått ved 6 t, ikke påvist ved 24 t. Panelet avgjør dommen fra `konfidensintervall.json` (Theodor Gimming).

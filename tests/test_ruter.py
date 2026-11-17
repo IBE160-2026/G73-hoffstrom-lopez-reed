@@ -9,7 +9,7 @@ import json
 import re
 
 import pytest
-from conftest import VALIDERING_NAA, anlopslista, parse_html, syntetisk_blokk
+from conftest import VALIDERING_NAA, anlopslista, parse_html, skriv_metrikker_og_ki, syntetisk_blokk
 
 import app.prediksjon as prediksjon
 import app.prediksjon.modell as modellmodul
@@ -551,9 +551,8 @@ def _metrikker(monkeypatch, sti):
 
 
 def _syntetisk(monkeypatch, tmp_path, data):
-    sti = tmp_path / "metrikker.json"
-    sti.write_text(json.dumps(data), encoding="utf-8")
-    _metrikker(monkeypatch, sti)
+    """``metrikker.json`` (og et konfidensintervall som passer, når det finnes en ``test``-blokk) i ``tmp_path``."""
+    _metrikker(monkeypatch, skriv_metrikker_og_ki(tmp_path, data))
 
 
 def _panel(dokument):
@@ -743,9 +742,11 @@ def test_panel_etter_testkjoringen(monkeypatch, tmp_path):
     assert "avgjøres først på testperioden" not in tekst
     dommer = [_ren(li.tekst()).replace("\u00a0", " ") for li in panel.finn_alle("li")]
     assert dommer == [  # én dom per horisont, på modellutvalget; 24 t har egne tall
-        "Innenfor ±30 min: bestått (modell 75,0 %, baseline 62,5 %)",
+        "Innenfor ±30 min: bestått (modell 75,0 %, baseline 62,5 %; +12,5 pp, 95 % KI [9,5; 15,5], "
+        "krav: nedre grense over 3,0 pp)",
         "Varsel-F1: bestått (modell 0,600, «varsle alle» 0,261)",
-        "Innenfor ±30 min: bestått (modell 80,0 %, baseline 65,0 %)",
+        "Innenfor ±30 min: bestått (modell 80,0 %, baseline 65,0 %; +15,0 pp, 95 % KI [12,0; 18,0], "
+        "krav: nedre grense over 3,0 pp)",
         "Varsel-F1: bestått (modell 0,582, «varsle alle» 0,298)",
     ]
 
@@ -771,7 +772,7 @@ def test_panel_modellen_taper_like_tydelig(monkeypatch, tmp_path):
     panel = _panel(_forside())
     tekst = _ren(panel.tekst()).replace("\u00a0", " ")
     assert "Modell − baseline, innenfor ±30 min: −5,0 pp (modellen dårligere)" in tekst
-    assert "Innenfor ±30 min: ikke bestått (modell 57,5 %, baseline 62,5 %)" in tekst
+    assert "Innenfor ±30 min: ikke påvist (modell 57,5 %, baseline 62,5 %; −5,0 pp, 95 % KI [−8,0; −2,0]" in tekst
     # Samme visuelle vekt: modell- og baselinecellene har samme klasse, uthevingen er den samme.
     for table in panel.finn_alle("table"):
         for tr in table.finn_alle("tbody")[0].finn_alle("tr"):

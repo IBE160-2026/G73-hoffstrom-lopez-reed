@@ -6,14 +6,16 @@ Rutetestene står i ``tests/test_ruter.py``.
 import json
 
 import pytest
-from conftest import syntetisk_blokk
+from conftest import skriv_metrikker_og_ki, syntetisk_blokk, syntetisk_ki
 
-from app.panel import KAN_IKKE_VARSLE, PERIODE_TEST, PERIODE_VALIDERING, lag_panel
+from app.panel import (BESTATT, IKKE_PAVIST, KAN_IKKE_AVGJORES, KAN_IKKE_VARSLE, PERIODE_TEST, PERIODE_VALIDERING,
+                       dom_treff, lag_panel)
 
-def _fil(tmp_path, data):
-    sti = tmp_path / "metrikker.json"
-    sti.write_text(json.dumps(data) if not isinstance(data, str) else data, encoding="utf-8")
-    return sti
+
+def _fil(tmp_path, data, ki=None):
+    """``metrikker.json`` i ``tmp_path``. Har ``data`` en ``test``-blokk, skrives også et konfidensintervall som passer
+    (``ki=False``: ingen fil)."""
+    return skriv_metrikker_og_ki(tmp_path, data, ki)
 
 
 def _celler(panel, h=0, gruppe=0):
@@ -108,9 +110,11 @@ def test_etter_testkjoringen_test_med_dom(tmp_path):
     assert panel["etter_test"] and panel["periode"] == PERIODE_TEST
     assert "301/400" not in json.dumps(panel, ensure_ascii=False)
     assert [h["grupper"][0]["dom"] for h in panel["horisonter"]] == [
-        ["Innenfor ±30 min: bestått (modell 75,0\u00a0%, baseline 62,5\u00a0%)",
+        ["Innenfor ±30 min: bestått (modell 75,0\u00a0%, baseline 62,5\u00a0%; +12,5 pp, 95 % KI [9,5; 15,5], "
+         "krav: nedre grense over 3,0 pp)",
          "Varsel-F1: bestått (modell 0,600, «varsle alle» 0,261)"],
-        ["Innenfor ±30 min: bestått (modell 80,0\u00a0%, baseline 65,0\u00a0%)",
+        ["Innenfor ±30 min: bestått (modell 80,0\u00a0%, baseline 65,0\u00a0%; +15,0 pp, 95 % KI [12,0; 18,0], "
+         "krav: nedre grense over 3,0 pp)",
          "Varsel-F1: bestått (modell 0,582, «varsle alle» 0,298)"],
     ]
     for h in panel["horisonter"]:
@@ -122,7 +126,7 @@ def test_modellen_taper(tmp_path):
     data = {"testkjoringer": 1, "test": syntetisk_blokk(modell_treff=230, modell_varsler=100, modell_varseltreff=5)}
     g = lag_panel(_fil(tmp_path, data))["horisonter"][0]["grupper"][0]
     assert g["differanse"] == "−5,0 pp (modellen dårligere)"
-    assert g["dom"][0].startswith("Innenfor ±30 min: ikke bestått")
+    assert g["dom"][0].startswith("Innenfor ±30 min: ikke påvist")
     assert g["dom"][1].startswith("Varsel-F1: ikke bestått")
 
 
@@ -130,13 +134,15 @@ def test_dom_kriteriene_er_uavhengige(tmp_path):
     """±30 min og varsel-F1 avgjøres hver for seg: det ene kan bestå mens det andre ikke gjør det."""
     treff_feil = lag_panel(_fil(tmp_path, {"testkjoringer": 1, "test": syntetisk_blokk(modell_treff=200)}))
     assert treff_feil["horisonter"][0]["grupper"][0]["dom"] == [
-        "Innenfor ±30 min: ikke bestått (modell 50,0\u00a0%, baseline 62,5\u00a0%)",
+        "Innenfor ±30 min: ikke påvist (modell 50,0\u00a0%, baseline 62,5\u00a0%; −12,5 pp, 95 % KI [−15,5; −9,5], "
+        "krav: nedre grense over 3,0 pp)",
         "Varsel-F1: bestått (modell 0,600, «varsle alle» 0,261)",
     ]
     f1_feil = lag_panel(_fil(tmp_path, {"testkjoringer": 1,
                                         "test": syntetisk_blokk(modell_varsler=100, modell_varseltreff=5)}))
     assert f1_feil["horisonter"][0]["grupper"][0]["dom"] == [
-        "Innenfor ±30 min: bestått (modell 75,0\u00a0%, baseline 62,5\u00a0%)",
+        "Innenfor ±30 min: bestått (modell 75,0\u00a0%, baseline 62,5\u00a0%; +12,5 pp, 95 % KI [9,5; 15,5], "
+        "krav: nedre grense over 3,0 pp)",
         "Varsel-F1: ikke bestått (modell 0,062, «varsle alle» 0,261)",
     ]
 
@@ -170,14 +176,15 @@ def test_lik_f1_er_ikke_bestatt(tmp_path):
 
 
 def test_differanse_ord_folger_uavrundet_fortegn(tmp_path):
-    """Runder differansen til 0,0, står det «<0,1 pp» med riktig ord, aldri «likt» ved siden av «bestått»."""
+    """Runder differansen til 0,0, står det «<0,1 pp» med riktig ord, aldri «likt». En så liten differanse er
+    «ikke påvist» (E2-S11)."""
     blokk = syntetisk_blokk()
     utvalg = blokk["horisonter"]["6"]["ovrige_modellutvalg"]
     utvalg["modell"]["andel_30"] = utvalg["baseline"]["andel_30"] + 0.0004
     utvalg["modell"]["varsel"]["f1"] = utvalg["varsle_alle"]["f1"] - 0.004
     g = lag_panel(_fil(tmp_path, {"testkjoringer": 1, "test": blokk}))["horisonter"][0]["grupper"][0]
     assert g["differanse"] == "<0,1 pp (modellen bedre)"
-    assert g["dom"][0].startswith("Innenfor ±30 min: bestått")
+    assert g["dom"][0].startswith("Innenfor ±30 min: ikke påvist")
     assert g["differanse_f1"] == "<0,01 (modellen dårligere)"
     assert g["dom"][1].startswith("Varsel-F1: ikke bestått")
 
@@ -201,7 +208,7 @@ def test_likt_er_ikke_bestatt(tmp_path):
     data = {"testkjoringer": 1, "test": syntetisk_blokk(modell_treff=250)}
     g = lag_panel(_fil(tmp_path, data))["horisonter"][0]["grupper"][0]
     assert g["differanse"] == "±0,0 pp (likt)"
-    assert g["dom"][0].startswith("Innenfor ±30 min: ikke bestått")
+    assert g["dom"][0].startswith("Innenfor ±30 min: ikke påvist")
 
 
 def test_ablasjonen_vises_ikke(tmp_path):
@@ -266,3 +273,76 @@ def test_all_ovrige_trafikk_er_systemet_ikke_modellen(tmp_path):
         assert alle["forklaring"].startswith("De fleste forsinkelsene i all trafikk er turer inne i havneområdet")
         assert "Modellutvalget er raden som viser modellen." in alle["forklaring"]
         assert passasjer["forklaring"] is None
+
+
+# --- E2-S11: dommen på ±30 min avgjøres av konfidensintervallet -------------------------------------------------
+
+def _treffdom(tmp_path, ki=None, blokk=None):
+    data = {"testkjoringer": 1, "test": blokk or syntetisk_blokk()}
+    return [h["grupper"][0]["dom"][0] for h in lag_panel(_fil(tmp_path, data, ki))["horisonter"]]
+
+
+def _ord(linje):
+    return linje.removeprefix("Innenfor ±30 min: ").split(" (")[0]
+
+
+def test_ki_begge_utfall(tmp_path):
+    """Samme differanse (+12,5 pp ved 6 t), ulik nedre grense: 6,0 pp gir «bestått», −2,0 pp gir «ikke påvist».
+    Ordet følger av intervallet, ikke av differansen."""
+    blokk = syntetisk_blokk()
+    dommer = _treffdom(tmp_path, syntetisk_ki(blokk, nedre={"6": 0.06, "24": -0.02}), blokk)
+    assert [_ord(d) for d in dommer] == [BESTATT, IKKE_PAVIST]
+    assert "95 % KI [6,0; 15,5]" in dommer[0] and "95 % KI [−2,0; 18,0]" in dommer[1]
+
+
+@pytest.mark.parametrize("nedre, ventet", [
+    (0.030001, BESTATT),      # rett over marginen
+    (0.03, IKKE_PAVIST),      # lik marginen er ikke over (gruppa, 17.11.2026)
+    (0.029999, IKKE_PAVIST),  # rett under
+])
+def test_ki_grensen(tmp_path, nedre, ventet):
+    blokk = syntetisk_blokk()
+    assert _ord(_treffdom(tmp_path, syntetisk_ki(blokk, nedre={"6": nedre}), blokk)[0]) == ventet
+    assert dom_treff(nedre, 0.03) == ventet
+
+
+def test_ki_marginen_leses_fra_fila(tmp_path):
+    """Marginen er ikke hardkodet: med margin 0,10 i fila er nedre grense 9,5 pp ikke nok."""
+    blokk = syntetisk_blokk()
+    dommer = _treffdom(tmp_path, syntetisk_ki(blokk, margin=0.10), blokk)
+    assert [_ord(d) for d in dommer] == [IKKE_PAVIST, BESTATT]  # nedre 9,5 og 12,0 pp
+    assert "krav: nedre grense over 10,0 pp" in dommer[0]
+
+
+def test_ki_mangler_gir_kan_ikke_avgjores(tmp_path):
+    data = {"testkjoringer": 1, "test": syntetisk_blokk()}
+    panel = lag_panel(_fil(tmp_path, data, ki=False))
+    assert panel["mangler"] is False
+    for h in panel["horisonter"]:
+        treff, f1 = h["grupper"][0]["dom"]
+        assert _ord(treff) == KAN_IKKE_AVGJORES and "konfidensintervallet mangler" in treff
+        assert f1.startswith("Varsel-F1: bestått")
+
+
+@pytest.mark.parametrize("feil", ["n", "differanse", "uleselig", "nan"])
+def test_ki_som_ikke_passer_gir_kan_ikke_avgjores(tmp_path, feil):
+    """Et intervall for andre tall enn dem som vises (annen n eller differanse), eller en ødelagt fil, avgjør
+    ingenting."""
+    blokk = syntetisk_blokk()
+    ki = syntetisk_ki(blokk)
+    if feil == "n":
+        ki["horisonter"]["6"]["n"] += 1
+    elif feil == "differanse":
+        ki["horisonter"]["6"]["treff_30"]["differanse"] += 0.001
+    elif feil == "nan":
+        ki["horisonter"]["6"]["treff_30"]["bootstrap"][0] = float("nan")
+    innhold = "{ikke json" if feil == "uleselig" else json.dumps(ki)
+    assert _ord(_treffdom(tmp_path, innhold, blokk)[0]) == KAN_IKKE_AVGJORES
+
+
+def test_ki_leses_ikke_foer_testkjoringen(tmp_path):
+    sti = _fil(tmp_path, {"testkjoringer": 0, "validering": syntetisk_blokk()})
+    (tmp_path / "konfidensintervall.json").write_text(json.dumps(syntetisk_ki(syntetisk_blokk())), encoding="utf-8")
+    panel = lag_panel(sti)
+    assert all(g["dom"] is None for h in panel["horisonter"] for g in h["grupper"])
+

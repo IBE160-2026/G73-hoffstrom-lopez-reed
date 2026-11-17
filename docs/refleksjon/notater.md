@@ -278,3 +278,12 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Lærdom (råt):**
   - En UU-sjekk som er bestått på hver gren, gjelder ikke for sammenslåingen. Mål på nytt etter hver merge.
   - Skjermbildeskriptet er den eneste layoutsjekken vi har, og det kjøres ikke av `pytest`. Det bør kjøres etter hver merge som endrer maler, CSS eller tekst på skjermen.
+
+## 2026-11-17 — Skriptet kunne bruke feil intervall uten at noen test merket det (E2-S11)
+
+- **Hva:** Claude skrev `scripts/konfidensintervall.py` og testene for det. Dommen skal avgjøres av nedre grense i bootstrap-intervallet. En mutant som avgjorde den med nedre grense i det *analytiske* intervallet i stedet, overlevde alle testene. På de ekte tallene gir de to intervallene samme dom (6,0 og 5,9 ved 6 t, −2,0 ved 24 t), så testen som sammenligner den committede fila med en ny beregning, kunne ikke skille dem.
+- **Hvordan det ble oppdaget:** Claudes mutasjonssjekk med kontrollkjøring på uendret kode. 12 av 13 mutanter ble fanget, og denne overlevde.
+- **Resultat:** ny test `test_dommen_bruker_bootstrap_ikke_analytisk`, der det analytiske intervallet er tvunget langt over marginen og dommen likevel skal bli «ikke påvist». Etter det ble 13 av 13 fanget. Se `git log --oneline --grep E2-S11`.
+- **Lærdom (råt):**
+  - Samme mønster som før: en test mot de ekte tallene dekker bare forskjeller som tallene tilfeldigvis får fram. To regler som gir samme svar på dataene, må skilles med et konstruert tilfelle.
+  - Grensen ble avklart med gruppa før testene ble skrevet. Den første meldingen sa «over marginen», og den neste sa «minst». Det ble spurt om, ikke valgt.

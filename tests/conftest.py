@@ -235,3 +235,31 @@ def syntetisk_blokk(modell_treff=300, baseline_treff=250, modell_varsler=40, mod
         "6": horisont(modell_treff, baseline_treff, forsinket, modell_varseltreff, 210),
         "24": horisont(modell_treff + 20, baseline_treff + 10, forsinket + 10, v24, 200),
     }}
+
+
+def syntetisk_ki(blokk, nedre=None, margin=0.03):
+    """``konfidensintervall.json`` som passer med ``blokk`` (samme n og differanse på modellutvalget, E2-S11).
+
+    ``nedre`` er nedre grense per horisont ({"6": …}); standard er differansen − 0,03. Øvre grense er alltid
+    differansen + 0,03. Bare formen panelet leser."""
+    nedre = nedre or {}
+    horisonter = {}
+    for h, v in blokk["horisonter"].items():
+        m, b = v["ovrige_modellutvalg"]["modell"], v["ovrige_modellutvalg"]["baseline"]
+        d = round(m["andel_30"] - b["andel_30"], 6)
+        horisonter[h] = {"n": m["n"], "treff_30": {"differanse": d, "bootstrap": [nedre.get(h, d - 0.03), d + 0.03],
+                                                   "analytisk": [d - 0.03, d + 0.03]}}
+    return {"margin": margin, "horisonter": horisonter}
+
+
+def skriv_metrikker_og_ki(mappe, data, ki=None):
+    """Skriver ``metrikker.json`` og, når ``data`` har en ``test``-blokk og ``ki`` ikke er ``False``,
+    ``konfidensintervall.json`` ved siden av (``ki`` eller ``syntetisk_ki(data["test"])``). Returnerer stien til
+    ``metrikker.json``."""
+    sti = Path(mappe) / "metrikker.json"
+    sti.write_text(json.dumps(data) if not isinstance(data, str) else data, encoding="utf-8")
+    if ki is not False and isinstance(data, dict) and "test" in data:
+        innhold = syntetisk_ki(data["test"]) if ki is None else ki
+        (Path(mappe) / "konfidensintervall.json").write_text(
+            innhold if isinstance(innhold, str) else json.dumps(innhold), encoding="utf-8")
+    return sti
