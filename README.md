@@ -16,6 +16,8 @@ Et AIS-basert beslutningsstøtteverktøy som predikerer når skip faktisk ankomm
 
 Full produktbrief ligger i [`docs/brief.md`](docs/brief.md) (norsk versjon: [`docs/brief.no.md`](docs/brief.no.md)), med utdypende teknisk grunnlag i [`docs/addendum.md`](docs/addendum.md). Beslutninger tatt underveis i datapipelinen er logget enkeltvis i [`docs/beslutninger/`](docs/beslutninger/).
 
+**Kjørende versjon:** <https://g73-hoffstrom-lopez-reed.vercel.app> er åpen uten innlogging og bygges fra `main` på Vercel (arkitektur §11). Den viser det samme som appen lokalt, med standardvinduet 08.10.2025 kl. 08:00.
+
 ## Kom i gang
 
 Appen er et dashbord som spiller av historiske anløp til Bergen Havn og viser når hvert skip er predikert å ankomme. Den bruker data som ligger i repoet, så du trenger verken API-nøkler, `.env` eller nettilgang etter installasjonen.
