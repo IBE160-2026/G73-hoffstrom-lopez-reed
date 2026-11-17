@@ -1,0 +1,26 @@
+{
+  "horisonter": {
+    "24": {
+      "bare_baseline": 53,
+      "bare_modell": 59,
+      "begge": 365,
+      "ingen": 265,
+      "n": 742,
+      "p_verdi": 0.6368,
+      "uenige": 112
+    },
+    "6": {
+      "bare_baseline": 54,
+      "bare_modell": 123,
+      "begge": 379,
+      "ingen": 177,
+      "n": 733,
+      "p_verdi": 2.27737e-07,
+      "uenige": 177
+    }
+  },
+  "merknad": "Tilleggsanalyse regnet etter testkjøringen. Endrer ikke dommen. Testradene er lest på nytt med de samme artefaktene og den samme koden som testkjøringen, fordi metrikker.json bare har summene. Bare krysstabellen og p-verdien er lagret.",
+  "radsett": "ovrige_modellutvalg",
+  "test": "eksakt tosidig",
+  "testkjoring_commit": "8920acb92cda52c9ed03992cb404def7d03f9fdc"
+}

@@ -76,8 +76,10 @@ flask --app app run --port 8000
 **Hva du skal se:** anløpene de neste 24 timene fra «nå» = onsdag 08.10.2025 kl. 08:00 (norsk tid).
 
 - Overskriften sier «15 anløp · ons 08.10 08:00 – tor 09.10 08:00 (norsk tid)».
-- Lista starter med ROTTERDAM og slutter med MSC POESIA. Den er sortert etter predikert ankomst. BERGEN ENERGY har rapportert ETA ons 11:00 og predikert ankomst ons 09:56.
-- Prediktor-stripa viser «Kalibrert baseline». Varselkolonnen viser «–», fordi baselinen ikke kan varsle avvik. Det står forklart på siden.
+- Lista starter med EINARSON og slutter med MSC POESIA. Den er sortert etter predikert ankomst. BERGEN ENERGY har rapportert ETA ons 11:00 og predikert ankomst ons 09:56 (kalibrert baseline, fordi skipet allerede er i havneområdet).
+- Prediktor-stripa viser «Modell v1». Testkjøringen (E2-S10) er gjort, så standard (`PREDIKTOR=auto`) viser modellen. Anløp modellen ikke dekker (Passasjer, anløp uten AIS-posisjon ved kuttet og turer inne i havneområdet), får kalibrert baseline, og varselkolonnen sier hvorfor. OCEAN RESPONSE har ▲ VARSEL. `PREDIKTOR=baseline` viser bare baselinen. Mangler modellartefaktet, viser appen baselinen og «Modell ikke funnet — viser kalibrert baseline».
+- Panelet «Treffsikkerhet: modell mot baseline» viser testperioden med dom per horisont. På ±30 min står **bestått ved 6 t** (+9,4 prosentpoeng, 95 % KI [6,0; 12,8]) og **ikke påvist ved 24 t** (+0,8, [−2,0; 3,6]). Modellen må være minst 3 prosentpoeng bedre enn baselinen. Intervallet vises, men avgjør ikke dommen. Regelen kom fra faglærers tilbakemelding og ble tatt inn etter testkjøringen, i strengere retning. Etter den opprinnelige regelen var begge bestått. Varsel-F1 er bestått ved begge. Se [`docs/resultater.md`](docs/resultater.md).
+- Varselet kan bare nå under halvparten av de forsinkede anløpene, uansett hvor god modellen er. Av 194 forsinkede ikke-rutegående anløp i testperioden ligger bare 57 (6 t) og 78 (24 t) i utvalget modellen brukes på. Resten er turer inne i havneområdet ved kuttet eller anløp uten AIS-posisjon, og de får baselinen (beslutning 12, `docs/brief.md`).
 - Under 640 px bredde vises anløpene som kort i stedet for tabell.
 
 ![Hovedskjermen i standardvinduet, 1280 px](docs/ux/skjermbilder/hovedskjerm-desktop.png)

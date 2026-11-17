@@ -17,7 +17,9 @@ HORISONT_ETIKETT = {6: "≤ 6 t", 24: "6–24 t"}
 
 # Norske visningsnavn for skipsgrupper der kilden bruker et engelsk navn (E1-S19, Felipe 05.11.2026).
 # Bare visningen: ``ship_group`` i utdraget og gruppering i Passasjer/Øvrige er uendret.
-GRUPPE_VISNINGSNAVN = {"Auxiliary": "Spesialfartøy"}
+# «Spesialfartøy» har en myk bindestrek (U+00AD) etter «Spesial»: ordet kan brytes der bare når det er for lite plass.
+# Uten den ble tabellen 9 px for bred ved 640 px (200 % zoom, UU6) med modellen i standardvinduet (E2-S10).
+GRUPPE_VISNINGSNAVN = {"Auxiliary": "Spesial\u00adfartøy"}
 
 
 def gruppe_visning(ship_group: str) -> str:

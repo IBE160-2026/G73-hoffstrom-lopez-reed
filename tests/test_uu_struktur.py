@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 import pytest
+from conftest import anlopslista
 
 INTERAKTIVE = {"a", "button", "input", "select", "textarea", "summary"}
 NATIVE = {"button", "input", "select", "textarea", "summary"}
@@ -65,7 +66,7 @@ def test_hopplenke_er_forst_og_virker(side):
 
 
 def test_tabell_th_har_scope(dokument):
-    tabeller = dokument.finn_alle("table")
+    tabeller = anlopslista(dokument).finn_alle("table")
     assert len(tabeller) == 1
     ths = tabeller[0].finn_alle("th")
     assert len(ths) == 6
@@ -75,15 +76,17 @@ def test_tabell_th_har_scope(dokument):
 
 def test_tabellen_har_eksplisitte_roller(dokument):
     """display: block under 640 px fjerner tabellsemantikken i Safari, så rollene står i HTML."""
-    assert dokument.finn_alle("table")[0].attrs.get("role") == "table"
-    assert all(td.attrs.get("role") == "cell" for td in dokument.finn_alle("td"))
-    assert all(th.attrs.get("role") == "columnheader" for th in dokument.finn_alle("th"))
+    liste = anlopslista(dokument)
+    assert liste.finn_alle("table")[0].attrs.get("role") == "table"
+    assert all(td.attrs.get("role") == "cell" for td in liste.finn_alle("td"))
+    assert all(th.attrs.get("role") == "columnheader" for th in liste.finn_alle("th"))
 
 
 def test_hver_td_har_data_label(dokument):
-    tder = dokument.finn_alle("td")
+    liste = anlopslista(dokument)
+    tder = liste.finn_alle("td")
     assert len(tder) == 15 * 6
-    kolonner = [th.tekst().strip() for th in dokument.finn_alle("th")]
+    kolonner = [th.tekst().strip() for th in liste.finn_alle("th")]
     for td in tder:
         assert td.attrs.get("data-label") in kolonner
 

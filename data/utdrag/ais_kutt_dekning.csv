@@ -1,0 +1,9 @@
+horisont_timer,gruppe,split,n,hentet,med_posisjon_24t,andel_med_posisjon_24t,med_posisjon_1t,andel_med_posisjon_1t,med_manglende_dag,manglende_dager
+6,Øvrige,test,1119,1119,1013,0.905,692,0.618,0,
+6,Øvrige,train,4358,4358,3636,0.834,2474,0.568,10,2024-07-30;2024-10-28
+6,Passasjer,test,447,447,440,0.984,437,0.978,0,
+6,Passasjer,train,1902,1902,1840,0.967,1804,0.948,5,2024-07-30;2024-10-28
+24,Øvrige,test,1119,1119,1012,0.904,664,0.593,0,
+24,Øvrige,train,4358,4358,3453,0.792,2232,0.512,18,2024-07-30;2024-10-28
+24,Passasjer,test,447,447,436,0.975,405,0.906,0,
+24,Passasjer,train,1902,1902,1735,0.912,1555,0.818,9,2024-07-30;2024-10-28

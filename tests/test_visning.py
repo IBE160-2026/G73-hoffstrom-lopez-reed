@@ -13,6 +13,9 @@ from app.visning import (
 
 UTC = dt.timezone.utc
 
+MYK_BINDESTREK = "\u00ad"  # E2-S10: «Spesial\u00adfartøy»
+SYNLIGE_BINDESTREKER = "-\u2010\u2011\u2012\u2013\u2014\u2212"
+
 
 def test_avrunding_29_sekunder_ned():
     t = dt.datetime(2025, 10, 8, 7, 55, 29, tzinfo=UTC)
@@ -79,7 +82,7 @@ def test_horisont_etiketter():
 
 def test_gruppe_visning():
     """E1-S19: «Auxiliary» vises som «Spesialfartøy». Andre grupper vises som i kilden."""
-    assert gruppe_visning("Auxiliary") == "Spesialfartøy"
+    assert gruppe_visning("Auxiliary").replace(MYK_BINDESTREK, "") == "Spesialfartøy"
     for g in ("Last", "Passasjer", "Tank", "Slep", "Fisk", "Ukjent"):
         assert gruppe_visning(g) == g
 
@@ -92,4 +95,14 @@ def test_ingen_rad_viser_auxiliary(client):
     assert "Auxiliary" not in html
     rad = html[html.index("G O SARS"):]
     rad = rad[:rad.index("</tr>")]
-    assert ">Spesialfartøy</td>" in rad
+    assert ">Spesialfartøy</td>" in rad.replace(MYK_BINDESTREK, "")
+    assert MYK_BINDESTREK in rad  # den myke bindestreken når fram til HTML-en (UU6 ved 640 px)
+
+
+def test_spesialfartoy_myk_bindestrek_uten_synlige():
+    """E2-S10 (Felipe): «Spesialfartøy» har en myk bindestrek, så ordet kan brytes ved 640 px (UU6). Uten de myke
+    bindestrekene er navnet «Spesialfartøy», og det har ingen synlige bindestreker."""
+    navn = gruppe_visning("Auxiliary")
+    assert MYK_BINDESTREK in navn
+    assert navn.replace(MYK_BINDESTREK, "") == "Spesialfartøy"
+    assert not any(tegn in navn for tegn in SYNLIGE_BINDESTREKER)
