@@ -92,11 +92,11 @@ ID-ene brukes i stories (`docs/epics.md`) og i tester.
   - **Test:** med avvik-sortering står anløpet med størst avvik øverst, og hvert avvik er større enn eller lik avviket under. Anløp uten fasit står sist, i rekkefølge etter predikert ankomst. Avvik-sortering uten fasit gir sortering etter predikert ankomst, ingen feil.
 - **FR7 — Detaljvisning.** Hvert anløp har en egen side: skipsdata, alle tidspunkt, og en forklaring av hvordan prediksjonen ble laget. For baselinen er forklaringen en mal per gruppe: «rapportert ETA − {offset} min (median tid fra ankomstsonen til kai for {gruppe} i treningsdata)». (UJ-1)
   - **Test:** detaljsiden viser alle tidspunkt fra ordlisten for anløpet: rapportert ETA, predikert ankomst, horisont og kuttpunkt `t_H`, og, med fasit på, faktisk ankomst, avvik og prediksjonsfeil. For baselinen står forklaringsmalen med offset fylt inn for gruppen (44,8 min for Passasjer, 64,2 min for Øvrige). For modellen står metoden fra `Prediksjon.forklaring`, og for en delegert rad, grunnen til delegeringen. Uten fasit på inneholder siden ingen fasitdata. Ukjent anløp gir 404 med lenke tilbake.
-- **FR8 — Treffsikkerhet og datakvalitet.** Et panel og en metodeside (`/metode`) viser tall for hele testperioden, regnet med samme metrikkfunksjon som evalueringen (NFR3, UJ-2):
-  - **Andel innenfor ±30 min** (hovedmetrikken), med både naiv ETA og kalibrert baseline per gruppe. For baseline skal tallene være **Øvrige 46,6 %** (naiv 12,8 %) og **Passasjer 79,6 %** (naiv 7,4 %) (`docs/beslutninger/04-kalibrert-baseline.md`).
-  - **Dekning:** antall anløp med fasit av totalt per gruppe og antall per status (`ok`, `empty`, `not_detected`, `avkortet_av_neste_seilas`). Testperioden: 1 427 av 1 566 (91,1 %).
-  - **Støttetall** (bare på `/metode`, aldri som hovedtall): MAE og median absolutt avvik.
-  - `/metode` har setningen som beslutning 04 krever: forskjellen mellom naiv og kalibrert baseline skyldes at de måler to ulike fysiske hendelser, ikke at kalibrert er en bedre modell.
+- **FR8 — Treffsikkerhet og datakvalitet.** Et panel og en metodeside viser tall for hele testperioden, regnet med samme metrikkfunksjon som evalueringen (NFR3, UJ-2). Filer og ruter står i [arkitektur §10](arkitektur.md#10-filer-og-endepunkter-bak-prd-kravene).
+  - **Andel innenfor ±30 min** (hovedmetrikken), med både naiv ETA og kalibrert baseline per gruppe. De forventede tallene gjentas ikke her. De er låst i regresjonstesten (NFR3, arkitektur §8) og begrunnet i [beslutning 04](beslutninger/04-kalibrert-baseline.md). Offset per gruppe og splittidspunktet leses fra den lagrede baselinen (NFR1).
+  - **Dekning:** antall anløp med fasit av totalt per gruppe og antall per status (`ok`, `empty`, `not_detected`, `avkortet_av_neste_seilas`). Det forventede tallet for testperioden er låst i den samme regresjonstesten.
+  - **Støttetall** (bare på metodesiden, aldri som hovedtall): MAE og median absolutt avvik.
+  - Metodesiden har setningen som beslutning 04 krever: forskjellen mellom naiv og kalibrert baseline skyldes at de måler to ulike fysiske hendelser, ikke at kalibrert er en bedre modell.
 
 ### Modell (E2)
 
@@ -165,19 +165,19 @@ Mål: WCAG 2.1 nivå AA for de kravene som gjelder appen. Hvert punkt har en tes
 
 Kriterienumrene viser til [`docs/vurderingskriterier.md`](vurderingskriterier.md).
 
-- **NFR1 — Kjørbarhet (kriterium 6).** Sensor skal kunne klone repoet og ha appen kjørende på **under 20 minutter** ved å følge README, uten gruppas nøkler eller kontoer og uten nett utover `pip install`. Dette forutsetter:
-  - **Versjonert datautdrag** i `data/utdrag/`, ikke den gitignorede `pipeline/data/`.
-  - **Lagret baseline** (`data/baseline.json`: offset per gruppe, splittidspunkt, kildefilens sjekksum), slik at ingenting må regnes ut på nytt ved oppstart.
-  - **`.env.example`** med alle variabler og *ingen* ekte nøkler. Appen starter uten `.env`.
-  - Fra E2: **versjonert tilstandsutdrag** (`data/utdrag/tilstand_ved_kutt.csv`, én rad per anløp og horisont, regnet etter FR9a, med kildens sjekksum), **featurefil** (`data/utdrag/features.csv`, F1–F16 fra beslutning 11, uten rå ETD) og **lagret modellartefakt**. Sensor trenger verken AIS-cachen eller å trene. Grense: under 10 MB til sammen.
+- **NFR1 — Kjørbarhet (kriterium 6).** Sensor skal kunne klone repoet og ha appen kjørende på **under 20 minutter** ved å følge README, uten gruppas nøkler eller kontoer og uten nett utover installasjon av pakkene. Filene står i [arkitektur §10](arkitektur.md#10-filer-og-endepunkter-bak-prd-kravene). Dette forutsetter:
+  - **Versjonert datautdrag** i repoet, ikke de gitignorerte rådataene fra pipelinen.
+  - **Lagret baseline** (offset per gruppe, splittidspunkt, kildefilens sjekksum), slik at ingenting må regnes ut på nytt ved oppstart.
+  - **Et eksempel på konfigurasjonen** med alle variabler og *ingen* ekte nøkler. Appen starter uten konfigurasjonsfil.
+  - Fra E2: **versjonert tilstandsutdrag** (én rad per anløp og horisont, regnet etter FR9a, med kildens sjekksum), **featurefil** (F1–F16 fra beslutning 11, uten rå ETD) og **lagret modellartefakt**. Sensor trenger verken AIS-cachen eller å trene. Grense: under 10 MB til sammen.
   - Fra E3: **testmodus som standard** (FR13).
   - Verifisert med en *klone-test*: et gruppemedlem som ikke bygde oppsettet følger README på en ren maskin. Tiden loggføres.
-- **NFR2 — Testbarhet (kriterium 3).** Hver story har akseptansekriterier som kan sjekkes og en navngitt test, automatisk der det går og ellers et manuelt sjekkpunkt. `pytest` kjører uten nett og uten `pipeline/data/` på under ett minutt. `GET /` svarer på under 1 s lokalt for standardvinduet.
+- **NFR2 — Testbarhet (kriterium 3).** Hver story har akseptansekriterier som kan sjekkes og en navngitt test, automatisk der det går og ellers et manuelt sjekkpunkt. Testsuiten kjører uten nett og uten rådataene fra pipelinen på under ett minutt. Hovedskjermen svarer på under 1 s lokalt for standardvinduet. Kommando og rute står i [arkitektur §10](arkitektur.md#10-filer-og-endepunkter-bak-prd-kravene).
 - **NFR3 — Ærlige tall.**
   - Dashbord og evalueringsskript bruker *samme* metrikkfunksjon.
   - **Modellvalg, features og tuning skjer bare på en valideringsdel:** de siste 20 % av treningsdataene, kronologisk.
   - **Testperioden brukes bare til tallene som rapporteres.** Antall kjøringer mot testperioden logges i `metrikker.json` og i resultatnotatet.
-  - Baselinetallene i FR8 er en regresjonstest. Endrer de seg, er noe galt.
+  - Baselinetallene FR8 viser, er låst i en regresjonstest (arkitektur §8). Endrer de seg, er noe galt.
 - **NFR4 — Sporbarhet (kriterium 1).** Én story = én commit, med story-ID først i commit-meldingen (`E1-S03: …`). Én branch og én PR per epic. PR-beskrivelsen lister storyene og lenker til sesjonsloggene for øktene i `.logs/<bruker>/` (faglærers format fra 27.10). `docs/prompts/` er historikk til og med 27.10 og føres ikke videre.
 - **NFR5 — Enkelhet (kriterium 5).** Ingen database, ingen JS-rammeverk, ingen byggesteg. Begrunnet i arkitekturen (A1–A3).
 - **NFR6 — Hemmeligheter (kriterium 7).** Nøkler bare i `.env`, som er gitignored. Ingen nøkkel trengs for å kjøre eller teste.
@@ -248,3 +248,4 @@ A1 og A2 ble avgjort i beslutning 11 (03.11.2026). A1 kan ikke verifiseres og er
   - FR9 står før FR9a, og A1 er merket `[ASSUMPTION]` inline i FR9a og står i §9.
   - Ikke gjort: FR8 viser fortsatt baselinetallene i stedet for `data/baseline.json` (4.5), og filnavnene i FR8, NFR1 og NFR2 står der fortsatt (kapittel 5).
 - **2026-11-17** — E2-S11, rettelse samme dag: regelen i FR10 er nå nøyaktig faglærers (punkt 4.1). Forskjellen (punktestimatet) må være minst 3,0 prosentpoeng, og 95 % KI rapporteres, men avgjør ikke dommen. Første versjon krevde i tillegg at nedre grense i intervallet lå over marginen, som er strengere enn faglærer skrev. Dommen er uendret: bestått ved 6 t (+9,4 pp) og ikke påvist ved 24 t (+0,8 pp).
+- **2026-11-17** — E0-S19, faglærers punkt 4.5 og kapittel 5 (`docs/tilbakemelding-prd.md`, 12.11.2026): FR8 gjentar ikke lenger baselinetallene og dekningen. Den viser til regresjonstesten og beslutning 04. `data/baseline.json` har bare offset, splitt og sjekksum, ikke tallene, så den er oppgitt som kilde for offset og splitt, ikke for tallene (avklart med Theodor). Filnavn, kommando og ruter er flyttet fra FR8, NFR1 og NFR2 til arkitektur §10, og PRD-en viser dit. Ingen tall eller krav er endret. Gammel ordlyd i FR8: «For baseline skal tallene være Øvrige 46,6 % (naiv 12,8 %) og Passasjer 79,6 % (naiv 7,4 %)» og «Testperioden: 1 427 av 1 566 (91,1 %)». Tallene står nå i arkitektur §8 og i `tests/test_dataregresjon.py`.

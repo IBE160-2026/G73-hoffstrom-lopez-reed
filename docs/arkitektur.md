@@ -2,7 +2,7 @@
 title: "Arkitektur: AIS-basert ankomstprediksjon"
 status: aktiv
 created: 2026-10-16
-updated: 2026-10-27
+updated: 2026-11-17
 bygger_på: docs/prd.md
 ---
 
@@ -192,7 +192,7 @@ LLM_MODELL=claude-haiku-5-5
 | Enhet | datalag, baseline, metrikker, formatering | `tests/test_*.py` mot `tests/fixtures/anlop_mini.csv` (håndlagde rader med kjente svar) |
 | Kontrakt | alle prediktorer mot §3, inkludert `t_H ≤ naa` | `tests/test_prediktor_kontrakt.py` (parametrisert) |
 | Lekkasje | tilstand og features er uendret når AIS etter `t_H` eller faktisk ankomst endres | `tests/test_tilstand.py`, `tests/test_features.py` (PRD FR9a) |
-| Dataregresjon | utdraget gir 46,6 % / 79,6 % (naiv 12,8 % / 7,4 %) og 1 427/1 566 med fasit på testsplitten | `tests/test_dataregresjon.py` (PRD FR8, NFR3) |
+| Dataregresjon | utdraget gir Øvrige 46,6 % og Passasjer 79,6 % innenfor ±30 min med kalibrert baseline (naiv 12,8 % / 7,4 %), og 1 427 av 1 566 (91,1 %) med fasit på testsplitten | `tests/test_dataregresjon.py` (PRD FR8, NFR3; beslutning 04) |
 | Rute | statuskoder, rader, feilmeldinger, at URL-tilstanden bevares | Flask-testklient |
 | UU-struktur | `lang`, `label for`, `th scope`, `aria-sort`, alt-tekst, én `h1` | `tests/test_uu_struktur.py` med `html.parser` fra standardbiblioteket |
 | Kontrast | tokenpar fra `style.css` ≥ 4,5:1 / 3:1 | `tests/test_kontrast.py` |
@@ -203,6 +203,21 @@ LLM_MODELL=claude-haiku-5-5
 ## 9. Avhengigheter
 
 `requirements.txt`: `flask>=3,<4`, `tzdata`, `pytest`. E2 legger til `scikit-learn`, og E3 legger til `anthropic`. Hver ny avhengighet begrunnes i commit-meldingen til storyen som legger den til.
+
+## 10. Filer og endepunkter bak PRD-kravene
+
+PRD-en beskriver kravene uten filnavn og ruter (faglærers tilbakemelding på PRD-en, kapittel 5). Her står hvor de bor.
+
+| PRD-krav | Fil, rute eller kommando |
+|---|---|
+| FR8, panelet og metodesiden | Panelet står på `GET /`, og metodesiden er `GET /metode` (§6). Støttetallene (MAE og median) står bare på `/metode`. Forventede baselinetall og dekning: `tests/test_dataregresjon.py` (§8). |
+| FR8 og NFR1, lagret baseline | `data/baseline.json`: offset per gruppe, `test_fra_utc` og kildefilens sha256 (§4). Inneholder ikke baselinetallene. |
+| NFR1, versjonert datautdrag | `data/utdrag/anlop.csv` (§4). De gitignorerte rådataene ligger i `pipeline/data/`. |
+| NFR1, eksempel på konfigurasjonen | `.env.example` (§7). Ekte nøkler bare i `.env`, som er gitignorert (NFR6). Appen starter uten `.env`. |
+| NFR1, fra E2 | Tilstandsutdraget `data/utdrag/tilstand_ved_kutt.csv` med `tilstand_ved_kutt.json`, featurefila `data/utdrag/features.csv` med `features.json`, og modellartefaktene i `data/modell/` (§4). `test_committet_features` sjekker grensen på 10 MB. |
+| NFR1, installasjon | `pip install -r requirements.txt` (§9) |
+| NFR2, testsuiten | `pytest` uten nett og uten `pipeline/data/` (§8) |
+| NFR2, svartid | `GET /` for standardvinduet (§6) |
 
 ## Endringslogg
 
@@ -224,3 +239,4 @@ LLM_MODELL=claude-haiku-5-5
 - **2026-11-05** — E2-S03: ny `ais_status` `manglende_dag` for kuttpunkter i en manglende dagstabell (beslutning 09, Felipe) (§4).
 - **2026-11-10** — E2-S07: F1–F16 når `ModellPrediktor` gjennom søsterfunksjonen `featurer_ved_kutt` i `__init__.py`, uten kontraktendring. Delegerte rader har `forklaring["delegert"]`, og kodingen står i `app/prediksjon/koding.py` (§3, §5).
 - **2026-11-10** — E2-S08: `velg_prediktor` har fått `naa` og velger `ModellPrediktor` bak låsen for testperioden (til E2-S10) og med tilbakefall til baselinen når artefaktet mangler (§3). Testperiodens første ETA leses i `app/prediksjon/__init__.py`, som er grensen mot `app.data`.
+- **2026-11-17** — E0-S19, faglærers tilbakemelding på PRD-en (kapittel 5): ny §10 med filene, rutene og kommandoene som er flyttet ut av PRD FR8, NFR1 og NFR2. Raden for dataregresjon i §8 har fått dekningen 91,1 %, som før sto i FR8. Ingen krav er endret.
