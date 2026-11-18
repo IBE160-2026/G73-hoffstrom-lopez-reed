@@ -14,7 +14,7 @@ from typing import Dict
 
 from app.begrunnelse.testmodus import VARSEL_GRENSE_MIN
 from app.prediksjon import Prediksjon, PrediksjonsInput
-from app.visning import DELEGERT_TEKST, gruppe_visning, horisont_etikett, ukedag_dato_klokke
+from app.visning import DELEGERT_TEKST, gruppe_visning, horisont_etikett, tall, ukedag_dato_klokke
 
 # Featurene som sendes, med etikett og antall desimaler. Sykliske koder (sin/cos for time og måned), ukedag,
 # posisjon og F6 sendes ikke: de er uleselige som tall, eller står allerede i inputen (F6 er alltid 0 for rader
@@ -35,14 +35,6 @@ FEATURE_ETIKETT = {
 }
 
 METODE_NAVN = {"kalibrert_baseline": "Kalibrert baseline", "modell": "Modell v1"}
-
-
-def tall(verdi: float, desimaler: int) -> str:
-    """Norsk tallformat: desimalkomma og ekte minustegn (U+2212), f.eks. «−12,5»."""
-    tekst = f"{verdi:.{desimaler}f}".replace(".", ",")
-    if tekst.startswith("-"):
-        tekst = "−" + tekst[1:]
-    return tekst
 
 
 def _feature(navn: str, verdi) -> str:
@@ -81,14 +73,16 @@ def lag_fakta(inp: PrediksjonsInput, prediksjon: Prediksjon) -> Dict[str, str]:
         "Rapportert ETA (norsk tid)": ukedag_dato_klokke(inp.eta_reported),
         "Predikert ankomst (norsk tid)": ukedag_dato_klokke(prediksjon.predikert_ankomst),
         "Horisont": horisont_etikett(inp.horisont_timer),
+        "Kuttpunkt for dataene (norsk tid)": ukedag_dato_klokke(inp.t_kutt),
         "Metode": METODE_NAVN.get(f.get("metode"), str(f.get("metode"))),
     }
     if f.get("metode") == "modell":
         fakta["Predikert avvik fra kalibrert baseline (min)"] = tall(f["predikert_avvik_min"], 0)
+        fakta["Kalibrert baseline for øvrige: rapportert ETA minus (min)"] = tall(f["offset_ovrige_min"], 1)
         fakta["Varselgrense (min)"] = str(VARSEL_GRENSE_MIN)
     elif f.get("offset_minutter") is not None:
         fakta["Fast forskyvning: median tid fra sonegrense til kai for gruppen (min)"] = tall(
-            f["offset_minutter"], 0)
+            f["offset_minutter"], 1)
     fakta["Varsel"] = _varsel(prediksjon)
     if f.get("delegert"):
         fakta["Hvorfor Modell v1 ikke vurderer anløpet"] = DELEGERT_TEKST.get(f["delegert"], f["delegert"])

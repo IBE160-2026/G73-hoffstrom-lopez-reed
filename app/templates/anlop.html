@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block tittel %}{% if ukjent %}Ukjent anløp{% else %}{{ inp.shipname }}{% endif %} · Ankomstprediksjon · Bergen Havn{% endblock %}
+{% block hode %}
+{%- if not ukjent and not begrunnelse %}
+  <noscript><style>#begrunnelse-henter { display: none; }</style></noscript>
+{%- endif %}
+{% endblock %}
+{% block h1 %}{% if ukjent %}Fant ikke anløpet{% else %}{{ inp.shipname }}{% endif %}{% endblock %}
+{% block innhold %}
+<p class="tilbake"><a href="{{ url_for('forside') }}"><span aria-hidden="true">‹</span> Tilbake til anløpslista</a></p>
+{% if ukjent %}
+<p>Seilas {{ voyageid }} finnes ikke i vinduet som vises. Gå tilbake til anløpslista og velg et anløp der.</p>
+{% else %}
+<p class="detalj-id">{{ gruppe }} · Seilas {{ inp.voyageid }}</p>
+
+<section class="detalj" aria-labelledby="tider-tittel">
+  <h2 id="tider-tittel">Tidspunkt (norsk tid)</h2>
+  <dl class="detalj-liste">
+    <dt>Rapportert ETA</dt><dd class="tid">{{ rapportert }}</dd>
+    <dt>Predikert ankomst</dt><dd class="tid">{{ predikert }}</dd>
+    <dt>Horisont</dt><dd>{{ horisont }}</dd>
+    <dt>Kuttpunkt (data fram til)</dt><dd class="tid">{{ kuttpunkt }}</dd>
+    <dt>Prediktor</dt><dd>{{ prediktor_navn }}</dd>
+    <dt>Varsel</dt><dd class="varsel">
+      {%- if not kan_varsle %}Ingen varsel: baselinen varsler ikke avvik
+      {%- elif varsel %}<span class="varsel-merke"><span aria-hidden="true">▲</span> VARSEL</span>
+      {%- elif varsel is sameas false %}Ingen varsel
+      {%- elif varsel_grunn %}Ingen varsel ({{ varsel_grunn }})
+      {%- else %}Ingen varsel (ingen modellvurdering)
+      {%- endif %}</dd>
+  </dl>
+</section>
+
+<section class="detalj" aria-labelledby="metode-tittel">
+  <h2 id="metode-tittel">Slik ble prediksjonen laget</h2>
+  {% for linje in metode %}
+  <p>{{ linje }}</p>
+  {% endfor %}
+</section>
+
+<section id="begrunnelse" class="detalj begrunnelse" aria-labelledby="begrunnelse-tittel">
+  <h2 id="begrunnelse-tittel">Hvorfor avvik er ventet</h2>
+  <div id="begrunnelse-svar" aria-live="polite" aria-atomic="true"
+    {%- if not begrunnelse %} data-url="{{ url_for('begrunnelse_json', voyageid=inp.voyageid) }}" data-mal="{{ mal }}"{% endif %}>
+    {%- if begrunnelse %}
+    <p class="ki-merke">{{ begrunnelse.merke }}</p>
+    <p class="begrunnelse-tekst">{{ begrunnelse.tekst }}</p>
+    {%- else %}
+    <p id="begrunnelse-henter" class="begrunnelse-henter">Henter forklaring …</p>
+    {%- endif %}
+  </div>
+  {% if not begrunnelse %}
+  <noscript>
+    <p class="ki-merke">Testmodus</p>
+    <p class="begrunnelse-tekst">{{ mal }}</p>
+  </noscript>
+  <script src="{{ url_for('static', filename='begrunnelse.js') }}" defer></script>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

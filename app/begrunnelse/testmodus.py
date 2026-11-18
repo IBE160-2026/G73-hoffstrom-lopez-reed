@@ -7,7 +7,7 @@ På baselinen, og for rader modellen har delegert til baselinen, påstår tekste
 """
 from __future__ import annotations
 
-from app.visning import DELEGERT_TEKST, horisont_etikett, ukedag_dato_klokke
+from app.visning import DELEGERT_TEKST, horisont_etikett, tall, ukedag_dato_klokke
 
 MERKE_TEST = "Testmodus"
 MERKE_FEILET = "Testmodus (ekte kall feilet)"
@@ -25,7 +25,7 @@ def _baseline_setning(prediksjon) -> str:
     gruppe = GRUPPE_TEKST.get(f.get("gruppe"), "gruppen")
     if offset is None:
         return "Prediksjonen er kalibrert baseline."
-    return (f"Prediksjonen er kalibrert baseline: rapportert ETA minus {offset:.0f} min, "
+    return (f"Prediksjonen er kalibrert baseline: rapportert ETA minus {tall(offset, 1)} min, "
             f"som er median tid fra sonegrense til kai for {gruppe}.")
 
 
@@ -37,10 +37,10 @@ def mal(inp, prediksjon) -> str:
         avvik = f["predikert_avvik_min"]
         pred = ukedag_dato_klokke(prediksjon.predikert_ankomst)
         if prediksjon.forventet_forsinket is True:
-            return (f"Modell v1 ({horisont}) venter at {inp.shipname} kommer {avvik:.0f} min senere enn "
+            return (f"Modell v1 ({horisont}) venter at {inp.shipname} kommer {tall(avvik, 0)} min senere enn "
                     f"kalibrert baseline, over varselgrensen på {VARSEL_GRENSE_MIN} min. "
                     f"Predikert ankomst er {pred}, mot rapportert ETA {ukedag_dato_klokke(inp.eta_reported)}.")
-        return (f"Modell v1 ({horisont}) predikerer {avvik:+.0f} min avvik fra kalibrert baseline for "
+        return (f"Modell v1 ({horisont}) predikerer {tall(avvik, 0)} min avvik fra kalibrert baseline for "
                 f"{inp.shipname}, under varselgrensen på {VARSEL_GRENSE_MIN} min. Predikert ankomst er {pred}.")
     grunn = DELEGERT_TEKST.get(f.get("delegert"))
     if grunn:

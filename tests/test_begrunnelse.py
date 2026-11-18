@@ -4,11 +4,12 @@ Ingen test gjør et ekte kall: ``conftest._ai_vakter`` fjerner nøkkelen, setter
 Ekte modus testes bare med en falsk transport og den falske nøkkelen ``sk-or-TEST-IKKE-EKTE``.
 Baselinerader tas fra standardvinduet. Modellrader bare fra ``VALIDERING_NAA`` (regelen om testrader).
 """
+import json
 import logging
 import urllib.request
 
 import pytest
-from conftest import NettSperret
+from conftest import FalskTransport, NettSperret
 
 import app.begrunnelse as begrunnelse
 from app import STANDARD_NAA
@@ -181,33 +182,11 @@ def test_input_modell_har_avvik_og_featurer(monkeypatch):
 
 # --- E3-S03: ekte klient (bare med falsk transport), prompt og kontroll -----------------------------------------
 
-import json  # noqa: E402
 import urllib.error  # noqa: E402
 
 from app.begrunnelse import openrouter_klient  # noqa: E402
 from app.begrunnelse.kontroll import antall_setninger, kontroller  # noqa: E402
 from app.begrunnelse.testmodus import MERKE_GRENSE, MERKE_KI  # noqa: E402
-
-
-class FalskTransport:
-    """Svarer som OpenRouter uten nett. ``svar`` er tekst (200), et heltall (HTTP-status) eller et unntak."""
-
-    def __init__(self, svar="", finish_reason="stop"):
-        self.svar = svar
-        self.finish_reason = finish_reason
-        self.kall = []
-
-    def __call__(self, url, headers, body, timeout):
-        self.kall.append({"url": url, "headers": dict(headers), "body": json.loads(body), "timeout": timeout})
-        if isinstance(self.svar, BaseException):
-            raise self.svar
-        if isinstance(self.svar, int):
-            return self.svar, b""
-        if isinstance(self.svar, bytes):
-            return 200, self.svar
-        kropp = {"choices": [{"message": {"role": "assistant", "content": self.svar},
-                              "finish_reason": self.finish_reason}]}
-        return 200, json.dumps(kropp).encode("utf-8")
 
 
 def godt_svar(inp, p):

@@ -386,10 +386,11 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_begrunnelse.py::test_ekte_med_mock`, `::test_fallback_ved_feil`
 
-### E3-S04 — Begrunnelse på detaljsiden ☐
+### E3-S04 — Begrunnelse på detaljsiden ✅
 **Krav:** FR11 · **Avhenger av:** E3-S03
 - Skjerm C viser begrunnelsen merket «KI-GENERERT» (eller «Testmodus»): høyst 3 setninger og ≤ 400 tegn (PRD FR11).
 - Alle tall og skipsnavn i teksten finnes i inputen. På baseline påstår teksten aldri at et avvik er ventet.
+- Siden venter aldri på språkmodellen: et cachet svar er server-rendret, ellers står «Henter forklaring …» i en `aria-live`-region, og svaret hentes med `POST /anlop/<voyageid>/begrunnelse`. Uten JavaScript vises mal-teksten merket «Testmodus». Skjerm C er bygd minimalt her (kjernen i E1-S11).
 
 **Test:** `tests/test_ruter.py::test_detalj_begrunnelse`, `tests/test_begrunnelse.py::test_tall_finnes_i_input`
 
@@ -488,3 +489,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-17** — E0-S21 er ferdig. Theodor åpnet forhåndsvisningen og så at siden virker, og PR #7 er merget (`f6da1d7`). Produksjonsadressen er åpen uten innlogging og står i README (Theodor Gimming).
 - **2026-11-18** — E0-S22 er ferdig. Faglærer svarte at `technology.md` var en rest og ikke skal brukes, så den er fjernet. Han deler ut en OpenRouter-nøkkel med bruksgrense til testing. Navnet `OPENROUTER_API_KEY` står i `.env.example`, og nøkkelen legges bare i den lokale `.env`. Hvilken leverandør E3 bruker (arkitekturen sier fortsatt Anthropic), er ikke avgjort her (Theodor Gimming).
 - **2026-11-18** — E3-S01–S03 er ferdige på `epic/e3-ai-lag`: adapter med testmodus, input fra modellens egne data og ekte klient mot OpenRouter (beslutning 13). E3-S03 sier nå `openrouter_klient.py` og `OPENROUTER_API_KEY` i stedet for `anthropic_klient.py` og `ANTHROPIC_API_KEY` (Theodor Gimming).
+- **2026-11-18** — E3-S04 er ferdig på `epic/e3-ai-lag`: skjerm C med begrunnelsen, JSON-endepunktet og UU-radene i UX §6 (☐ til manuell sjekk). Kjernen i E1-S11 er levert her (Theodor Gimming).

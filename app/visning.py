@@ -32,6 +32,12 @@ DELEGERT_TEKST = {
 GRUPPE_VISNINGSNAVN = {"Auxiliary": "Spesial\u00adfartøy"}
 
 
+def tall(verdi: float, desimaler: int) -> str:
+    """Norsk tallformat: desimalkomma og ekte minustegn (U+2212), f.eks. «−12,5» og «64,2»."""
+    tekst = f"{verdi:.{desimaler}f}".replace(".", ",")
+    return "\u2212" + tekst[1:] if tekst.startswith("-") else tekst
+
+
 def gruppe_visning(ship_group: str) -> str:
     """Visningsnavnet for en skipsgruppe. Ukjente grupper vises som i kilden."""
     return GRUPPE_VISNINGSNAVN.get(ship_group, ship_group)

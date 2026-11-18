@@ -84,6 +84,27 @@ def _ai_vakter(monkeypatch):
     begrunnelse.nullstill()
 
 
+class FalskTransport:
+    """Svarer som OpenRouter uten nett. ``svar`` er tekst (200), et heltall (HTTP-status) eller et unntak."""
+
+    def __init__(self, svar="", finish_reason="stop"):
+        self.svar = svar
+        self.finish_reason = finish_reason
+        self.kall = []
+
+    def __call__(self, url, headers, body, timeout):
+        self.kall.append({"url": url, "headers": dict(headers), "body": json.loads(body), "timeout": timeout})
+        if isinstance(self.svar, BaseException):
+            raise self.svar
+        if isinstance(self.svar, int):
+            return self.svar, b""
+        if isinstance(self.svar, bytes):
+            return 200, self.svar
+        kropp = {"choices": [{"message": {"role": "assistant", "content": self.svar},
+                              "finish_reason": self.finish_reason}]}
+        return 200, json.dumps(kropp).encode("utf-8")
+
+
 # Den ekte ``metrikker.json`` sett som før testkjøringen (E2-S10, beslutning 1A): ``testkjoringer = 0``, tom logg og uten
 # ``test``-blokken. Testene som leser den ekte fila og forventer valideringsvisningen, er da grønne både før og etter
 # den ene testkjøringen, og ingen test må endres etter den.
