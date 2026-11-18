@@ -68,7 +68,7 @@ def lag_fakta(inp: PrediksjonsInput, prediksjon: Prediksjon) -> Dict[str, str]:
     f = prediksjon.forklaring
     fakta = {
         "Skip": inp.shipname,
-        "Skipsgruppe": gruppe_visning(inp.ship_group).replace("­", ""),
+        "Skipsgruppe": gruppe_visning(inp.ship_group).replace("\u00ad", ""),
         "Gruppe": inp.gruppe,
         "Rapportert ETA (norsk tid)": ukedag_dato_klokke(inp.eta_reported),
         "Predikert ankomst (norsk tid)": ukedag_dato_klokke(prediksjon.predikert_ankomst),
@@ -85,7 +85,9 @@ def lag_fakta(inp: PrediksjonsInput, prediksjon: Prediksjon) -> Dict[str, str]:
             f["offset_minutter"], 1)
     fakta["Varsel"] = _varsel(prediksjon)
     if f.get("delegert"):
-        fakta["Hvorfor Modell v1 ikke vurderer anløpet"] = DELEGERT_TEKST.get(f["delegert"], f["delegert"])
+        # «Modell v1» står i verdien, ikke bare i etiketten: tallkontrollen leser bare verdiene.
+        fakta["Hvorfor Modell v1 ikke vurderer anløpet"] = (
+            f"{DELEGERT_TEKST.get(f['delegert'], f['delegert'])} (Modell v1 vurderer ikke anløpet)")
     for navn, verdi in (f.get("featurer") or {}).items():
         if navn in FEATURE_ETIKETT and verdi is not None:
             fakta[FEATURE_ETIKETT[navn][0]] = _feature(navn, verdi)
