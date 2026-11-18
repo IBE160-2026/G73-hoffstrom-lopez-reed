@@ -895,6 +895,7 @@ def test_detalj_begrunnelse(client):
     assert par["Predikert ankomst"] == "ons 08.10 09:56"
     assert par["Horisont"] == "≤ 6 t"
     assert par["Prediktor"] == "Kalibrert baseline"
+    assert par["Varsel"] == "Ingen varsel: baselinen varsler ikke avvik"
     tekst = _ren(d.tekst())
     assert "Slik ble prediksjonen laget" in tekst
     assert par["Kuttpunkt (data fram til)"] == "ons 08.10 05:00"
@@ -926,6 +927,7 @@ def test_detalj_venter_ikke_paa_spraakmodellen(client, monkeypatch):
             time.sleep(30)
 
     t = _ekte(monkeypatch, Sover())
+    _detalj(client)  # oppvarming: data og prediktor lastes før tidtakingen
     start = time.perf_counter()
     svar, d = _detalj(client)
     assert time.perf_counter() - start < 1
@@ -959,6 +961,7 @@ def test_cachet_svar_vises_server_rendret(client, monkeypatch):
     assert svar.status_code == 200
     assert svar.get_json() == {"tekst": _godt_svar(), "merke": "KI-GENERERT"}
     assert len(t.kall) == 1
+    _detalj(client)  # oppvarming: data og prediktor lastes før tidtakingen
     start = time.perf_counter()
     _, d = _detalj(client)
     assert time.perf_counter() - start < 1
@@ -1049,9 +1052,32 @@ def test_detalj_med_modellen_varsel(modell_validering):
     tekst = _ren(d.tekst())
     assert "▲ VARSEL" in tekst
     assert "Modell v1 (" in tekst and "Modellen varsler når predikert avvik er over 120 min." in tekst
-    assert f"{p.forklaring['predikert_avvik_min']:.0f} min." in tekst
+    assert f"justert med modellens predikerte avvik på +{p.forklaring['predikert_avvik_min']:.0f} min." in tekst
     region = _ren(_med_id(d, "begrunnelse-svar").tekst())
     assert region.startswith("Testmodus Modell v1") and "over varselgrensen på 120 min" in region
+
+
+def test_detalj_med_modellen_uten_varsel(modell_validering):
+    inp, p = _modellrad(False)
+    _, d = _detalj(modell_validering, inp.voyageid)
+    dl = d.finn_alle("dl")[0]
+    par = dict(zip([_ren(n.tekst()) for n in dl.finn_alle("dt")], [_ren(n.tekst()) for n in dl.finn_alle("dd")]))
+    assert par["Varsel"] == "Ingen varsel"
+    assert "VARSEL" not in _ren(dl.tekst())
+
+
+@pytest.mark.parametrize("avvik, vist", [(152.0, "+152"), (-12.4, "\u221212"), (0.0, "0"), (-0.4, "0")])
+def test_metode_tekst_fortegn(avvik, vist):
+    from app import _minutter, metode_tekst
+    from app.prediksjon import Prediksjon
+
+    assert _minutter(avvik, fortegn=True) == vist
+    inp, b = _inp_p()
+    p = Prediksjon(inp.voyageid, inp.horisont_timer, b.predikert_ankomst, avvik > 120,
+                   {"metode": "modell", "gruppe": "Øvrige", "predikert_avvik_min": avvik, "offset_ovrige_min": 64.2})
+    assert metode_tekst(inp, p)[0] == (
+        f"Modell v1 (≤ 6 t): kalibrert baseline (rapportert ETA − 64,2 min) justert med modellens predikerte avvik "
+        f"på {vist} min.")
 
 
 def test_detalj_med_modellen_delegert(modell_validering):

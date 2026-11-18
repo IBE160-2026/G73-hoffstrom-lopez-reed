@@ -2,7 +2,7 @@
 title: 'E3-S01–S04 — Begrunnelse per anløp via OpenRouter, uten å vente på språkmodellen'
 type: 'feature'
 created: '2026-11-18'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: 'cfb460912a21edd5f8033a70ddd296f3364db1a9'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -81,15 +81,15 @@ S1–S7 are this spec's own choices. They are not the project decisions in `docs
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `app/begrunnelse/konfig.py`, `testmodus.py`, `__init__.py` -- config, template text, `hent_begrunnelse(inp, prediksjon, prediktor_navn)` and `cachet(...)`, cache and cap -- E3-S01
-- [ ] `tests/conftest.py` -- autouse: no key, test mode, sockets blocked, cache reset -- E3-S01
-- [ ] `app/begrunnelse/input.py` -- `lag_fakta(inp, prediksjon)` → dict with Norwegian labels and screen-formatted values -- E3-S02
-- [ ] `app/begrunnelse/prompt.md`, `openrouter_klient.py`, `kontroll.py` -- versioned prompt, client with injectable transport, `max_tokens` 300, error → reason code, answer check -- E3-S03
-- [ ] `docs/prd.md` -- FR11b and its test: the cap is per process (per Vercel instance), failures are cached for 300 s, the total is stopped by the key's USD 20 limit (402), and a changelog line -- E3-S01
-- [ ] `docs/beslutninger/13-openrouter-og-modell.md`, `docs/arkitektur.md`, `.env.example` -- `docs/beslutninger/13` with the cost estimate and the FR11b deviation, A8 and §11, remove `ANTHROPIC_API_KEY` and `claude-haiku-5-5`, add `LLM_FEIL_TTL_S` -- E3-S03
-- [ ] `app/__init__.py`, `app/templates/anlop.html`, `app/static/begrunnelse.js`, `forside.html` -- screen C (S1), the JSON endpoint, `aria-live` and `<noscript>` (S7) -- E3-S04
-- [ ] `docs/ux/dashbord.md` §6 -- screen C rows in the UU checklist (keyboard, aria-live, no-JS), marked ☐ until the manual run -- E3-S04
-- [ ] `tests/test_begrunnelse.py`, `tests/test_ruter.py` -- every row in the matrix (with an injected clock for the 300 s), the aria-live region and `<noscript>` in the HTML of screen C, key-leak test (fake key absent from caplog, response and exception text), input without ground truth, cache gives 0 new calls, cap at 20, model rows only at `VALIDERING_NAA` -- S01–S04
+- [x] `app/begrunnelse/konfig.py`, `testmodus.py`, `__init__.py` -- config, template text, `hent_begrunnelse(inp, prediksjon, prediktor_navn)` and `cachet(...)`, cache and cap -- E3-S01
+- [x] `tests/conftest.py` -- autouse: no key, test mode, sockets blocked, cache reset -- E3-S01
+- [x] `app/begrunnelse/input.py` -- `lag_fakta(inp, prediksjon)` → dict with Norwegian labels and screen-formatted values -- E3-S02
+- [x] `app/begrunnelse/prompt.md`, `openrouter_klient.py`, `kontroll.py` -- versioned prompt, client with injectable transport, `max_tokens` 300, error → reason code, answer check -- E3-S03
+- [x] `docs/prd.md` -- FR11b and its test: the cap is per process (per Vercel instance), failures are cached for 300 s, the total is stopped by the key's USD 20 limit (402), and a changelog line -- E3-S01
+- [x] `docs/beslutninger/13-openrouter-og-modell.md`, `docs/arkitektur.md`, `.env.example` -- `docs/beslutninger/13` with the cost estimate and the FR11b deviation, A8 and §11, remove `ANTHROPIC_API_KEY` and `claude-haiku-5-5`, add `LLM_FEIL_TTL_S` -- E3-S03
+- [x] `app/__init__.py`, `app/templates/anlop.html`, `app/static/begrunnelse.js`, `forside.html` -- screen C (S1), the JSON endpoint, `aria-live` and `<noscript>` (S7) -- E3-S04
+- [x] `docs/ux/dashbord.md` §6 -- screen C rows in the UU checklist (keyboard, aria-live, no-JS), marked ☐ until the manual run -- E3-S04
+- [x] `tests/test_begrunnelse.py`, `tests/test_ruter.py` -- every row in the matrix (with an injected clock for the 300 s), the aria-live region and `<noscript>` in the HTML of screen C, key-leak test (fake key absent from caplog, response and exception text), input without ground truth, cache gives 0 new calls, cap at 20, model rows only at `VALIDERING_NAA` -- S01–S04
 
 **Acceptance Criteria:**
 - Given `LLM_MODUS=test` and no network, when `pytest` runs, then all tests pass in < 1 min and no socket is opened.
@@ -98,6 +98,39 @@ S1–S7 are this spec's own choices. They are not the project decisions in `docs
 - Given `grep -rn "deepseek" app/`, then the model ID occurs only in `konfig.py`.
 - Given a failure cached at time t, when the same call is requested at t + 299 s, then no call is made. At t + 300 s one new call is made.
 - Given screen C with no cached answer, then the HTML has the aria-live region with «Henter forklaring …» and a `<noscript>` with the template text and «Testmodus», and every link can be reached with Tab.
+
+## Review Triage Log
+
+Pass 1 (2026-11-18). Layers: blind-hunter (BH), edge-case-hunter (EC), verification-gap (VG).
+
+| # | Finding | Verdict | Evidence | Route |
+|---|---|---|---|---|
+| 1 | VG: two of five Varsel branches on screen C are not asserted (baseline, model `False`) | low | `test_detalj_begrunnelse` never checks `Varsel`; `_modellrad` only with `True`/`None`. | patch |
+| 2 | VG: the sign of the model deviation in the method text is not pinned | low | The only assertion is a substring that matches both «+152» and «152». | patch |
+| 3 | VG/EC/BH: `begrunnelse.js` is checked only as source text | low | The repo has no JS harness. The browser side is checked manually (UX §6). | defer |
+| 4 | VG/BH/EC: the number check ignores signs | medium | `_TALL` has no sign, so «+12» passes against «−12». | patch (an explicitly signed number must match the sign in the input) |
+| 5 | VG/EC: label numbers widen the allowed numbers | low | `input_tekst` joins keys and values, so «1» and «−1» from the course label are always allowed. | patch (values only) |
+| 6 | BH/VG/EC: concurrent requests can make duplicate calls | low | Needs two simultaneous first-time requests for the same call. The cap still holds, and the cost is about USD 0.0002 per extra call. The fix adds in-flight state. | reject (low, rare, the fix adds complexity) |
+| 7 | BH/EC: the cache key has no `naa` | false | `STANDARD_NAA` is fixed per app, and no route takes `naa` (S1). It becomes relevant with E1-S07. | reject |
+| 8 | BH: numbers written as words are not caught | low | Real, and not mentioned in the docstring. | patch (docstring + risk in decision 13) |
+| 9 | BH/EC: the no-alert rule catches only `forsink` | low | The frozen rule says `forsink`. Wider patterns would reject true statements on model rows without an alert. | reject (spec rule); smoke-call risk |
+| 10 | BH: no `reasoning` parameter | maybe-false | Only the smoke call can show whether the model reasons. Medium if true. | defer |
+| 11 | BH/EC: `inf` in the config is accepted | low | `int(inf)` gives `OverflowError`. The endpoint still answers 200, but real mode never works. | patch (`math.isfinite`) |
+| 12 | BH/EC: a missing key is never cached | low | Production has the key, and the fix adds a branch. | reject |
+| 13 | BH: the timeouts and Vercel `maxDuration` are not documented together | low | When the browser gives up at 20 s, the fallback is shown and the call is cached when it finishes. | reject |
+| 14 | BH/EC: `replaceChildren` is missing in old browsers | low | Supported since Safari 14 and Chrome 86. | reject |
+| 15 | BH: a literal soft hyphen in `input.py` | low | Invisible in the source. Direct fix: `"\u00ad"`. | patch |
+| 16 | BH: `epic-3-context.md` contradicts the implementation | low | It still says `Anlop` and that `anthropic` is future work. | patch |
+| 17 | BH: the test references in `docs/epics.md` for S01/S04 are incomplete | low | The FR11a/FR11b tests are missing from the lines. | patch |
+| 18 | BH: the wall-clock tests can be flaky | low | The first request loads data and the model. Warming up first is a direct fix. | patch |
+| 19 | BH: `issues.md` says `.env` was checked, and the log says it was not read | low | Claude checked with `grep -c` (count only, as Theodor allowed). The subagent's log is about its own session. | patch (orchestrator) |
+| 20 | EC: `_ett_anlop` can raise in the POST and give 500 | false | The same calls run in GET first. A failure there breaks the whole page. | reject |
+| 21 | EC: the fallback calls `testtekst` again after an exception | false | `mal()` already runs in GET (`mal=`). | reject |
+| 22 | EC: «64,20» or «9,0» against «64,2» or «9» is rejected | low | Real. Direct fix in `_normaliser`. | patch |
+| 23 | EC/VG: «−0» can appear | low | `tall(-0.4, 0)` gives «−0». Direct fix in `visning.tall`. | patch |
+| 24 | EC: the JS file fails to load and leaves «Henter …» | low | Same origin as the stylesheet, so it is unlikely. | reject |
+| 25 | EC: NaN feature values | false | Empty cells become `None` (`app/prediksjon/__init__.py:99`), and `lag_fakta` filters out `None`. | reject |
+| 26 | BH/EC: the heading «Hvorfor avvik er ventet» also shows on baseline rows | medium | Real and visible to users. The heading is set in UX §4 and the frozen S1, so the fix edits this build's spec. | reject here; raised with Theodor |
 
 ## Design Notes
 
