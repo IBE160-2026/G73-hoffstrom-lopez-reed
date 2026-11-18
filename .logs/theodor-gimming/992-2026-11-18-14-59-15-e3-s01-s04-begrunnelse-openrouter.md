@@ -120,3 +120,38 @@ Rette kontrollen, så retningen for baselinen følger det faktiske fortegnet på
 ### Åpne punkter
 - Modellen skriver opp mot grensen (400 og 402 tegn), så en del svar faller tilbake på lengden. Et forslag er å be om høyst 300 tegn i prompten, slik at det blir margin mot kontrollen på 400. Det er ikke gjort, og Theodor avgjør.
 - `LLM_MODUS=ekte` i Vercel settes av Theodor, når Theodor vil.
+
+## 2026-11-18 kl. 16:01 — Theodor Gimming (begrunnelse-v4 og røykkall 3)
+
+### Oppgave
+Lage `begrunnelse-v4`:
+- Konklusjonen i forhold til rapportert ETA skal stå først og regnes ut i appen.
+- Ingen interne begreper. Kurs og slakk oversettes med terskler fra definisjonene, og baselinen beskrives som «vanlig avvik for skipsgruppen».
+- 1–2 grunner fra faktaene.
+- Prompten ber om høyst 300 tegn, og kontrollen beholder 400.
+- Kontroll, tester og mutanter skal oppdateres.
+
+Deretter skulle de samme 3 røykkallene kjøres. Push, men ikke merge.
+
+### Plan
+- Lese definisjonene av F3 (cos(kurs − peiling)), F7 (rapportert ETA − kuttpunkt minus seilingstiden, klippet ved −48) og F15/F16 (avvik mot baselinen, trukket mot snittet for Øvrige med k = 5).
+- Ny `klartekst.py` (konklusjon og retning), skrive om `lag_fakta`, malen, kontrollen (`konklusjon`, `begrep` og bredere `retning`) og prompten.
+- Implementeringsagenten oppdaterte testene.
+
+### Resultat
+- **`bb19734` (E3-S03):**
+  - Retning: F3 over 0 gir «på vei mot havna» og under 0 «på vei bort fra havna».
+  - Rekker fram: F7 som «ja/nei, omtrent X timer før/etter rapportert ETA». Den utelates ved distanse 0 og under 1 knop.
+  - Siste AIS-posisjon er kuttpunktet minus alderen.
+  - Historikken utelates ved n = 0, fordi F15 da er snittet for Øvrige og ikke skipets eget.
+- **Feilen jeg laget:** jeg ødela markøren `<!-- SYSTEM -->` i `prompt.md`, så ekte modus ville feilet på hvert kall. Agenten fant det gjennom 38 røde tester, og det er rettet. Se `notater.md`.
+- **Suiten:** 679 tester er grønne.
+- **Mutasjonssjekk:** alle 22 mutanter ble fanget, og kontrollkjøringen var grønn. Én overlevde først (historikk ved n = 0), og det ble lagt til en test for den.
+- **Røykkall 3** (Wafer, ingen resonnering, alle stoppet av seg selv, alle godtatt, til sammen USD 0,000154):
+  1. BERGEN ENERGY (230 tegn): «Ventes 74 min senere enn rapportert ETA (17:44 mot 16:30). Skipet var på vei bort fra havna ved siste posisjon, og hadde ikke gått fra Ågotnes. Skipets tidligere anløp er i snitt omtrent 131 min senere enn vanlig for skipsgruppen.»
+  2. ISLAND CLIPPER (200 tegn): «Ventes 74 min tidligere enn rapportert ETA (18:16 mot 19:30). Skipet er på vei mot havna og rekker fram til rapportert ETA med farten ved siste posisjon. Tiden bygger på vanlig avvik for skipsgruppen.»
+  3. NORMAND SIGMA (114 tegn): «Ventes 64 min tidligere enn rapportert ETA (06:56 mot 08:00). Tiden bygger på vanlig avvik for denne skipsgruppen.»
+
+### Åpne punkter
+- ISLAND CLIPPER er en modellrad, men svaret sier «Tiden bygger på vanlig avvik for skipsgruppen». Det er misvisende. Prompten ba om den setningen bare når faktaene ikke gir noen grunn. Kontrollen kan avvise setningen på modellrader. Theodor avgjør.
+- Konklusjonen «Ventes 64 min tidligere enn rapportert ETA» på baselinerader kan leses som at skipet er tidlig. I virkeligheten er predikert tid inngang i havneområdet, og den ligger vanligvis rundt 64 min før ETA til kai (beslutning 03 og 04). Gruppa bør vurdere ordlyden.
