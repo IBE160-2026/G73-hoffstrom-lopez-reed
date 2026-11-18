@@ -81,7 +81,13 @@ def test_konfig_fra_miljoet(monkeypatch):
     assert konfig.maks_kall() == 20
     monkeypatch.setenv("LLM_MAKS_KALL", "3")
     assert konfig.maks_kall() == 3
+    monkeypatch.setenv("LLM_MAKS_KALL", "inf")
+    assert konfig.maks_kall() == 20
+    monkeypatch.setenv("LLM_MAKS_KALL", "nan")
+    assert konfig.maks_kall() == 20
     monkeypatch.setenv("LLM_FEIL_TTL_S", "-1")
+    assert konfig.feil_ttl_s() == 300
+    monkeypatch.setenv("LLM_FEIL_TTL_S", "inf")
     assert konfig.feil_ttl_s() == 300
 
 
@@ -443,9 +449,37 @@ def test_tall_finnes_i_input():
     assert k("Avviket er 152 min.") is None
     assert k("Avviket er 153 min.") == "tall"
     assert k("ETA er 11:00 og 11:01.") == "tall"
-    assert k("ETA er kl 11.00.") == "tall"  # streng med vilje: «11.00» leses som desimaltall, ikke som 11:00
+    assert k("ETA er kl 11.00.") is None  # «11.00» blir 11 når nullene i desimalene tas bort, og 11 står i inputen
+    assert k("ETA er kl 11.30.") == "tall"
     assert k("Horisonten er 6 t.") is None
     assert k("Avviket er 152,5 min.") == "tall"
+
+
+def test_tall_med_fortegn_maa_ha_samme_fortegn():
+    fakta = {"Avvik (min)": "\u221212", "Horisont": "≤ 6 t", "Modell": "Modell v1"}
+    assert kontroller("Avviket er \u221212 min.", fakta, forventet_forsinket=True, skipsnavn=[]) is None
+    assert kontroller("Avviket er -12 min.", fakta, forventet_forsinket=True, skipsnavn=[]) is None
+    assert kontroller("Avviket er 12 min.", fakta, forventet_forsinket=True, skipsnavn=[]) is None  # uten fortegn
+    assert kontroller("Avviket er +12 min.", fakta, forventet_forsinket=True, skipsnavn=[]) == "tall"
+    # Et tall uten fortegn i inputen regnes som positivt.
+    assert k("Avviket er +152 min.") is None
+    assert k("Avviket er \u2212152 min.") == "tall"
+    # Bindestrek og tankestrek mellom tall er ikke fortegn.
+    assert kontroller("Modell v1 og 6–24 t.", {"a": "Modell v1", "b": "6–24 t"}, forventet_forsinket=True,
+                      skipsnavn=[]) is None
+
+
+def test_tillatte_tall_bare_fra_verdiene():
+    fakta = {"Kurs mot havna (1 = rett mot, \u22121 = rett bort)": "0,87"}
+    assert kontroller("Kursen er 0,87.", fakta, forventet_forsinket=True, skipsnavn=[]) is None
+    assert kontroller("Kursen er 1.", fakta, forventet_forsinket=True, skipsnavn=[]) == "tall"
+    assert kontroller("Kursen er \u22121.", fakta, forventet_forsinket=True, skipsnavn=[]) == "tall"
+
+
+def test_desimaler_uten_etterfolgende_nuller():
+    fakta = {"Offset (min)": "64,2", "Fart (knop)": "9"}
+    assert kontroller("Offset 64,20 min og fart 9,0 knop.", fakta, forventet_forsinket=True, skipsnavn=[]) is None
+    assert kontroller("Offset 64,21 min.", fakta, forventet_forsinket=True, skipsnavn=[]) == "tall"
 
 
 def test_kontroll_andre_skipsnavn():
@@ -501,6 +535,16 @@ def test_mislykket_kontroll_logges(monkeypatch, caplog):
     with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
         assert hent_begrunnelse(inp, p, BASELINE).merke == MERKE_FEILET
     assert "kontroll_aarsak" in caplog.text
+
+
+def test_tall_viser_aldri_minus_null():
+    from app.visning import tall
+
+    assert tall(-0.4, 0) == "0"
+    assert tall(-0.04, 1) == "0,0"
+    assert tall(-12.4, 0) == "\u221212"
+    assert tall(64.25, 1) in ("64,2", "64,3")
+    assert tall(152.0, 0) == "152"
 
 
 def test_modell_id_bare_i_konfig():

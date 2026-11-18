@@ -8,7 +8,9 @@ finnes i inputen (``tall``), ingen andre skipsnavn fra utdraget (``skipsnavn``),
 (``aarsak``), og uten varsel (``forventet_forsinket`` er ikke True) ingen «forsink» (``forsink``).
 
 Kontrollen er et vern, ikke et bevis. Den fanger oppdiktede tall, andre skip og de vanligste oppdiktede årsakene,
-men ikke en feil påstand skrevet med tall og ord som finnes i inputen. Den er streng med vilje: et godt svar som
+men ikke en feil påstand skrevet med tall og ord som finnes i inputen. Tall skrevet med ord («to timer») og
+retningsord («senere», «tidligere») sjekkes ikke, så en tekst som sier «to timer tidligere» om et avvik på +152 min,
+slipper gjennom. Den er streng med vilje: et godt svar som
 avvises, gir bare testmodus-teksten.
 """
 from __future__ import annotations
@@ -20,7 +22,8 @@ from typing import Iterable, Mapping, Optional
 MAKS_TEGN = 400
 MAKS_SETNINGER = 3
 
-_TALL = re.compile(r"\d+(?:[.,]\d+)?")
+# Et fortegn (+, - eller −) teller bare når det ikke står rett etter et ord eller tall («v1», «6–24» har ikke fortegn).
+_TALL = re.compile(r"(?:(?<![\w])([+\-\u2212]))?(\d+(?:[.,]\d+)?)")
 _SETNINGSSLUTT = re.compile(r"(?<=[.!?…])\s+")
 
 # Årsaker prompten forbyr. Hele ord (med vanlige bøyninger), så «vindu» og «motorvei» ikke gir falske treff for
@@ -36,14 +39,25 @@ _FORSINK = re.compile(r"forsink", re.IGNORECASE)
 
 
 def _normaliser(tall: str) -> str:
-    """«09» og «9» er samme tall, og «64,2» er «64.2»."""
+    """«09» og «9» er samme tall, «64,2» er «64.2», og «64,20» og «9,0» er «64.2» og «9»."""
     heltall, _, desimaler = tall.replace(",", ".").partition(".")
     heltall = heltall.lstrip("0") or "0"
+    desimaler = desimaler.rstrip("0")
     return f"{heltall}.{desimaler}" if desimaler else heltall
 
 
 def tall_i(tekst: str) -> set:
-    return {_normaliser(t) for t in _TALL.findall(tekst)}
+    """Tallene i teksten uten fortegn."""
+    return {_normaliser(t) for _, t in _TALL.findall(tekst)}
+
+
+def _med_fortegn(tekst: str) -> set:
+    """{(fortegn, tall)} der fortegnet er «+» eller «-». Et tall uten fortegn regnes som positivt."""
+    return {("-" if s in "-\u2212" and s else "+", _normaliser(t)) for s, t in _TALL.findall(tekst)}
+
+
+def _bare_skrevet_med_fortegn(tekst: str) -> set:
+    return {("-" if s in "-\u2212" else "+", _normaliser(t)) for s, t in _TALL.findall(tekst) if s}
 
 
 def antall_setninger(tekst: str) -> int:
@@ -80,7 +94,10 @@ def kontroller(
     if antall_setninger(tekst) > MAKS_SETNINGER:
         return "setninger"
     input_tekst = "\n".join(f"{k}: {v}" for k, v in fakta.items())
-    if not tall_i(tekst) <= tall_i(input_tekst):
+    # Tillatte tall kommer bare fra verdiene, ikke fra etikettene. Et tall uten fortegn må finnes i inputen uansett
+    # fortegn; et tall skrevet med fortegn må finnes med samme fortegn («+12» godtas ikke mot «−12»).
+    verdier = "\n".join(fakta.values())
+    if not tall_i(tekst) <= tall_i(verdier) or not _bare_skrevet_med_fortegn(tekst) <= _med_fortegn(verdier):
         return "tall"
     # Et navn som også står i inputen (eget skip, avgangshavn …), er lov. Mønsteret prøver lengste navn først, så
     # «SIEM PEARL» ikke gir treff på et annet skip som bare heter «PEARL».

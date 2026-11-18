@@ -34,7 +34,7 @@ OpenRouters offentlige prisliste, 18.11.2026, per million tokens. Det billigste 
 - Selv på det dyreste endepunktet er det omtrent USD 0,0011 per kall, eller omtrent 17 500 kall.
 - En demo med grensen på 20 kall koster under USD 0,01.
 
-Prisene endres (DeepSeeks eget endepunkt endrer pris etter tid på døgnet), så overslaget sjekkes på nytt før levering. **Risiko:** bruker modellen output-tokens på resonnering, kan svaret bli tomt eller kuttet ved `max_tokens`. Kontrollen gir da tilbakefallet (`kontroll_tom` eller `avkortet`), og røykkallet viser om det skjer.
+Prisene endres (DeepSeeks eget endepunkt endrer pris etter tid på døgnet), så overslaget sjekkes på nytt før levering. **Risiko:** bruker modellen output-tokens på resonnering, kan svaret bli tomt eller kuttet ved `max_tokens`. Kontrollen gir da tilbakefallet (`kontroll_tom` eller `avkortet`), og røykkallet viser om det skjer. Kontrollen fanger heller ikke tall skrevet med ord («to timer») eller retningsord («senere», «tidligere»), så en slik feil påstand kan slippe gjennom.
 
 ## Begrunnelse
 
