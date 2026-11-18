@@ -23,3 +23,28 @@ Implementere specen for E3-S01–S04 (begrunnelse per anløp via OpenRouter, ute
 - Manuell UU-sjekk av skjerm C (tastatur, aria-live med VoiceOver, uten JS), som står med ☐ i UX §6.
 - Kostnadsoverslaget i beslutning 13 sjekkes mot OpenRouters priser før levering.
 - PR for `epic/e3-ai-lag` merges ikke før gruppa har sett den og forhåndsvisningen på Vercel.
+
+## 2026-11-18 kl. 15:09 — Theodor Gimming (review og mutasjonssjekk)
+
+### Oppgave
+Fullføre bmad-build-flyten for E3-S01–S04: kontrollere implementeringen mot diffen, kjøre review med tre lag, rette funnene, mutasjonssjekke grensene og åpne PR. Ikke merge før gruppa har sett PR-en og forhåndsvisningen, og ikke gjøre røykkallet før Theodor ber om det.
+
+### Plan
+- Kontrollere oppgavene og matrisen mot diffen fra `cfb4609`.
+- Review med tre lag (blind-hunter, edge-case-hunter og verification-gap), triage i specen og rettinger gjennom implementeringsagenten.
+- Mutasjonssjekk med `PYTHONDONTWRITEBYTECODE=1`, så PR mot `main`.
+
+### Resultat
+- Hver rad i matrisen har en test som kjører. Modellnavnet står bare i `konfig.py`.
+- **Review:** 26 funn. 13 er rettet, 2 er utsatt (`deferred-work.md`: JS-en er bare sjekket som kildetekst, og `reasoning`-parameteren er ukjent til røykkallet), og 11 er forkastet med begrunnelse. Alt står i Review Triage Log i specen.
+  - Viktigst: tallkontrollen så ikke fortegn («+12» ble godtatt mot «−12»), og tallene i etikettene var tillatt.
+  - Også rettet: «−0», `inf` i konfigurasjonen, etterfølgende nuller, en myk bindestrek som ikke synes i kildekoden, testhull for varselgrenene og fortegnet på skjerm C, tidsmåling uten oppvarming, og epic-konteksten og testreferansene i `docs/epics.md`.
+- **Rettingene er committet per story:** `f7f265d` (S01), `49bab53` (S02), `f530965` (S03), `3a642e1` (S04) og `e8f20b6` (specen er ferdig).
+- **Mutasjonssjekk (Claude, etter reviewen):** alle 14 mutanter ble fanget, og kontrollkjøringen var grønn. Mutantene var kallgrensen satt til 19 og 21 og `>=` byttet til `>`, cache-tiden satt til 299 og 301 og `>=` byttet til `>`, et godkjent svar som utløper, 401 og 399 tegn og `>` byttet til `>=`, 4 og 2 setninger, fortegnskontrollen fjernet, og tall i etikettene tillatt igjen.
+- **Suiten:** 584 passed, uten nett.
+- **KI-feil** er ført i `docs/refleksjon/notater.md` (`1d9c48e`): de gamle `.pyc`-filene i mutasjonssjekken, tallkontrollen uten fortegn, og «han» om Theodor.
+- Ingen ekte kall er gjort, og verdien i `.env` er ikke lest.
+
+### Åpne punkter
+- Overskriften «Hvorfor avvik er ventet» står også over baselinerader og rader uten varsel (review-funn 26). Den kommer fra UX §4 og S1, så Theodor og gruppa må avgjøre om den skal endres.
+- Kontrollen fanger ikke retningsord («senere», «tidligere») eller tall skrevet med ord. Det må følges med på i røykkallet.
