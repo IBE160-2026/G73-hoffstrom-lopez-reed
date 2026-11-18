@@ -45,6 +45,10 @@ Det ble gjort 3 kall, lokalt med `LLM_MODUS=ekte`, mot valideringsvinduet 15.08.
 - **Målt kostnad:** 494–690 input-tokens og 300 output-tokens. Det kostet USD 0,000161–0,000175 per kall, og alle tre til sammen USD 0,000504. Det stemmer med overslaget over.
 - **Retting:** klienten sender `reasoning: {"effort": "none"}` (`LLM_RESONNERING`, standard `none`). `max_tokens` er beholdt på 300, fordi et svar på høyst 400 tegn er godt under 200 tokens. Grensen var ikke for lav for svaret. Den ble brukt opp av resonneringen. Rettingen er ikke prøvd med et ekte kall ennå.
 
+### Røykkall 3, 18.11.2026 (`begrunnelse-v4`)
+
+Det ble gjort 3 kall, med de samme tilfellene og `reasoning.effort = none`. Alle tre ble godtatt, med 230, 200 og 114 tegn. De brukte 674–856 input-tokens og 40–81 output-tokens, uten resonneringstokens. Til sammen kostet de USD 0,000154, altså om lag USD 0,00003–0,00007 per kall. For alle tre røykkallene er summen USD 0,000907.
+
 **Risiko som er igjen:** kontrollen avviser nå tall skrevet med ord og retningsord som ikke stemmer med fortegnet på avviket. Den fanger likevel ikke «en» og «ett» som tall, eller en feil påstand skrevet med ord og tall som finnes i inputen.
 
 ## Begrunnelse
