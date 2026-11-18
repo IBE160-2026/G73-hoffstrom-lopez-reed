@@ -56,14 +56,21 @@ def urllib_transport(url: str, headers: Mapping[str, str], body: bytes, timeout:
         return feil.code, b""
 
 
-def kall(system: str, bruker: str, *, modell: str, nokkel: str, timeout: float, transport=None) -> str:
-    """Ett kall til OpenRouter. Gir svarteksten (kan være tom; kontrollen avviser den)."""
-    body = json.dumps({
+def kall(system: str, bruker: str, *, modell: str, nokkel: str, timeout: float, transport=None,
+         resonnering=None) -> str:
+    """Ett kall til OpenRouter. Gir svarteksten (kan være tom; kontrollen avviser den).
+
+    ``resonnering`` er ``reasoning.effort`` (``konfig.resonnering()``). None sender ingen ``reasoning``. Resonneringstokens
+    teller mot ``max_tokens`` (røykkallet 18.11.2026: med modellens standard gikk alle 300 til resonnering)."""
+    forespørsel = {
         "model": modell,
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": bruker}],
         "max_tokens": MAKS_TOKENS,
         "temperature": TEMPERATUR,
-    }).encode("utf-8")
+    }
+    if resonnering:
+        forespørsel["reasoning"] = {"effort": resonnering}
+    body = json.dumps(forespørsel).encode("utf-8")
     headers = {"Authorization": f"Bearer {nokkel}", "Content-Type": "application/json"}
     try:
         status, data = (transport or urllib_transport)(OPENROUTER_URL, headers, body, timeout)

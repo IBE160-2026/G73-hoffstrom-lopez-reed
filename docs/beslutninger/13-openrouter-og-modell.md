@@ -34,7 +34,18 @@ OpenRouters offentlige prisliste, 18.11.2026, per million tokens. Det billigste 
 - Selv på det dyreste endepunktet er det omtrent USD 0,0011 per kall, eller omtrent 17 500 kall.
 - En demo med grensen på 20 kall koster under USD 0,01.
 
-Prisene endres (DeepSeeks eget endepunkt endrer pris etter tid på døgnet), så overslaget sjekkes på nytt før levering. **Risiko:** bruker modellen output-tokens på resonnering, kan svaret bli tomt eller kuttet ved `max_tokens`. Kontrollen gir da tilbakefallet (`kontroll_tom` eller `avkortet`), og røykkallet viser om det skjer. Kontrollen fanger heller ikke tall skrevet med ord («to timer») eller retningsord («senere», «tidligere»), så en slik feil påstand kan slippe gjennom.
+Prisene endres (DeepSeeks eget endepunkt endrer pris etter tid på døgnet), så overslaget sjekkes på nytt før levering.
+
+### Røykkallet 18.11.2026
+
+Det ble gjort 3 kall, lokalt med `LLM_MODUS=ekte`, mot valideringsvinduet 15.08.2025 08:00. Det var ett kall av hver: modell med varsel, modell uten varsel og baseline. Alle gikk til Wafer (billigste endepunkt) og svarte HTTP 200.
+
+- **Ingen tekst.** Alle tre brukte alle 300 output-tokens på resonnering (`reasoning_tokens` = 300, `finish_reason` = `length`, `content` = null). Kontrollen ga tilbakefallet (`avkortet`), som den skulle. Ingen feil tekst ble vist.
+- **Årsak:** modellen har resonnering på som standard med innsats `high` (`reasoning.default_effort` i OpenRouters modelliste), og resonneringstokens teller mot `max_tokens`. Resonneringen er ikke påbudt (`mandatory` = false), og `none` er støttet.
+- **Målt kostnad:** 494–690 input-tokens og 300 output-tokens. Det kostet USD 0,000161–0,000175 per kall, og alle tre til sammen USD 0,000504. Det stemmer med overslaget over.
+- **Retting:** klienten sender `reasoning: {"effort": "none"}` (`LLM_RESONNERING`, standard `none`). `max_tokens` er beholdt på 300, fordi et svar på høyst 400 tegn er godt under 200 tokens. Grensen var ikke for lav for svaret. Den ble brukt opp av resonneringen. Rettingen er ikke prøvd med et ekte kall ennå.
+
+**Risiko som er igjen:** kontrollen avviser nå tall skrevet med ord og retningsord som ikke stemmer med fortegnet på avviket. Den fanger likevel ikke «en» og «ett» som tall, eller en feil påstand skrevet med ord og tall som finnes i inputen.
 
 ## Begrunnelse
 

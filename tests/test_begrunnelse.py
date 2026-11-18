@@ -231,7 +231,7 @@ def test_ekte_med_mock(monkeypatch):
 
 def test_prompt_er_versjonert():
     tekst = openrouter_klient.PROMPT_FIL.read_text(encoding="utf-8")
-    assert "begrunnelse-v1" in tekst
+    assert "begrunnelse-v2" in tekst
     system, bruker = openrouter_klient.bygg_prompt({"Skip": "X"})
     assert "<!--" not in system + bruker and "{fakta}" not in bruker
     assert "- Skip: X" in bruker
@@ -438,9 +438,9 @@ def test_kontroll_lengde_400_mot_401():
 
 
 def test_kontroll_setninger_3_mot_4():
-    assert k("En. To. Tre.") is None
-    assert k("En. To. Tre. Fire.") == "setninger"
-    assert k("En! To? Tre … Fire") == "setninger"
+    assert k("Alfa. Beta. Gamma.") is None
+    assert k("Alfa. Beta. Gamma. Delta.") == "setninger"
+    assert k("Alfa! Beta? Gamma … Delta") == "setninger"
     assert antall_setninger("Uten punktum") == 1
     assert antall_setninger("Avvik på 64,2 min. Neste.") == 2
 
@@ -524,8 +524,10 @@ def test_mal_teksten_bestaar_kontrollen(monkeypatch):
 
     for inp, p in [baselinepar()[:2], modellpar(monkeypatch, True), modellpar(monkeypatch, False),
                    modellpar(monkeypatch, None)]:
+        from app.begrunnelse.kontroll import retning
+
         assert kontroller(begrunnelse.testtekst(inp, p).tekst, lag_fakta(inp, p),
-                          forventet_forsinket=p.forventet_forsinket) is None
+                          forventet_forsinket=p.forventet_forsinket, retning=retning(p)) is None
 
 
 def test_mislykket_kontroll_logges(monkeypatch, caplog):
@@ -560,3 +562,78 @@ def test_modell_id_bare_i_konfig():
             assert "deepseek" not in tekst, fil
         if fil.name != "openrouter_klient.py":
             assert "openrouter.ai" not in tekst, fil
+
+
+# ---------- Etter røykkallet 18.11.2026: tall med ord, retningsord, resonnering og overskrift ----------
+
+@pytest.mark.parametrize("tekst", ["Skipet er to timer bak.", "Avviket er en halvtime.", "Det er dobbelt så lenge.",
+                                   "Tre av fire anløp.", "Hundre minutter.", "Two hours late."])
+def test_kontroll_tall_skrevet_med_ord(tekst):
+    assert kontroller(tekst, {"a": "x"}, forventet_forsinket=True, skipsnavn=[]) == "tallord"
+
+
+@pytest.mark.parametrize("tekst", ["Prediksjonen bygger på farten.", "Torsdag kom skipet.", "Tonnasjen er stor.",
+                                   "Fartøyet har en lang historikk."])
+def test_kontroll_tallord_ingen_falske_treff(tekst):
+    assert kontroller(tekst, {"a": "x"}, forventet_forsinket=True, skipsnavn=[]) is None
+
+
+@pytest.mark.parametrize("tekst, retning, regel", [
+    ("Skipet kommer senere enn baseline.", 1, None),
+    ("Skipet kommer tidligere enn baseline.", 1, "retning"),
+    ("Skipet kommer før tiden.", 1, "retning"),
+    ("Skipet kommer tidligere enn baseline.", -1, None),
+    ("Skipet kommer senere enn baseline.", -1, "retning"),
+    ("Skipet er etter planen.", -1, "retning"),
+    ("Skipet kommer senere.", 0, "retning"),
+    ("Skipet kommer tidligere.", 0, "retning"),
+    ("Det kommer i rute.", 0, None),
+    ("Skipet kommer senere.", None, None),  # ukjent retning: regelen hoppes over
+    ("Fartøyet har 50 tidligere anløp.", 1, None),  # «tidligere anløp» er ikke en retning
+])
+def test_kontroll_retningsord_mot_fortegnet(tekst, retning, regel):
+    fakta = {"a": "50"}
+    assert kontroller(tekst, fakta, forventet_forsinket=True, skipsnavn=[], retning=retning) == regel
+
+
+def test_retning_fra_prediksjonen(monkeypatch):
+    from app.begrunnelse.kontroll import retning
+
+    inp, p, _ = baselinepar()
+    assert retning(p) == -1  # baselinen: rapportert ETA minus offset, alltid tidligere
+    _, med_varsel = modellpar(monkeypatch, True)
+    assert retning(med_varsel) == 1
+    _, delegert = modellpar(monkeypatch, None)
+    assert retning(delegert) == -1
+
+
+def test_adapteren_avviser_feil_retning(monkeypatch, caplog):
+    ekte(monkeypatch)
+    sett_transport(monkeypatch, FalskTransport("Prediksjonen er tidligere enn rapportert ETA. Baselinen er senere."))
+    inp, p, _ = baselinepar()
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        svar = hent_begrunnelse(inp, p, BASELINE)
+    assert svar.merke != MERKE_KI
+    assert "kontroll_retning" in caplog.text
+
+
+def test_resonnering_er_av_som_standard(monkeypatch):
+    """Røykkallet 18.11.2026: med modellens standard gikk alle 300 tokens til resonnering, og svaret var tomt."""
+    ekte(monkeypatch)
+    t = FalskTransport("Prediksjonen er kalibrert baseline.")
+    sett_transport(monkeypatch, t)
+    inp, p, _ = baselinepar()
+    hent_begrunnelse(inp, p, BASELINE)
+    assert t.kall[0]["body"]["reasoning"] == {"effort": "none"}
+    assert t.kall[0]["body"]["max_tokens"] == 300
+
+
+@pytest.mark.parametrize("verdi, forventet", [("low", {"effort": "low"}), ("tull", {"effort": "none"}), ("", None)])
+def test_resonnering_fra_miljoet(monkeypatch, verdi, forventet):
+    ekte(monkeypatch)
+    monkeypatch.setenv("LLM_RESONNERING", verdi)
+    t = FalskTransport("Prediksjonen er kalibrert baseline.")
+    sett_transport(monkeypatch, t)
+    inp, p, _ = baselinepar()
+    hent_begrunnelse(inp, p, BASELINE)
+    assert t.kall[0]["body"].get("reasoning") == forventet

@@ -18,6 +18,8 @@ STANDARD_ROUTING = "floor"
 STANDARD_MAKS_KALL = 20
 STANDARD_FEIL_TTL_S = 300.0
 STANDARD_TIMEOUT_S = 8.0
+STANDARD_RESONNERING = "none"  # røykkallet 18.11: med standard («high») gikk alle 300 tokens til resonnering
+GYLDIG_RESONNERING = ("none", "low", "high", "max")  # modellens supported_efforts hos OpenRouter, 18.11.2026
 NOKKEL_VARIABEL = "OPENROUTER_API_KEY"
 
 
@@ -60,6 +62,19 @@ def feil_ttl_s() -> float:
 
 def timeout_s() -> float:
     return _tall("LLM_TIMEOUT_S", STANDARD_TIMEOUT_S, 0.1)
+
+
+def resonnering():
+    """``reasoning.effort`` til OpenRouter (``LLM_RESONNERING``). Standard ``none``: begrunnelsen trenger ingen
+    resonnering, og resonneringstokens teller mot ``max_tokens``. Ukjent verdi gir standarden. Tom verdi (``""``)
+    sender ingen ``reasoning`` og gir modellens standard."""
+    verdi = os.environ.get("LLM_RESONNERING")
+    if verdi is None:
+        return STANDARD_RESONNERING
+    verdi = verdi.strip().lower()
+    if verdi == "":
+        return None
+    return verdi if verdi in GYLDIG_RESONNERING else STANDARD_RESONNERING
 
 
 def api_nokkel():

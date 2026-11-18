@@ -67,7 +67,7 @@ def _ai_vakter(monkeypatch):
     import app.begrunnelse as begrunnelse
 
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-    for navn in ("LLM_MODELL", "LLM_ROUTING", "LLM_MAKS_KALL", "LLM_FEIL_TTL_S", "LLM_TIMEOUT_S"):
+    for navn in ("LLM_MODELL", "LLM_ROUTING", "LLM_MAKS_KALL", "LLM_FEIL_TTL_S", "LLM_TIMEOUT_S", "LLM_RESONNERING"):
         monkeypatch.delenv(navn, raising=False)
     monkeypatch.setenv("LLM_MODUS", "test")
 

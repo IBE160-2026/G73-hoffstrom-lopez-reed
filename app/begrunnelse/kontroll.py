@@ -4,13 +4,14 @@
 som ``kontroll_<regel>`` og viser testmodus-teksten.
 
 Reglene: ikke tomt (``tom``), høyst 400 tegn (``lengde``), høyst 3 setninger (``setninger``), hvert tall i teksten
-finnes i inputen (``tall``), ingen andre skipsnavn fra utdraget (``skipsnavn``), ingen årsaksord fra en fast liste
-(``aarsak``), og uten varsel (``forventet_forsinket`` er ikke True) ingen «forsink» (``forsink``).
+finnes i inputen (``tall``), ingen tall skrevet med ord (``tallord``), ingen andre skipsnavn fra utdraget
+(``skipsnavn``), ingen årsaksord fra en fast liste (``aarsak``), uten varsel (``forventet_forsinket`` er ikke True)
+ingen «forsink» (``forsink``), og retningsord som stemmer med fortegnet på avviket (``retning``, se ``retning``).
 
 Kontrollen er et vern, ikke et bevis. Den fanger oppdiktede tall, andre skip og de vanligste oppdiktede årsakene,
-men ikke en feil påstand skrevet med tall og ord som finnes i inputen. Tall skrevet med ord («to timer») og
-retningsord («senere», «tidligere») sjekkes ikke, så en tekst som sier «to timer tidligere» om et avvik på +152 min,
-slipper gjennom. Den er streng med vilje: et godt svar som
+men ikke en feil påstand skrevet med tall og ord som finnes i inputen. Tall skrevet med ord avvises fra en fast liste
+(«to timer», «en halvtime», «dobbelt»), men «en» og «ett» kan ikke skilles fra artikkelen og slipper gjennom.
+Retningsord fanges bare fra listene under. Den er streng med vilje: et godt svar som
 avvises, gir bare testmodus-teksten.
 """
 from __future__ import annotations
@@ -36,6 +37,40 @@ AARSAKSORD = (
 )
 _AARSAK = re.compile(r"(?<!\w)(" + "|".join(AARSAKSORD) + r")(?!\w)", re.IGNORECASE)
 _FORSINK = re.compile(r"forsink", re.IGNORECASE)
+
+# Tall skrevet med ord (prompten sier at tall skal skrives som i faktaene). «en», «ett» og «én» er ikke med: de kan
+# ikke skilles fra artikkelen.
+TALLORD = (
+    r"to", r"tre", r"fire", r"fem", r"seks", r"sju", r"syv", r"åtte", r"ni", r"ti", r"elleve", r"tolv", r"tretten",
+    r"fjorten", r"femten", r"seksten", r"sytten", r"atten", r"nitten", r"tjue\w*", r"tretti\w*", r"førti\w*",
+    r"femti\w*", r"seksti\w*", r"sytti\w*", r"åtti\w*", r"nitti\w*", r"hundre\w*", r"tusen\w*", r"null",
+    r"halv\w*", r"kvarter\w*", r"dobbel\w*", r"tredobbel\w*", r"et par",
+    r"two", r"three", r"four", r"five", r"ten", r"twenty", r"thirty", r"hundred", r"half", r"double", r"twice",
+)
+_TALLORD = re.compile(r"(?<!\w)(" + "|".join(TALLORD) + r")(?!\w)", re.IGNORECASE)
+
+# Retningsord. «tidligere anløp» (= forrige anløp) er ikke en retning.
+SENERE_ORD = (r"senere", r"forsink\w*", r"for sent", r"etter tiden", r"etter planen", r"later", r"delay\w*", r"late")
+TIDLIGERE_ORD = (r"tidligere(?!\s+anløp)", r"før tiden", r"for tidlig", r"før planen", r"earlier", r"early", r"ahead")
+_SENERE = re.compile(r"(?<!\w)(" + "|".join(SENERE_ORD) + r")(?!\w)", re.IGNORECASE)
+_TIDLIGERE = re.compile(r"(?<!\w)(" + "|".join(TIDLIGERE_ORD) + r")(?!\w)", re.IGNORECASE)
+
+
+def retning(prediksjon) -> Optional[int]:
+    """Fortegnet på avviket teksten skal beskrive: +1 senere, −1 tidligere, 0 ingen, None ukjent.
+
+    Modell v1: fortegnet på ``predikert_avvik_min`` (avvik fra kalibrert baseline). Baselinen og rader modellen har
+    delegert: predikert ankomst minus rapportert ETA. Det er alltid negativt (rapportert ETA minus offset), så
+    «tidligere enn rapportert ETA» godtas og «senere» avvises.
+    """
+    f = prediksjon.forklaring
+    if f.get("metode") == "modell" and f.get("predikert_avvik_min") is not None:
+        verdi = round(f["predikert_avvik_min"])
+    elif f.get("eta_reported") is not None:
+        verdi = round((prediksjon.predikert_ankomst - f["eta_reported"]).total_seconds() / 60)
+    else:
+        return None
+    return (verdi > 0) - (verdi < 0)
 
 
 def _normaliser(tall: str) -> str:
@@ -84,8 +119,12 @@ def kontroller(
     *,
     forventet_forsinket: Optional[bool],
     skipsnavn: Optional[Iterable[str]] = None,
+    retning: Optional[int] = None,
 ) -> Optional[str]:
-    """None når svaret godtas, ellers regelen som brytes. ``skipsnavn`` er standard alle navn i utdraget."""
+    """None når svaret godtas, ellers regelen som brytes. ``skipsnavn`` er standard alle navn i utdraget.
+
+    ``retning`` (+1, −1, 0) er fortegnet på avviket (``retning(prediksjon)``). Med +1 avvises «tidligere»-ord, med −1
+    «senere»-ord, og med 0 begge. None hopper over regelen."""
     tekst = (tekst or "").strip()
     if not tekst:
         return "tom"
@@ -99,6 +138,8 @@ def kontroller(
     verdier = "\n".join(fakta.values())
     if not tall_i(tekst) <= tall_i(verdier) or not _bare_skrevet_med_fortegn(tekst) <= _med_fortegn(verdier):
         return "tall"
+    if _TALLORD.search(tekst):
+        return "tallord"
     # Et navn som også står i inputen (eget skip, avgangshavn …), er lov. Mønsteret prøver lengste navn først, så
     # «SIEM PEARL» ikke gir treff på et annet skip som bare heter «PEARL».
     monster = _navnemonster(tuple(sorted(set(skipsnavn), key=len, reverse=True)) if skipsnavn is not None
@@ -111,4 +152,7 @@ def kontroller(
         return "aarsak"
     if forventet_forsinket is not True and _FORSINK.search(tekst):
         return "forsink"
+    if retning is not None:
+        if (retning <= 0 and _SENERE.search(tekst)) or (retning >= 0 and _TIDLIGERE.search(tekst)):
+            return "retning"
     return None

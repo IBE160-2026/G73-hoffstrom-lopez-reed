@@ -192,6 +192,7 @@ LLM_ROUTING=floor         # prisgulv: billigste leverandør av modellen
 LLM_MAKS_KALL=20          # ekte forsøk per prosess (per Vercel-instans)
 LLM_FEIL_TTL_S=300        # hvor lenge en feil caches før nytt forsøk
 LLM_TIMEOUT_S=8
+LLM_RESONNERING=none      # none | low | high | max. Røykkallet 18.11: med modellens standard gikk alle 300 tokens til resonnering
 ```
 
 Verdiene leses bare i `app/begrunnelse/konfig.py` (beslutning 13).
