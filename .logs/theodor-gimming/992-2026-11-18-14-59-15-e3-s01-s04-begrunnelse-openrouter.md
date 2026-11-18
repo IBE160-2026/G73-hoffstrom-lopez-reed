@@ -184,3 +184,31 @@ Deretter skulle kontroll, tester og mutanter oppdateres, de 3 røykkallene kjør
 
 ### Åpne punkter
 - Avvik på 90 min eller mer vises som timer og minutter («2 t 18 min»). Theodor brukte «138 min» som eksempel, så formatet bør avklares.
+
+## 2026-11-18 kl. 16:15 — Theodor Gimming (avslutning 18.11)
+
+### Oppgave
+Avslutte dagen uten å merge PR #11:
+- «2 t 18 min» beholdes.
+- De åpne punktene skal stå i `issues.md`: UU-sjekk av skjerm C i forhåndsvisningen, at gruppa ser gjennom PR-en og merger, og `LLM_MODUS=ekte` i Vercel etter merge og før sensur.
+- Loggen skal avsluttes, committes og pushes, og arbeidstreet og suiten skal sjekkes.
+
+### Plan
+- Oppdatere `issues.md`, skrive denne seksjonen, committe, pushe og kontrollere tilstanden.
+
+### Resultat
+- **Formatet:** «2 t 18 min» beholdes, og punktet er lukket.
+- **Åpne punkter oppdatert i `issues.md`:**
+  - UU-sjekken av skjerm C skal gjøres i forhåndsvisningen, også med en henting som feiler.
+  - Gruppa ser gjennom PR #11 og merger.
+  - `LLM_MODUS=ekte` settes i Vercel etter merge og før sensur.
+- **Dagen samlet (18.11):**
+  - E0-S22: `technology.md` er fjernet, og `.env` er satt opp (PR #10, merget).
+  - E3-S01–S04 er bygd etter bmad-build: spec med valgene S1–S7, review med tre lag (26 funn) og mutasjonssjekker.
+  - Fire runder røykkall har gitt prompten `begrunnelse-v5`. Alle tre testtilfellene godkjennes nå. De fire rundene kostet til sammen USD 0,0011.
+  - PR #11 er åpen og ikke merget.
+- **KI-feil** er ført i `notater.md`: gamle `.pyc`-filer, tallkontrollen uten fortegn, pronomen, resonneringen som brukte opp token-grensen, den ødelagte markøren i prompten, og koblingen i adapteren som ikke var testet.
+- Arbeidstreet og suiten er sjekket etter commit og push. Se sluttoppsummeringen.
+
+### Åpne punkter
+- Står i `issues.md`: UU-sjekk av skjerm C, gjennomgang og merge av PR #11, `LLM_MODUS=ekte` i Vercel, sjekk av kostnadsoverslaget før levering, og refleksjonsrapporten.
