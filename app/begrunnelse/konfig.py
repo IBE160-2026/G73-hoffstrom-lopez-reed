@@ -8,6 +8,7 @@ Med ``LLM_ROUTING=floor`` velger OpenRouter den billigste leverandøren av model
 """
 from __future__ import annotations
 
+import math
 import os
 
 STANDARD_MODUS = "test"
@@ -25,12 +26,12 @@ def _tekst(navn: str, standard: str) -> str:
 
 
 def _tall(navn: str, standard: float, minst: float) -> float:
-    """Tall fra miljøet. Tomt, ugyldig eller under ``minst`` gir standardverdien, så appen alltid starter."""
+    """Tall fra miljøet. Tomt, ugyldig, ikke endelig (inf, nan) eller under ``minst`` gir standardverdien, så appen alltid starter."""
     try:
         verdi = float(os.environ.get(navn, "").strip())
     except ValueError:
         return standard
-    return verdi if verdi >= minst and verdi == verdi else standard
+    return verdi if math.isfinite(verdi) and verdi >= minst else standard
 
 
 def modus() -> str:

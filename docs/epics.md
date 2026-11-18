@@ -370,7 +370,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - `hent_begrunnelse(inp, prediksjon, prediktor_navn)` og `cachet(...)` i `app/begrunnelse/`. Adapteren tar `PrediksjonsInput` + `Prediksjon`, aldri et `Anlop`. `hent_brief(vindu)` kommer i E3-S05. `LLM_MODUS=test` er standard og gir en deterministisk mal-tekst merket «Testmodus».
 - Ingen nettkall i testmodus. All konfigurasjon leses i `app/begrunnelse/konfig.py`. Cache og kallgrense per prosess (FR11b slik den er endret 18.11.2026).
 
-**Test:** `tests/test_begrunnelse.py::test_testmodus_uten_nett` (nettkall blokkert i testen)
+**Test:** `tests/test_begrunnelse.py::test_testmodus_uten_nett` (nettkall blokkert i testen), `::test_kallgrense_20`, `::test_feil_caches_i_300_s`, `::test_cache_gir_null_nye_kall` (FR11b)
 
 ### E3-S02 — Input bygd fra modellens faktiske data ✅
 **Krav:** FR11 · **Avhenger av:** E3-S01
@@ -392,7 +392,7 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - Alle tall og skipsnavn i teksten finnes i inputen. På baseline påstår teksten aldri at et avvik er ventet.
 - Siden venter aldri på språkmodellen: et cachet svar er server-rendret, ellers står «Henter forklaring …» i en `aria-live`-region, og svaret hentes med `POST /anlop/<voyageid>/begrunnelse`. Uten JavaScript vises mal-teksten merket «Testmodus». Skjerm C er bygd minimalt her (kjernen i E1-S11).
 
-**Test:** `tests/test_ruter.py::test_detalj_begrunnelse`, `tests/test_begrunnelse.py::test_tall_finnes_i_input`
+**Test:** `tests/test_ruter.py::test_detalj_begrunnelse`, `::test_detalj_venter_ikke_paa_spraakmodellen`, `::test_cachet_svar_vises_server_rendret` (FR11a), `tests/test_begrunnelse.py::test_tall_finnes_i_input`
 
 ### E3-S05 — Forstyrrelsesbrief på hovedskjermen ☐
 **Krav:** FR12 · **Avhenger av:** E3-S04
