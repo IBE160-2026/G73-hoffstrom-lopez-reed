@@ -16,7 +16,8 @@ from __future__ import annotations
 import datetime as dt
 from typing import Dict, Optional
 
-from app.begrunnelse.klartekst import DELEGERT_KLARTEKST, konklusjon
+from app.begrunnelse.klartekst import DELEGERT_KLARTEKST, innledning
+from app.begrunnelse.kontroll import MAKS_SETNINGER, antall_setninger
 from app.begrunnelse.testmodus import VARSEL_GRENSE_MIN
 from app.prediksjon import Prediksjon, PrediksjonsInput
 from app.prediksjon.features import MIN_FART_KN, SLAKK_MIN_TIMER
@@ -87,14 +88,16 @@ def _tilstand(inp: PrediksjonsInput, featurer: dict) -> Dict[str, str]:
         if rekker:
             ut["Rekker fram til rapportert ETA med farten ved siste posisjon"] = rekker
     havn = featurer.get("avgangshavn")
-    tidspunkt = ukedag_dato_klokke(inp.t_kutt)  # F14 er regnet ved kuttet, som vises som et tidspunkt
+    # F13–F14 er rapportert avgangshavn og ETD. De kunne ikke verifiseres historisk (beslutning 11), så de sendes som
+    # registrert informasjon, ikke som et sikkert faktum. F14 er regnet ved kuttet, som vises som et tidspunkt.
+    tidspunkt = ukedag_dato_klokke(inp.t_kutt)
     if featurer.get("avgatt_for_kutt") is not None and havn and havn != "annet":
         if featurer["avgatt_for_kutt"]:
             timer = featurer.get("timer_siden_avgang")
-            ut["Avgang"] = (f"gikk fra {havn} omtrent {tall(timer, 1)} timer før {tidspunkt}" if timer is not None
-                            else f"hadde gått fra {havn} per {tidspunkt}")
+            ut["Avgang"] = (f"avgang fra {havn} var registrert omtrent {tall(timer, 1)} timer før {tidspunkt}"
+                            if timer is not None else f"avgang fra {havn} var registrert per {tidspunkt}")
         else:
-            ut["Avgang"] = f"hadde ikke gått fra {havn} per {tidspunkt}"
+            ut["Avgang"] = f"avgang fra {havn} var ikke registrert per {tidspunkt}"
     n = featurer.get("fartoy_antall_tidligere")
     snitt = featurer.get("fartoy_snittavvik_min")
     if n and snitt is not None:
@@ -117,7 +120,8 @@ def lag_fakta(inp: PrediksjonsInput, prediksjon: Prediksjon) -> Dict[str, str]:
         raise ValueError("prediksjonen hører til en annen seilas enn inputen")
     f = prediksjon.forklaring
     fakta = {
-        "Konklusjon (første setning, ordrett)": konklusjon(inp, prediksjon),
+        "Innledning (skriv ordrett først)": innledning(inp, prediksjon),
+        "Setninger du kan legge til": str(max(MAKS_SETNINGER - antall_setninger(innledning(inp, prediksjon)), 0)),
         "Skip": inp.shipname,
         "Skipsgruppe": gruppe_visning(inp.ship_group).replace("\u00ad", ""),
         "Rapportert ETA": ukedag_dato_klokke(inp.eta_reported),

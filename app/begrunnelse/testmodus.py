@@ -7,8 +7,7 @@ På baselinen, og for rader modellen har delegert til baselinen, påstår tekste
 """
 from __future__ import annotations
 
-from app.begrunnelse.klartekst import DELEGERT_KLARTEKST, konklusjon
-from app.visning import tall
+from app.begrunnelse.klartekst import DELEGERT_KLARTEKST, innledning
 
 MERKE_TEST = "Testmodus"
 MERKE_FEILET = "Testmodus (ekte kall feilet)"
@@ -21,17 +20,15 @@ GRUPPE_TEKST = {"Passasjer": "passasjerskip", "Øvrige": "øvrige (ikke-rutegåe
 
 
 def mal(inp, prediksjon) -> str:
-    """Mal-teksten for ett anløp (``begrunnelse-v4``): konklusjonen i forhold til rapportert ETA, så én setning i
-    vanlig språk. Samme form og grenser som et ekte svar, og den består kontrollen."""
+    """Mal-teksten for ett anløp (``begrunnelse-v5``): innledningen appen skriver (konklusjonen, og på baseline- og
+    varselrader én setning til), så én setning i vanlig språk. Høyst 3 setninger, og den består kontrollen."""
     f = prediksjon.forklaring
-    start = konklusjon(inp, prediksjon)
+    start = innledning(inp, prediksjon)
     if f.get("metode") == "modell":
-        avvik = round(f["predikert_avvik_min"])
         if prediksjon.forventet_forsinket is True:
-            return (f"{start} Modellen venter {tall(abs(avvik), 0)} min mer enn vanlig for skipsgruppen, "
-                    f"over varselgrensen på {VARSEL_GRENSE_MIN} min.")
+            return f"{start} Det er over varselgrensen på {VARSEL_GRENSE_MIN} min."
         return f"{start} Modellen vurderer anløpet som under varselgrensen på {VARSEL_GRENSE_MIN} min."
     grunn = DELEGERT_KLARTEKST.get(f.get("delegert"))
     if grunn:
-        return f"{start} Modellen vurderer ikke anløpet ({grunn}), så tiden bygger på vanlig avvik for skipsgruppen."
-    return f"{start} Tiden bygger på vanlig avvik for skipsgruppen, og beregningen kan ikke varsle."
+        return f"{start} Modellen vurderer ikke anløpet ({grunn})."
+    return f"{start} Beregningen kan ikke varsle avvik."

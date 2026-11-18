@@ -59,19 +59,45 @@ def varighet(minutter: int) -> str:
     return f"{timer} t {rest} min" if rest else f"{timer} t"
 
 
-def _tidspar(prediksjon, eta) -> str:
-    """«17:44 mot 16:30», med ukedag når de to tidene er på ulike dager."""
+def _tider(prediksjon, eta):
+    """(«kl. 17:44», «16:30»), med ukedag på begge når de er på ulike dager («lør kl. 00:44», «fre 23:30»)."""
     pred, rapp = til_oslo_minutt(prediksjon.predikert_ankomst), til_oslo_minutt(eta)
     if pred.date() == rapp.date():
-        return f"{pred:%H:%M} mot {rapp:%H:%M}"
-    return f"{ukedag_klokke(prediksjon.predikert_ankomst)} mot {ukedag_klokke(eta)}"
+        return f"kl. {pred:%H:%M}", f"{rapp:%H:%M}"
+    dag_p, klokke_p = ukedag_klokke(prediksjon.predikert_ankomst).split(" ")
+    return f"{dag_p} kl. {klokke_p}", ukedag_klokke(eta)
 
 
 def konklusjon(inp, prediksjon) -> str:
-    """Første setning, f.eks. «Ventes 74 min senere enn rapportert ETA (17:44 mot 16:30).»"""
+    """Første setning. Tiden gjelder havneområdet, ikke kai (beslutning 03), f.eks.
+    «Ventes inn i havneområdet kl. 17:44, 74 min etter rapportert ETA (16:30).»"""
     avvik = avvik_mot_eta_min(prediksjon)
-    tider = _tidspar(prediksjon, inp.eta_reported)
+    pred, rapp = _tider(prediksjon, inp.eta_reported)
     if avvik is None or avvik == 0:
-        return f"Ventes omtrent ved rapportert ETA ({tider})."
-    ord_ = "senere" if avvik > 0 else "tidligere"
-    return f"Ventes {varighet(avvik)} {ord_} enn rapportert ETA ({tider})."
+        return f"Ventes inn i havneområdet {pred}, omtrent ved rapportert ETA ({rapp})."
+    ord_ = "etter" if avvik > 0 else "før"
+    return f"Ventes inn i havneområdet {pred}, {varighet(avvik)} {ord_} rapportert ETA ({rapp})."
+
+
+def er_modellvurdert(prediksjon) -> bool:
+    """Modell v1 har vurdert raden selv (ikke delegert til baselinen)."""
+    return prediksjon.forklaring.get("metode") == "modell"
+
+
+def innledning(inp, prediksjon) -> str:
+    """Setningene appen skriver, og som svaret må starte med ordrett.
+
+    - Alle rader: konklusjonen.
+    - Baselinen og delegerte rader: «Det er vanlig for denne skipsgruppen.»
+    - Varselrader: avviket fra det som er vanlig for skipsgruppen, som er det som gir varselet,
+      f.eks. «Det er 138 min senere enn vanlig for skipsgruppen.»
+    """
+    deler = [konklusjon(inp, prediksjon)]
+    f = prediksjon.forklaring
+    if not er_modellvurdert(prediksjon):
+        deler.append("Det er vanlig for denne skipsgruppen.")
+    elif prediksjon.forventet_forsinket is True and f.get("predikert_avvik_min") is not None:
+        avvik = round(f["predikert_avvik_min"])
+        ord_ = "senere" if avvik > 0 else "tidligere"
+        deler.append(f"Det er {varighet(avvik)} {ord_} enn vanlig for skipsgruppen.")
+    return " ".join(deler)

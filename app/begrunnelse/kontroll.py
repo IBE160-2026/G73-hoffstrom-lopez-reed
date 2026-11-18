@@ -27,7 +27,8 @@ MAKS_SETNINGER = 3
 
 # Et fortegn (+, - eller −) teller bare når det ikke står rett etter et ord eller tall («v1», «6–24» har ikke fortegn).
 _TALL = re.compile(r"(?:(?<![\w])([+\-\u2212]))?(\d+(?:[.,]\d+)?)")
-_SETNINGSSLUTT = re.compile(r"(?<=[.!?…])\s+")
+# «kl.» og «ca.» avslutter ikke en setning (konklusjonen bruker «kl. 17:44»).
+_SETNINGSSLUTT = re.compile(r"(?<![Kk]l\.)(?<![Cc]a\.)(?<=[.!?…])\s+")
 
 # Årsaker prompten forbyr. Hele ord (med vanlige bøyninger), så «vindu» og «motorvei» ikke gir falske treff for
 # «vind», men «motoren» og «motorfeil» gjør det.
@@ -59,6 +60,10 @@ _SENERE = re.compile(r"(?<!\w)(" + "|".join(SENERE_ORD) + r")(?!\w)", re.IGNOREC
 BEGREPER = (r"kalibrert\w*", r"baseline\w*", r"slakk\w*", r"treningsdata\w*", r"kutt\w*", r"kuttpunkt\w*",
             r"alder på", r"posisjonsalder\w*", r"offset\w*", r"forskyvning\w*", r"featur\w*", r"cos")
 _BEGREP = re.compile(r"(?<!\w)(" + "|".join(BEGREPER) + r")(?!\w)", re.IGNORECASE)
+# På rader Modell v1 har vurdert, er «vanlig avvik for skipsgruppen» ikke forklaringen (``metode``).
+_VANLIG_SOM_METODE = re.compile(
+    r"(bygger|baserer|hviler)\s+(seg\s+)?på\s+(det\s+)?vanlig\w*\s+avvik|vanlig\w*\s+avvik\s+for\s+(denne\s+)?skipsgruppen",
+    re.IGNORECASE)
 _TIDLIGERE = re.compile(r"(?<!\w)(" + "|".join(TIDLIGERE_ORD) + r")(?!\w)", re.IGNORECASE)
 
 
@@ -113,6 +118,7 @@ def kontroller(
     skipsnavn: Optional[Iterable[str]] = None,
     retning: Optional[int] = None,
     konklusjon: Optional[str] = None,
+    modellrad: bool = False,
 ) -> Optional[str]:
     """None når svaret godtas, ellers regelen som brytes. ``skipsnavn`` er standard alle navn i utdraget.
 
@@ -120,7 +126,11 @@ def kontroller(
     stemmer med fortegnet, eller når samme retning står i et faktafelt (for eksempel «senere enn vanlig» om skipets
     tidligere anløp). Med 0 og ingen retning i faktaene avvises begge. None hopper over regelen.
 
-    ``konklusjon`` er første setning, regnet ut i appen. Svaret må starte med den ordrett (``konklusjon``)."""
+    ``konklusjon`` er innledningen appen har skrevet (``klartekst.innledning``: konklusjonen, og på baseline- og
+    varselrader én setning til). Svaret må starte med den ordrett (``konklusjon``).
+
+    ``modellrad`` er True når Modell v1 har vurdert raden selv. Da avvises «vanlig avvik for skipsgruppen» som
+    forklaring (``metode``), fordi det er baselinens metode, ikke modellens."""
     tekst = (tekst or "").strip()
     if not tekst:
         return "tom"
@@ -148,6 +158,8 @@ def kontroller(
                 return "skipsnavn"
     if _BEGREP.search(tekst):
         return "begrep"
+    if modellrad and _VANLIG_SOM_METODE.search(tekst):
+        return "metode"
     if _AARSAK.search(tekst):
         return "aarsak"
     if forventet_forsinket is not True and _FORSINK.search(tekst):

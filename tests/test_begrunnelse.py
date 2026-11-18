@@ -48,8 +48,8 @@ def test_testmodus_uten_nett():
     svar = hent_begrunnelse(inp, p, BASELINE)
     assert isinstance(svar, Begrunnelse)
     assert svar.merke == MERKE_TEST
-    from app.begrunnelse.klartekst import konklusjon
-    assert svar.tekst.startswith(konklusjon(inp, p))
+    from app.begrunnelse.klartekst import innledning
+    assert svar.tekst.startswith(innledning(inp, p))
     assert begrunnelse.antall_kall() == 0
     # Deterministisk, og siden kan vise den uten å vente.
     assert hent_begrunnelse(inp, p, BASELINE) == svar == cachet(inp, p, BASELINE)
@@ -163,11 +163,11 @@ def test_input_baseline_har_tider_som_paa_skjermen():
     from app.visning import ukedag_dato_klokke
 
     inp, p, _ = baselinepar()
-    from app.begrunnelse.klartekst import konklusjon
+    from app.begrunnelse.klartekst import innledning
 
     fakta = lag_fakta(inp, p)
-    assert list(fakta)[0] == "Konklusjon (første setning, ordrett)"
-    assert fakta["Konklusjon (første setning, ordrett)"] == konklusjon(inp, p)
+    assert list(fakta)[0] == "Innledning (skriv ordrett først)"
+    assert fakta["Innledning (skriv ordrett først)"] == innledning(inp, p)
     assert fakta["Skip"] == inp.shipname
     assert fakta["Rapportert ETA"] == ukedag_dato_klokke(inp.eta_reported)
     assert fakta["Ventet ankomst"] == ukedag_dato_klokke(p.predikert_ankomst)
@@ -203,10 +203,10 @@ from app.begrunnelse.testmodus import MERKE_GRENSE, MERKE_KI  # noqa: E402
 
 
 def godt_svar(inp, p):
-    """Et svar som består kontrollen: konklusjonen først, så én setning uten nye tall, navn eller forbudte ord."""
-    from app.begrunnelse.klartekst import konklusjon
+    """Et svar som består kontrollen: innledningen først, så én setning uten nye tall, navn eller forbudte ord."""
+    from app.begrunnelse.klartekst import innledning
 
-    return f"{konklusjon(inp, p)} Tiden bygger på vanlig avvik for skipsgruppen."
+    return f"{innledning(inp, p)} Beregningen kan ikke varsle avvik."
 
 
 def sett_transport(monkeypatch, transport):
@@ -235,7 +235,7 @@ def test_ekte_med_mock(monkeypatch):
 
 def test_prompt_er_versjonert():
     tekst = openrouter_klient.PROMPT_FIL.read_text(encoding="utf-8")
-    assert "begrunnelse-v4" in tekst
+    assert "begrunnelse-v5" in tekst
     system, bruker = openrouter_klient.bygg_prompt({"Skip": "X"})
     assert "<!--" not in system + bruker and "{fakta}" not in bruker
     assert "- Skip: X" in bruker
@@ -526,7 +526,7 @@ def test_mal_teksten_bestaar_kontrollen(monkeypatch):
     """Testmodus-malen holder de samme grensene som et ekte svar, også uten varsel (ingen «forsink»)."""
     from app.begrunnelse.input import lag_fakta
 
-    from app.begrunnelse.klartekst import konklusjon
+    from app.begrunnelse.klartekst import er_modellvurdert, innledning
     from app.begrunnelse.kontroll import retning
 
     typer = set()
@@ -534,16 +534,18 @@ def test_mal_teksten_bestaar_kontrollen(monkeypatch):
         typer.add("modell_varsel" if p.forventet_forsinket else "modell" if p.forventet_forsinket is False
                   else p.forklaring.get("delegert") or "baseline")
         tekst = begrunnelse.testtekst(inp, p).tekst
+        assert tekst.startswith(innledning(inp, p))
+        assert antall_setninger(tekst) <= 3, tekst
         assert kontroller(tekst, lag_fakta(inp, p), forventet_forsinket=p.forventet_forsinket, retning=retning(p),
-                          konklusjon=konklusjon(inp, p)) is None, tekst
+                          konklusjon=innledning(inp, p), modellrad=er_modellvurdert(p)) is None, tekst
     assert {"modell_varsel", "modell", "baseline", "passasjer"} <= typer
 
 
 def test_mislykket_kontroll_logges(monkeypatch, caplog):
     ekte(monkeypatch)
     inp, p, _ = baselinepar()
-    from app.begrunnelse.klartekst import konklusjon
-    sett_transport(monkeypatch, FalskTransport(f"{konklusjon(inp, p)} Været gjør at skipet kommer sent."))
+    from app.begrunnelse.klartekst import innledning
+    sett_transport(monkeypatch, FalskTransport(f"{innledning(inp, p)} Været gjør at skipet kommer sent."))
     with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
         assert hent_begrunnelse(inp, p, BASELINE).merke == MERKE_FEILET
     assert "kontroll_aarsak" in caplog.text
@@ -618,11 +620,11 @@ def test_retning_fra_prediksjonen(monkeypatch):
 
 
 def test_adapteren_avviser_feil_retning(monkeypatch, caplog):
-    from app.begrunnelse.klartekst import konklusjon
+    from app.begrunnelse.klartekst import innledning
 
     ekte(monkeypatch)
-    inp, p, _ = baselinepar()  # baselinen i standardvinduet: tidligere enn rapportert ETA
-    sett_transport(monkeypatch, FalskTransport(f"{konklusjon(inp, p)} Skipet kommer likevel senere enn vanlig."))
+    inp, p, _ = baselinepar()  # baselinen i standardvinduet: før rapportert ETA
+    sett_transport(monkeypatch, FalskTransport(f"{innledning(inp, p)} Skipet kommer likevel senere enn vanlig."))
     with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
         svar = hent_begrunnelse(inp, p, BASELINE)
     assert svar.merke != MERKE_KI
@@ -741,12 +743,12 @@ def baselineprediksjon(offset, eta=ETA):
 
 
 @pytest.mark.parametrize("p, forventet", [
-    (modellprediksjon(74), "Ventes 74 min senere enn rapportert ETA (17:44 mot 16:30)."),
-    (modellprediksjon(-138), "Ventes 2 t 18 min tidligere enn rapportert ETA (14:12 mot 16:30)."),
-    (baselineprediksjon(64.2), "Ventes 64 min tidligere enn rapportert ETA (15:26 mot 16:30)."),
-    (baselineprediksjon(-30.0), "Ventes 30 min senere enn rapportert ETA (17:00 mot 16:30)."),  # fortegn fra offset
-    (modellprediksjon(0), "Ventes omtrent ved rapportert ETA (16:30 mot 16:30)."),
-    (baselineprediksjon(0.0), "Ventes omtrent ved rapportert ETA (16:30 mot 16:30)."),
+    (modellprediksjon(74), "Ventes inn i havneområdet kl. 17:44, 74 min etter rapportert ETA (16:30)."),
+    (modellprediksjon(-138), "Ventes inn i havneområdet kl. 14:12, 2 t 18 min før rapportert ETA (16:30)."),
+    (baselineprediksjon(64.2), "Ventes inn i havneområdet kl. 15:26, 64 min før rapportert ETA (16:30)."),
+    (baselineprediksjon(-30.0), "Ventes inn i havneområdet kl. 17:00, 30 min etter rapportert ETA (16:30)."),  # fortegn fra offset
+    (modellprediksjon(0), "Ventes inn i havneområdet kl. 16:30, omtrent ved rapportert ETA (16:30)."),
+    (baselineprediksjon(0.0), "Ventes inn i havneområdet kl. 16:30, omtrent ved rapportert ETA (16:30)."),
 ])
 def test_konklusjon(p, forventet):
     assert klartekst.konklusjon(syntetisk_inp(), p) == forventet
@@ -756,7 +758,10 @@ def test_konklusjon_ulike_datoer_har_ukedag():
     eta = dt.datetime(2025, 8, 15, 21, 30, tzinfo=dt.timezone.utc)  # fre 23:30 norsk tid
     p = modellprediksjon(74, eta=eta)
     assert klartekst.konklusjon(syntetisk_inp(eta=eta), p) == (
-        "Ventes 74 min senere enn rapportert ETA (lør 00:44 mot fre 23:30).")
+        "Ventes inn i havneområdet lør kl. 00:44, 74 min etter rapportert ETA (fre 23:30).")
+    p = modellprediksjon(-74, eta=dt.datetime(2025, 8, 15, 22, 30, tzinfo=dt.timezone.utc))  # lør 00:30
+    assert klartekst.konklusjon(syntetisk_inp(eta=p.forklaring["eta_reported"]), p) == (
+        "Ventes inn i havneområdet fre kl. 23:16, 74 min før rapportert ETA (lør 00:30).")
 
 
 @pytest.mark.parametrize("minutter, tekst", [(89, "89 min"), (90, "1 t 30 min"), (120, "2 t"), (-138, "2 t 18 min"),
@@ -900,7 +905,8 @@ def test_lag_fakta_tidligere_anlop_og_avgang():
         fartoy_antall_tidligere=12.0, fartoy_snittavvik_min=-31.0, avgangshavn="ÅGOTNES", avgatt_for_kutt=1.0,
         timer_siden_avgang=2.5)))
     assert fakta["Skipets tidligere anløp"] == "12 anløp, i snitt omtrent 31 min tidligere enn vanlig for skipsgruppen"
-    assert fakta["Avgang"].startswith("gikk fra ÅGOTNES omtrent 2,5 timer før ")
+    tid = ukedag_dato_klokke(syntetisk_inp().t_kutt)
+    assert fakta["Avgang"] == f"avgang fra ÅGOTNES var registrert omtrent 2,5 timer før {tid}"
 
 
 def test_lag_fakta_uten_interne_begreper_og_kurstall():
@@ -920,3 +926,156 @@ def test_lag_fakta_uten_interne_begreper_og_kurstall():
             sett.add("kurs")
         sett.add(p.forklaring.get("delegert") or p.forklaring["metode"])
     assert {"kurs", "modell", "kalibrert_baseline", "passasjer"} <= sett
+
+
+# ---------- begrunnelse-v5: innledning, «kl.»/«ca.», metoderegelen, setninger igjen og avgang som registrert ----------
+
+def varselprediksjon(predikert_avvik, avvik_mot_eta_min=74):
+    """En modellrad med varsel, også med negativt predikert avvik (bare mulig syntetisk)."""
+    p = modellprediksjon(avvik_mot_eta_min, predikert_avvik=predikert_avvik)
+    return Prediksjon(p.voyageid, p.horisont_timer, p.predikert_ankomst, True, p.forklaring)
+
+
+def delegertprediksjon(offset=64.2, grunn="ingen_tilstand"):
+    p = baselineprediksjon(offset)
+    return Prediksjon(p.voyageid, p.horisont_timer, p.predikert_ankomst, None, dict(p.forklaring, delegert=grunn))
+
+
+K74 = "Ventes inn i havneområdet kl. 17:44, 74 min etter rapportert ETA (16:30)."
+K64 = "Ventes inn i havneområdet kl. 15:26, 64 min før rapportert ETA (16:30)."
+
+
+@pytest.mark.parametrize("p, forventet", [
+    (varselprediksjon(138.4), f"{K74} Det er 2 t 18 min senere enn vanlig for skipsgruppen."),
+    (varselprediksjon(-138.0), f"{K74} Det er 2 t 18 min tidligere enn vanlig for skipsgruppen."),
+    (varselprediksjon(121.0), f"{K74} Det er 2 t 1 min senere enn vanlig for skipsgruppen."),
+    (modellprediksjon(74, predikert_avvik=10.0), K74),  # modell uten varsel: bare konklusjonen
+    (delegertprediksjon(), f"{K64} Det er vanlig for denne skipsgruppen."),
+    (baselineprediksjon(64.2), f"{K64} Det er vanlig for denne skipsgruppen."),
+])
+def test_innledning_per_radtype(p, forventet):
+    assert klartekst.innledning(syntetisk_inp(), p) == forventet
+
+
+def test_er_modellvurdert():
+    assert klartekst.er_modellvurdert(modellprediksjon(74)) is True
+    assert klartekst.er_modellvurdert(varselprediksjon(150.0)) is True
+    assert klartekst.er_modellvurdert(delegertprediksjon()) is False
+    assert klartekst.er_modellvurdert(baselineprediksjon(64.2)) is False
+
+
+@pytest.mark.parametrize("tekst, antall", [
+    (K74, 1),
+    ("Det er kl. 17:44.", 1),
+    ("Kl. 17:44 kommer det. Neste setning.", 2),
+    ("Det er ca. 5 min igjen. Neste setning.", 2),
+    ("Ca. 5 min igjen.", 1),
+    ("Skipet går sakte. Det er langt unna. Det rekker ikke fram.", 3),
+    ("Første. Andre.", 2),
+])
+def test_kl_og_ca_avslutter_ikke_setningen(tekst, antall):
+    assert antall_setninger(tekst) == antall
+
+
+def test_innledningen_har_riktig_antall_setninger():
+    for p, forventet in [(varselprediksjon(138.0), 2), (modellprediksjon(74), 1), (baselineprediksjon(64.2), 2),
+                         (delegertprediksjon(), 2)]:
+        assert antall_setninger(klartekst.innledning(syntetisk_inp(), p)) == forventet
+
+
+METODE_TEKSTER = [
+    "Tiden bygger på vanlig avvik for skipsgruppen.",
+    "Det er vanlig avvik for denne skipsgruppen.",
+    "Anslaget baserer seg på det vanlige avviket.",
+    "Tiden hviler på vanlig avvik.",
+    "Det bygger på det vanlige avviket.",
+]
+
+
+@pytest.mark.parametrize("tekst", METODE_TEKSTER)
+def test_metoderegelen_avviser_paa_modellrad(tekst):
+    assert kontroller(tekst, {}, forventet_forsinket=True, skipsnavn=[], modellrad=True) == "metode"
+
+
+@pytest.mark.parametrize("tekst", METODE_TEKSTER)
+def test_metoderegelen_godtar_paa_baseline_og_delegert(tekst):
+    assert kontroller(tekst, {}, forventet_forsinket=None, skipsnavn=[], modellrad=False) is None
+    assert kontroller(tekst, {}, forventet_forsinket=None, skipsnavn=[]) is None  # standard er False
+
+
+def test_metoderegelen_utloses_ikke_av_varselsetningen():
+    innl = klartekst.innledning(syntetisk_inp(), varselprediksjon(138.0))
+    fakta = lag_fakta(syntetisk_inp(), varselprediksjon(138.0))
+    tekst = f"{innl} Det er over varselgrensen på 120 min."
+    assert kontroller(tekst, fakta, forventet_forsinket=True, skipsnavn=[], retning=1, konklusjon=innl,
+                      modellrad=True) is None
+    assert kontroller("Det er 138 min senere enn vanlig for skipsgruppen.", {"a": "138"}, forventet_forsinket=True,
+                      skipsnavn=[], modellrad=True) is None
+
+
+SETNINGER_IGJEN = "Setninger du kan legge til"
+
+
+@pytest.mark.parametrize("p, igjen", [(varselprediksjon(138.0), "1"), (modellprediksjon(74), "2"),
+                                      (baselineprediksjon(64.2), "1"), (delegertprediksjon(), "1")])
+def test_setninger_du_kan_legge_til(p, igjen):
+    fakta = lag_fakta(syntetisk_inp(), p)
+    assert list(fakta)[:2] == ["Innledning (skriv ordrett først)", SETNINGER_IGJEN]
+    assert fakta[SETNINGER_IGJEN] == igjen
+
+
+def test_setninger_du_kan_legge_til_paa_ekte_rader():
+    for inp, p in alle_rader():
+        forventet = "2" if klartekst.er_modellvurdert(p) and p.forventet_forsinket is not True else "1"
+        assert lag_fakta(inp, p)[SETNINGER_IGJEN] == forventet, inp.voyageid
+
+
+@pytest.mark.parametrize("over, forventet", [
+    ({"avgatt_for_kutt": 1.0, "timer_siden_avgang": 2.5}, "avgang fra ÅGOTNES var registrert omtrent 2,5 timer før {tid}"),
+    ({"avgatt_for_kutt": 1.0, "timer_siden_avgang": None}, "avgang fra ÅGOTNES var registrert per {tid}"),
+    ({"avgatt_for_kutt": 0.0, "timer_siden_avgang": None}, "avgang fra ÅGOTNES var ikke registrert per {tid}"),
+])
+def test_avgang_som_registrert_informasjon(over, forventet):
+    inp = syntetisk_inp()
+    fakta = lag_fakta(inp, modellprediksjon(74, featurer=_featurer(avgangshavn="ÅGOTNES", **over)))
+    assert fakta["Avgang"] == forventet.format(tid=ukedag_dato_klokke(inp.t_kutt))
+
+
+def test_avgang_aldri_som_sikkert_faktum():
+    """Beslutning 11: F13–F14 kunne ikke verifiseres, så ingen faktaverdi sier at skipet «hadde gått»."""
+    sett = 0
+    for inp, p in alle_rader():
+        for v in lag_fakta(inp, p).values():
+            assert "hadde gått" not in v and "hadde ikke gått" not in v
+            sett += v.startswith("avgang fra ")
+    assert sett > 0  # avgangsfeltet finnes på minst én ekte rad
+
+
+# ---------- v5: koblingen i adapteren (mutasjonssjekken 18.11 fant at den ikke var testet) ----------
+
+def test_adapteren_avviser_vanlig_avvik_som_forklaring_paa_modellrad(monkeypatch, caplog):
+    """Adapteren må sende ``modellrad`` til kontrollen. Ellers slipper «Tiden bygger på vanlig avvik for
+    skipsgruppen» gjennom på en rad Modell v1 har vurdert (ISLAND CLIPPER i røykkall 3)."""
+    from app.begrunnelse.klartekst import innledning
+
+    ekte(monkeypatch)
+    inp, p = modellpar(monkeypatch, False)
+    sett_transport(monkeypatch, FalskTransport(f"{innledning(inp, p)} Tiden bygger på vanlig avvik for skipsgruppen."))
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        svar = hent_begrunnelse(inp, p, "Modell v1")
+    assert svar.merke == MERKE_FEILET
+    assert "kontroll_metode" in caplog.text
+
+
+def test_adapteren_krever_hele_innledningen(monkeypatch, caplog):
+    """Adapteren må sende hele innledningen, ikke bare konklusjonen. På en baselinerad mangler svaret her
+    «Det er vanlig for denne skipsgruppen.», så det skal avvises."""
+    from app.begrunnelse.klartekst import konklusjon
+
+    ekte(monkeypatch)
+    inp, p, _ = baselinepar()
+    sett_transport(monkeypatch, FalskTransport(f"{konklusjon(inp, p)} Beregningen kan ikke varsle avvik."))
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        svar = hent_begrunnelse(inp, p, BASELINE)
+    assert svar.merke == MERKE_FEILET
+    assert "kontroll_konklusjon" in caplog.text
