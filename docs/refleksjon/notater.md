@@ -354,3 +354,10 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Lærdom (råt):**
   - En tekstendring med `index()` på en markør som også står i dokumentasjonen, treffer feil sted. Søk etter markøren slik parseren gjør, alene på linja.
   - Testene i ekte modus fanget det, fordi de går gjennom `bygg_prompt`. Det er grunnen til at de ikke skal mocke bort prompten.
+
+## 2026-11-18 — Kontrollen var testet, men ikke koblingen i adapteren (E3-S03, begrunnelse-v5)
+
+- **Hva:** Testene for v5 sjekket de nye reglene (`metode`, og at hele innledningen må stå først) ved å kalle `kontroller` direkte. Ingen test sjekket at adapteren faktisk sender `modellrad` og hele innledningen til kontrollen. Da Claude fjernet `modellrad` fra kallet, eller sendte bare konklusjonen, var hele suiten fortsatt grønn.
+- **Hvordan det ble oppdaget:** Claudes mutasjonssjekk av v5. 2 av 16 mutanter overlevde.
+- **Resultat:** to nye tester går gjennom `hent_begrunnelse` med en falsk transport. Etter det ble 16 av 16 fanget (`aeff198`).
+- **Lærdom (råt):** en regel som er testet alene, er ikke testet i bruk. Når en ny parameter skal føres gjennom adapteren, trengs minst én test gjennom adapteren for hver parameter.
