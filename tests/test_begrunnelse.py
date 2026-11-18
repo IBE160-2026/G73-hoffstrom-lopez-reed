@@ -231,7 +231,7 @@ def test_ekte_med_mock(monkeypatch):
 
 def test_prompt_er_versjonert():
     tekst = openrouter_klient.PROMPT_FIL.read_text(encoding="utf-8")
-    assert "begrunnelse-v2" in tekst
+    assert "begrunnelse-v3" in tekst
     system, bruker = openrouter_klient.bygg_prompt({"Skip": "X"})
     assert "<!--" not in system + bruker and "{fakta}" not in bruker
     assert "- Skip: X" in bruker
@@ -637,3 +637,45 @@ def test_resonnering_fra_miljoet(monkeypatch, verdi, forventet):
     inp, p, _ = baselinepar()
     hent_begrunnelse(inp, p, BASELINE)
     assert t.kall[0]["body"].get("reasoning") == forventet
+
+
+def _baselineprediksjon(offset):
+    import datetime as dt
+
+    from app.prediksjon import Prediksjon
+
+    eta = dt.datetime(2025, 8, 15, 6, 0, tzinfo=dt.timezone.utc)
+    return Prediksjon(voyageid=1, horisont_timer=6, predikert_ankomst=eta - dt.timedelta(minutes=offset),
+                      forventet_forsinket=None,
+                      forklaring={"metode": "kalibrert_baseline", "gruppe": "Øvrige", "offset_minutter": offset,
+                                  "eta_reported": eta})
+
+
+@pytest.mark.parametrize("offset, forventet", [(64.2, -1), (44.75, -1), (-30.0, 1), (0.0, 0)])
+def test_retning_baseline_foelger_fortegnet_paa_forskyvningen(offset, forventet):
+    """Retningen for baselinen kommer fra det faktiske fortegnet på forskyvningen, ikke fra en antakelse om at den er
+    positiv. En negativ forskyvning gir «senere» (predikert = rapportert ETA − offset)."""
+    from app.begrunnelse.kontroll import retning
+
+    assert retning(_baselineprediksjon(offset)) == forventet
+
+
+def test_negativ_forskyvning_godtar_senere_og_avviser_tidligere():
+    from app.begrunnelse.kontroll import retning
+
+    r = retning(_baselineprediksjon(-30.0))
+    fakta = {"Fast forskyvning (min)": "\u221230,0"}
+    assert kontroller("Prediksjonen er senere enn rapportert ETA.", fakta, forventet_forsinket=None, skipsnavn=[],
+                      retning=r) is None
+    assert kontroller("Prediksjonen er tidligere enn rapportert ETA.", fakta, forventet_forsinket=None, skipsnavn=[],
+                      retning=r) == "retning"
+
+
+def test_dagens_forskyvninger_er_positive():
+    """Per 18.11.2026 er begge forskyvningene positive, så baselinen er tidligere enn rapportert ETA for begge gruppene.
+    Testen feiler hvis det endres, så noen ser på retningen og teksten i malen («rapportert ETA minus …») på nytt."""
+    import json
+    from pathlib import Path
+
+    offsets = json.loads((Path(__file__).resolve().parent.parent / "data" / "baseline.json").read_text())["offset_minutter"]
+    assert offsets == {"Passasjer": 44.75, "Øvrige": 64.2}

@@ -134,6 +134,10 @@ Pass 1 (2026-11-18). Layers: blind-hunter (BH), edge-case-hunter (EC), verificat
 
 ## Design Notes
 
+**Known limitation of the answer check (Theodor, 2026-11-18):** «en», «ett» and «én» as numbers («en time», «ett anløp») get past the check. They cannot be told apart from the article, so they are not in the `tallord` list (`app/begrunnelse/kontroll.py`). The check also does not catch a false claim written with words and numbers that are all in the input. It is a guard, not proof.
+
+**Direction (added after the smoke call 2026-11-18):** the `retning` rule uses the sign of `predikert_avvik_min` for Modell v1, and the actual sign of the group's baseline offset for the baseline and delegated rows (`predikert = rapportert ETA − offset`). It does not assume the offset is positive. Both offsets are positive today (Passasjer 44.75, Øvrige 64.2 min, `data/baseline.json`), and `test_dagens_forskyvninger_er_positive` turns red if that changes.
+
 **Cost estimate** (OpenRouter's public price list, 2026-11-18, per 1M tokens). The cheapest endpoint for the model costs USD 0.036 input and 0.50 output. The most expensive one costs 0.60 and 2.40. One call is about 700 input tokens and at most 300 output tokens (`max_tokens`). That is about USD 0.00018 per call at the floor price, so USD 20 covers about 110,000 calls. Even at the most expensive endpoint it is about USD 0.0011, or about 17,500 calls. A demo with the cap of 20 costs under USD 0.01. Prices change (DeepSeek's own endpoint changes price by time of day), so the estimate is checked again before delivery. Risk: if the model spends output tokens on reasoning, the answer may be empty. The check then gives the fallback, and the smoke call shows whether this happens.
 
 **Why POST and no background thread:** on Vercel, work after the response may be stopped. The call runs inside its own request, which the browser starts after the page is shown. POST keeps crawlers from triggering paid calls.

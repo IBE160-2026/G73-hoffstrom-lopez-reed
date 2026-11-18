@@ -60,12 +60,16 @@ def retning(prediksjon) -> Optional[int]:
     """Fortegnet på avviket teksten skal beskrive: +1 senere, −1 tidligere, 0 ingen, None ukjent.
 
     Modell v1: fortegnet på ``predikert_avvik_min`` (avvik fra kalibrert baseline). Baselinen og rader modellen har
-    delegert: predikert ankomst minus rapportert ETA. Det er alltid negativt (rapportert ETA minus offset), så
-    «tidligere enn rapportert ETA» godtas og «senere» avvises.
+    delegert: det faktiske fortegnet på forskyvningen for skipsgruppen. ``predikert = rapportert ETA − offset``, så en
+    positiv offset gir −1 (tidligere enn rapportert ETA) og en negativ gir +1 (senere). Begge forskyvningene i
+    ``data/baseline.json`` er positive per 18.11.2026 (Passasjer 44,75 og Øvrige 64,2 min), men regelen avhenger ikke
+    av det. Uten offset brukes predikert ankomst minus rapportert ETA.
     """
     f = prediksjon.forklaring
     if f.get("metode") == "modell" and f.get("predikert_avvik_min") is not None:
         verdi = round(f["predikert_avvik_min"])
+    elif f.get("offset_minutter") is not None:
+        verdi = -round(f["offset_minutter"])
     elif f.get("eta_reported") is not None:
         verdi = round((prediksjon.predikert_ankomst - f["eta_reported"]).total_seconds() / 60)
     else:
