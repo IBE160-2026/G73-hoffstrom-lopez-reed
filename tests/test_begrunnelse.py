@@ -107,3 +107,73 @@ def test_adapteren_tar_ikke_anlop():
         hent_begrunnelse(anlop, p, BASELINE)
     with pytest.raises(TypeError):
         cachet(anlop, p, BASELINE)
+
+
+# --- E3-S02: input bygd fra modellens faktiske data -------------------------------------------------------------
+
+FASITFELT = ("faktisk_ankomst", "status_in_area", "split")
+
+
+def modellpar(monkeypatch, varsel=None):
+    """(input, prediksjon) fra ``ModellPrediktor`` i valideringsvinduet. ``varsel`` = True/False velger en rad med
+    eller uten varsel, None en delegert rad."""
+    from conftest import VALIDERING_NAA
+
+    from app.prediksjon import MODELL_DIR
+    from app.prediksjon.modell import ModellPrediktor
+
+    inputs = [lag_input(a, VALIDERING_NAA) for a in anlop_i_vindu(VALIDERING_NAA)]
+    par = list(zip(inputs, ModellPrediktor(MODELL_DIR).prediker(inputs, VALIDERING_NAA)))
+    for inp, p in par:
+        if p.forventet_forsinket is varsel:
+            return inp, p
+    raise AssertionError(f"ingen rad med forventet_forsinket={varsel!r} i valideringsvinduet")
+
+
+def test_input_uten_fasit(monkeypatch):
+    from app.begrunnelse.input import lag_fakta
+
+    for inp, p in [baselinepar()[:2], modellpar(monkeypatch, True), modellpar(monkeypatch, None)]:
+        fakta = lag_fakta(inp, p)
+        assert all(isinstance(k, str) and isinstance(v, str) for k, v in fakta.items())
+        tekst = "\n".join(f"{k}: {v}" for k, v in fakta.items())
+        assert str(inp.mmsino) not in tekst
+        assert str(inp.voyageid) not in tekst
+        for felt in FASITFELT:
+            assert felt not in tekst.lower()
+    # Fasiten for anløpet finnes i datalaget, men når aldri inputen.
+    inp, p, anlop = baselinepar()
+    assert anlop.faktisk_ankomst is not None
+    from app.visning import ukedag_dato_klokke
+    assert ukedag_dato_klokke(anlop.faktisk_ankomst) not in "\n".join(lag_fakta(inp, p).values())
+    with pytest.raises(TypeError):
+        lag_fakta(anlop, p)
+
+
+def test_input_baseline_har_tider_som_paa_skjermen():
+    from app.begrunnelse.input import lag_fakta
+    from app.visning import ukedag_dato_klokke
+
+    inp, p, _ = baselinepar()
+    fakta = lag_fakta(inp, p)
+    assert fakta["Skip"] == inp.shipname
+    assert fakta["Rapportert ETA (norsk tid)"] == ukedag_dato_klokke(inp.eta_reported)
+    assert fakta["Predikert ankomst (norsk tid)"] == ukedag_dato_klokke(p.predikert_ankomst)
+    assert fakta["Metode"] == "Kalibrert baseline"
+    assert fakta["Varsel"] == "ingen (baselinen kan ikke varsle)"
+    assert any(k.startswith("Fast forskyvning") for k in fakta)
+
+
+def test_input_modell_har_avvik_og_featurer(monkeypatch):
+    from app.begrunnelse.input import lag_fakta
+
+    inp, p = modellpar(monkeypatch, True)
+    fakta = lag_fakta(inp, p)
+    assert fakta["Metode"] == "Modell v1"
+    assert fakta["Varsel"].startswith("ja")
+    assert fakta["Predikert avvik fra kalibrert baseline (min)"] == f"{p.forklaring['predikert_avvik_min']:.0f}"
+    assert "Distanse til havna (km)" in fakta
+    inp, p = modellpar(monkeypatch, None)
+    fakta = lag_fakta(inp, p)
+    assert "Hvorfor modellen ikke vurderer anløpet" in fakta
+    assert fakta["Varsel"].startswith("ingen")

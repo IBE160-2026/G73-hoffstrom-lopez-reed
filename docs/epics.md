@@ -372,9 +372,9 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_begrunnelse.py::test_testmodus_uten_nett` (nettkall blokkert i testen)
 
-### E3-S02 — Input bygd fra modellens faktiske data ☐
+### E3-S02 — Input bygd fra modellens faktiske data ✅
 **Krav:** FR11 · **Avhenger av:** E3-S01
-- Input til AI-laget bygges bare fra `Prediksjon.forklaring` og `Anlop`. Fasit sendes aldri med, siden vakta ikke kjenner den.
+- Input til AI-laget bygges bare fra `PrediksjonsInput` og `Prediksjon.forklaring` (`app/begrunnelse/input.py`, `lag_fakta`), med norske etiketter og tider formatert som på skjermen. Fasit sendes aldri med, siden vakta ikke kjenner den, og heller ikke MMSI eller seilas-ID (beslutning 13).
 
 **Test:** `tests/test_begrunnelse.py::test_input_uten_fasit`
 
