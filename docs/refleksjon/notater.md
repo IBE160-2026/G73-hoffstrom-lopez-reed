@@ -345,3 +345,12 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
   - En risiko som er «nevnt», er ikke sjekket. Når svaret ligger i en fil som allerede er lastet ned, skal den leses før koden skrives.
   - Røykkallet var verdt det: tre kall og en halv tiendedels cent fant en feil som ville gitt testmodus på hvert eneste kall i produksjon.
   - Tilbakefallet virket som det skulle. Den ekte feilen ble stoppet av kontrollen, ikke av flaks.
+
+## 2026-11-18 — Claude ødela markøren i prompt.md, og ekte modus ville aldri virket (E3-S03, begrunnelse-v4)
+
+- **Hva:** Da Claude skrev prompten `begrunnelse-v4`, ble systemteksten satt inn etter den *første* forekomsten av `<!-- SYSTEM -->`. Den står i dokumentasjonslinjen, inne i backticks. Markøren havnet dermed ikke på en egen linje, og `openrouter_klient._prompt()` kastet `ValueError` på hvert ekte kall. Hvert kall ville falt tilbake til testmodus (`uventet_ValueError`).
+- **Hvordan det ble oppdaget:** implementeringsagenten oppdaterte testene for v4 og så at 38 tester i ekte modus feilet på samme sted. Den meldte feilen i stedet for å jobbe rundt den.
+- **Resultat:** markøren står igjen alene på en linje, og suiten er grønn (679). Rettingen ligger i `bb19734`.
+- **Lærdom (råt):**
+  - En tekstendring med `index()` på en markør som også står i dokumentasjonen, treffer feil sted. Søk etter markøren slik parseren gjør, alene på linja.
+  - Testene i ekte modus fanget det, fordi de går gjennom `bygg_prompt`. Det er grunnen til at de ikke skal mocke bort prompten.
