@@ -48,3 +48,41 @@ Fullføre bmad-build-flyten for E3-S01–S04: kontrollere implementeringen mot d
 ### Åpne punkter
 - Overskriften «Hvorfor avvik er ventet» står også over baselinerader og rader uten varsel (review-funn 26). Den kommer fra UX §4 og S1, så Theodor og gruppa må avgjøre om den skal endres.
 - Kontrollen fanger ikke retningsord («senere», «tidligere») eller tall skrevet med ord. Det må følges med på i røykkallet.
+
+## 2026-11-18 kl. 15:41 — Theodor Gimming (røykkall og rettinger)
+
+### Oppgave
+Gjøre røykkallet lokalt med nøkkelen i `.env` og `LLM_MODUS=ekte` bare for kjøringen: høyst 3 kall, ett av hver (modell med varsel, modell uten varsel, baseline). Deretter skulle overskriften på skjerm C bare si «Hvorfor avvik er ventet» ved varsel, kontrollen skulle sjekke retningsord og tall skrevet med ord, og token-grensen skulle justeres om nødvendig. Push, men ikke merge.
+
+### Plan
+- Et skript i scratchpad la nøkkelen inn i miljøet til prosessen uten å skrive den ut, satte `LLM_MAKS_KALL=3`, og tok vare på `usage` gjennom en transport som pakket inn den ekte klienten (`usage.include`).
+- Modellradene ble hentet fra valideringsvinduet 15.08.2025 08:00, som i testene, så testperioden ikke ble brukt.
+
+### Resultat
+**Røykkallet** (3 kall, Wafer, HTTP 200, prompt `begrunnelse-v1`):
+
+| Tilfelle | Skip | Input-tokens | Output (resonnering) | Kostnad (USD) | Kuttet | Tekst | Kontroll |
+|---|---|---|---|---|---|---|---|
+| Modell med varsel (+138 min) | BERGEN ENERGY | 689 | 300 (300) | 0,000175 | ja (`length`) | ingen (null) | `tom`, vist som `avkortet` |
+| Modell uten varsel (−10 min) | ISLAND CLIPPER | 690 (256 fra cache) | 300 (300) | 0,000168 | ja | ingen | `tom`, vist som `avkortet` |
+| Baseline | NORMAND SIGMA | 494 (256 fra cache) | 300 (300) | 0,000161 | ja | ingen | `tom`, vist som `avkortet` |
+
+Til sammen kostet det USD 0,000504. Alle tre viste «Testmodus (ekte kall feilet)». Nøkkelen ble ikke skrevet ut, og skriptet stoppet hvis den havnet i utskriften. Fakta for kallet med varsel (BERGEN ENERGY): Tank, ETA fre 15.08 16:30, predikert fre 15.08 17:44, horisont 6–24 t, avvik 138 min, varsel ja, 221 km, 6,7 kn, slakk 6,2 t, historisk snittavvik 131 min over 183 anløp.
+
+**Årsak:** modellen resonnerer som standard med innsats `high` (OpenRouters modelliste: `default_effort` er high og `mandatory` er false, og `none` er støttet). Resonneringen teller mot `max_tokens`.
+
+**Rettinger** (`5b2f820` E3-S03 og `2351d45` E3-S04):
+- Klienten sender `reasoning: {"effort": "none"}` (`LLM_RESONNERING`, standard `none`). `max_tokens` er beholdt på 300: grensen var ikke for lav for svaret, den ble brukt opp av resonneringen.
+- Kontrollen avviser tall skrevet med ord (`tallord`) og retningsord som ikke stemmer med fortegnet på avviket (`retning`):
+  - modell: fortegnet på `predikert_avvik_min`
+  - baseline og delegerte rader: alltid tidligere enn rapportert ETA
+  - «tidligere anløp» er unntatt
+- Prompten er nå `begrunnelse-v2`.
+- Overskriften er «Hvorfor avvik er ventet» bare ved varsel, ellers «Om prediksjonen», og UX §4 er oppdatert.
+- Beslutning 13 har fått de målte tallene, og `notater.md` har fått en oppføring.
+
+**Kontroll:** suiten er grønn med 615 tester. Mutasjonssjekken av de nye reglene fanget 14 av 14 mutanter, og kontrollkjøringen var grønn. Mutantene: tallregelen fjernet, «to» fjernet, «halv» fjernet, retningsregelen fjernet, retning 0 som slipper gjennom senere eller tidligere, listene byttet om, unntaket for «tidligere anløp» fjernet, baselinen med feil fortegn, adapteren uten retning, resonnering satt til high eller ikke sendt, og overskriften i to varianter.
+
+### Åpne punkter
+- Rettingen (`reasoning.effort = none`) er ikke prøvd mot et ekte kall. Det trengs ett nytt røykkall når Theodor godkjenner det.
+- `LLM_MODUS=ekte` i Vercel venter til det røykkallet har gitt tekst.
