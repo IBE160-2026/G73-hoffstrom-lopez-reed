@@ -86,3 +86,37 @@ Til sammen kostet det USD 0,000504. Alle tre viste «Testmodus (ekte kall feilet
 ### Åpne punkter
 - Rettingen (`reasoning.effort = none`) er ikke prøvd mot et ekte kall. Det trengs ett nytt røykkall når Theodor godkjenner det.
 - `LLM_MODUS=ekte` i Vercel venter til det røykkallet har gitt tekst.
+
+## 2026-11-18 kl. 15:46 — Theodor Gimming (røykkall 2 og fortegnet på forskyvningen)
+
+### Oppgave
+Rette kontrollen, så retningen for baselinen følger det faktiske fortegnet på forskyvningen for skipsgruppen. Føre «en»/«ett» som kjent begrensning i specen. Kjøre røykkallet på nytt med de samme 3 tilfellene, lokalt og med `LLM_MODUS=ekte` bare for kjøringen. Ingenting skulle settes i Vercel. Push, men ikke merge.
+
+### Plan
+- Sjekke fortegnene i `data/baseline.json`, rette `retning()`, legge til tester og mutanter, og committe.
+- Kjøre samme røykskript som sist (scratchpad, 3 kall, `usage.include`).
+
+### Resultat
+- **Forskyvningene i dag:** Passasjer 44,75 og Øvrige 64,2 min. Begge er positive.
+- **`35725ed` (E3-S03):** `retning()` bruker `−offset_minutter` for baselinen og delegerte rader. Uten offset faller den tilbake til tidene. Prompten er `begrunnelse-v3`, uten «alltid tidligere».
+  - Nye tester: negativ forskyvning, forskyvning 0, og `test_dagens_forskyvninger_er_positive` (blir rød hvis `baseline.json` endres).
+  - Begge mutantene ble fanget («antar alltid tidligere» og snudd fortegn). Suiten er grønn med 621 tester.
+  - Specen har fått den kjente begrensningen med «en», «ett» og «én».
+- **Røykkall 2** (3 kall, Wafer, `reasoning.effort = none`, ingen resonneringstokens, `finish_reason` = `stop` for alle):
+
+| Tilfelle | Godtatt? | Tegn | Input / output | Kostnad (USD) |
+|---|---|---|---|---|
+| Modell med varsel, BERGEN ENERGY (+138) | ja, KI-GENERERT | 400 | 787 / 143 | 0,0000998 |
+| Modell uten varsel, ISLAND CLIPPER (−10) | nei, `kontroll_lengde`, vist som «Testmodus (ekte kall feilet)» | 402 | 788 / 148 | 0,0000924 |
+| Baseline, NORMAND SIGMA | ja, KI-GENERERT | 244 | 592 / 91 | 0,0000568 |
+
+  - Til sammen kostet det USD 0,000249. For begge røykkallene er summen USD 0,000753.
+  - Den første ekte prompten (`begrunnelse-v3`) og det første godtatte svaret, for BERGEN ENERGY:
+    - Fakta: Tank, ETA fre 15.08 16:30, predikert fre 15.08 17:44, 6–24 t, avvik 138 min, varselgrense 120, varsel ja, 221 km, 6,7 kn, kurs −0,85, slakk 6,2 t, snittavvik 131 min over 183 anløp.
+    - Svar: «BERGEN ENERGY er predikert til ankomst fre 15.08 17:44, mens rapportert ETA er fre 15.08 16:30, et avvik på 138 min fra kalibrert baseline og over varselgrensen på 120 min. Prediksjonen bygger på 221 km distanse til havna, fart over grunn på 6,7 knop, kurs mot havna på −0,85 og slakk mot rapportert ETA på 6,2 timer. Fartøyets historiske snittavvik er 131 min fra 183 tidligere anløp i treningsdata.»
+  - Alle tallene i de to godtatte svarene står i faktaene, og ingen årsaker er diktet opp.
+- Nøkkelen ble ikke skrevet ut, og ingenting ble satt i Vercel.
+
+### Åpne punkter
+- Modellen skriver opp mot grensen (400 og 402 tegn), så en del svar faller tilbake på lengden. Et forslag er å be om høyst 300 tegn i prompten, slik at det blir margin mot kontrollen på 400. Det er ikke gjort, og Theodor avgjør.
+- `LLM_MODUS=ekte` i Vercel settes av Theodor, når Theodor vil.
