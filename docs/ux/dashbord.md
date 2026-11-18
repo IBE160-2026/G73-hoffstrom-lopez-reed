@@ -179,7 +179,7 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 │   øvrige (ikke-rutegående) skip i treningsdata.           │
 │   Metode: beslutning 04 ›                                 │
 ├───────────────────────────────────────────────────────────┤
-│ [E3] Hvorfor avvik er ventet            KI-GENERERT       │
+│ [E3] Hvorfor avvik er ventet / Om prediksjonen  KI-GEN.   │
 │   «…» (testmodus: lagret svar fra 2026-12-0x)             │
 ├───────────────────────────────────────────────────────────┤
 │ [E3, valgfritt] Kart  — alt: «Kart over innseiling til    │
@@ -190,7 +190,8 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 - «Tilbake» beholder hele spørringen. Vakta mister ikke plassen sin.
 - Ukjent seilas-ID gir 404 med lenke tilbake, ikke en stacktrace.
 - Datalistene er `<dl>`, ikke en tabell. Det er semantisk riktig for nøkkel–verdi.
-- **Bygd i E3-S04 (minimal, spec-valg S1):** `/anlop/<voyageid>` for standardvinduet, uten `naa`- og fasit-parametre ennå. Siden viser gruppe og seilas-ID (ikke MMSI), tidene i en `<dl>` (rapportert, predikert, horisont, prediktor, varsel), «Slik ble prediksjonen laget» per gruppe og metode, og «Hvorfor avvik er ventet». Skipsnavnet i lista på skjerm A er lenke hit. «Tilbake» går til `/`. Faktisk ankomst, avvik og kart er ikke med.
+- **Bygd i E3-S04 (minimal, spec-valg S1):** `/anlop/<voyageid>` for standardvinduet, uten `naa`- og fasit-parametre ennå. Siden viser gruppe og seilas-ID (ikke MMSI), tidene i en `<dl>` (rapportert, predikert, horisont, prediktor, varsel), «Slik ble prediksjonen laget» per gruppe og metode, og begrunnelsen. Skipsnavnet i lista på skjerm A er lenke hit. «Tilbake» går til `/`. Faktisk ankomst, avvik og kart er ikke med.
+- **Overskriften på begrunnelsen (18.11.2026, Theodor Gimming):** «Hvorfor avvik er ventet» bare når modellen varsler (`forventet_forsinket` er True). Ellers står «Om prediksjonen»: på baselinen, på rader modellen har delegert, og på modellrader uten varsel. Ingen overskrift skal påstå et avvik som ikke er ventet (FR11). Før det sto «Hvorfor avvik er ventet» over alle rader (review-funn 26 i E3-specen).
 - **Begrunnelsen venter aldri på språkmodellen (FR11a, spec-valg S7).** I testmodus, og når svaret er cachet, er teksten server-rendret med merket. Ellers står «Henter forklaring …» i en `aria-live="polite"`-region som finnes i HTML-en fra start, og `begrunnelse.js` henter svaret med `POST /anlop/<voyageid>/begrunnelse` og bytter bare innholdet i regionen. Merket står som tekst over teksten: «KI-GENERERT», «Testmodus», «Testmodus (ekte kall feilet)» eller «Testmodus (kallgrensen er nådd)». Uten JavaScript viser `<noscript>` mal-teksten merket «Testmodus», og «Henter forklaring …» er skjult.
 
 ## 5. Tilstander og feil
@@ -303,3 +304,4 @@ Fokusring: 3 px `--aksent` med 2 px avstand, aldri `outline: none` uten erstatni
 - **2026-11-17** — E2-S11: §2 og §5 beskriver den nye dommen på ±30 min. Den er «bestått» bare når nedre grense i 95 % KI er over 3 pp, ellers «ikke påvist», og det står «kan ikke avgjøres» uten intervallfil. Fotnoten forklarer «KI» og «ikke påvist». Skjermbildene er tatt på nytt med den nye dommen.
 - **2026-11-17** — E2-S11, rettelse samme dag: ±30 min-dommen følger forskjellen (minst 3,0 pp, faglærers regel), og intervallet vises uten å avgjøre den. Fotnoten er endret tilsvarende. Skjermbildene er tatt på nytt.
 - **2026-11-18** — E3-S04, skjerm C er bygd minimalt (spec-valg S1): tider i `<dl>`, «Slik ble prediksjonen laget» og «Hvorfor avvik er ventet» med merket som tekst. Skipsnavnet i lista er lenke til siden. §4 beskriver hva som er bygd og hvordan begrunnelsen hentes uten at siden venter, §5 har fått tilstandene for kallgrensen, «Henter forklaring …» og ukjent seilas, og §6 har tre nye rader for skjerm C (tastatur, `aria-live` og uten JavaScript), merket ☐ til den manuelle sjekken. Avvik fra skissen: ingen MMSI, faktisk ankomst, avvik eller kart, og «Tilbake» beholder ikke spørringen ennå (skjerm A har ingen spørring).
+- **2026-11-18** — E3-S04: overskriften på begrunnelsen er «Hvorfor avvik er ventet» bare når modellen varsler, ellers «Om prediksjonen» (§4) (Theodor Gimming).

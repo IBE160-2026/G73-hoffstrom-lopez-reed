@@ -39,7 +39,7 @@
 </section>
 
 <section id="begrunnelse" class="detalj begrunnelse" aria-labelledby="begrunnelse-tittel">
-  <h2 id="begrunnelse-tittel">Hvorfor avvik er ventet</h2>
+  <h2 id="begrunnelse-tittel">{% if varsel is sameas true %}Hvorfor avvik er ventet{% else %}Om prediksjonen{% endif %}</h2>
   <div id="begrunnelse-svar" aria-live="polite" aria-atomic="true"
     {%- if not begrunnelse %} data-url="{{ url_for('begrunnelse_json', voyageid=inp.voyageid) }}" data-mal="{{ mal }}"{% endif %}>
     {%- if begrunnelse %}

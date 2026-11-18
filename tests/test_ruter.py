@@ -1096,3 +1096,24 @@ def test_begrunnelse_js_finnes_og_bruker_post():
     assert 'method: "POST"' in js and "begrunnelse-svar" in js
     assert "Testmodus (ekte kall feilet)" in js
     assert "innerHTML" not in js  # svaret settes som tekst, aldri som HTML
+
+
+def _begrunnelse_overskrift(d):
+    return _ren(_med_id(d, "begrunnelse-tittel").tekst())
+
+
+@pytest.mark.parametrize("varsel, overskrift", [
+    (True, "Hvorfor avvik er ventet"),
+    (False, "Om prediksjonen"),
+    (None, "Om prediksjonen"),
+])
+def test_overskrift_paa_begrunnelsen_bare_ved_varsel(modell_validering, varsel, overskrift):
+    """«Hvorfor avvik er ventet» bare når modellen varsler, ellers «Om prediksjonen» (UX §4, 18.11.2026)."""
+    inp, _ = _modellrad(varsel)
+    _, d = _detalj(modell_validering, inp.voyageid)
+    assert _begrunnelse_overskrift(d) == overskrift
+
+
+def test_overskrift_paa_baselinen(client):
+    _, d = _detalj(client)
+    assert _begrunnelse_overskrift(d) == "Om prediksjonen"
