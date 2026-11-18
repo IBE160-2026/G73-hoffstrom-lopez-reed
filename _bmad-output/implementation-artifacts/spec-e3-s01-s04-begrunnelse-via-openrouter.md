@@ -2,7 +2,7 @@
 title: 'E3-S01–S04 — Begrunnelse per anløp via OpenRouter, uten å vente på språkmodellen'
 type: 'feature'
 created: '2026-11-18'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'cfb460912a21edd5f8033a70ddd296f3364db1a9'
 route: 'dispatch'
 review_loop_iteration: 0
