@@ -20,6 +20,8 @@ import re
 from functools import lru_cache
 from typing import Iterable, Mapping, Optional
 
+from app.begrunnelse.klartekst import retning as _klartekst_retning
+
 MAKS_TEGN = 400
 MAKS_SETNINGER = 3
 
@@ -53,28 +55,14 @@ _TALLORD = re.compile(r"(?<!\w)(" + "|".join(TALLORD) + r")(?!\w)", re.IGNORECAS
 SENERE_ORD = (r"senere", r"forsink\w*", r"for sent", r"etter tiden", r"etter planen", r"later", r"delay\w*", r"late")
 TIDLIGERE_ORD = (r"tidligere(?!\s+anløp)", r"før tiden", r"for tidlig", r"før planen", r"earlier", r"early", r"ahead")
 _SENERE = re.compile(r"(?<!\w)(" + "|".join(SENERE_ORD) + r")(?!\w)", re.IGNORECASE)
+# Interne begreper som ikke skal stå i teksten til havnevakta (``begrunnelse-v4``).
+BEGREPER = (r"kalibrert\w*", r"baseline\w*", r"slakk\w*", r"treningsdata\w*", r"kutt\w*", r"kuttpunkt\w*",
+            r"alder på", r"posisjonsalder\w*", r"offset\w*", r"forskyvning\w*", r"featur\w*", r"cos")
+_BEGREP = re.compile(r"(?<!\w)(" + "|".join(BEGREPER) + r")(?!\w)", re.IGNORECASE)
 _TIDLIGERE = re.compile(r"(?<!\w)(" + "|".join(TIDLIGERE_ORD) + r")(?!\w)", re.IGNORECASE)
 
 
-def retning(prediksjon) -> Optional[int]:
-    """Fortegnet på avviket teksten skal beskrive: +1 senere, −1 tidligere, 0 ingen, None ukjent.
-
-    Modell v1: fortegnet på ``predikert_avvik_min`` (avvik fra kalibrert baseline). Baselinen og rader modellen har
-    delegert: det faktiske fortegnet på forskyvningen for skipsgruppen. ``predikert = rapportert ETA − offset``, så en
-    positiv offset gir −1 (tidligere enn rapportert ETA) og en negativ gir +1 (senere). Begge forskyvningene i
-    ``data/baseline.json`` er positive per 18.11.2026 (Passasjer 44,75 og Øvrige 64,2 min), men regelen avhenger ikke
-    av det. Uten offset brukes predikert ankomst minus rapportert ETA.
-    """
-    f = prediksjon.forklaring
-    if f.get("metode") == "modell" and f.get("predikert_avvik_min") is not None:
-        verdi = round(f["predikert_avvik_min"])
-    elif f.get("offset_minutter") is not None:
-        verdi = -round(f["offset_minutter"])
-    elif f.get("eta_reported") is not None:
-        verdi = round((prediksjon.predikert_ankomst - f["eta_reported"]).total_seconds() / 60)
-    else:
-        return None
-    return (verdi > 0) - (verdi < 0)
+retning = _klartekst_retning  # fortegnet på konklusjonen (``klartekst.retning``)
 
 
 def _normaliser(tall: str) -> str:
@@ -124,14 +112,20 @@ def kontroller(
     forventet_forsinket: Optional[bool],
     skipsnavn: Optional[Iterable[str]] = None,
     retning: Optional[int] = None,
+    konklusjon: Optional[str] = None,
 ) -> Optional[str]:
     """None når svaret godtas, ellers regelen som brytes. ``skipsnavn`` er standard alle navn i utdraget.
 
-    ``retning`` (+1, −1, 0) er fortegnet på avviket (``retning(prediksjon)``). Med +1 avvises «tidligere»-ord, med −1
-    «senere»-ord, og med 0 begge. None hopper over regelen."""
+    ``retning`` (+1, −1, 0) er fortegnet på konklusjonen (``retning(prediksjon)``). Et retningsord godtas når det
+    stemmer med fortegnet, eller når samme retning står i et faktafelt (for eksempel «senere enn vanlig» om skipets
+    tidligere anløp). Med 0 og ingen retning i faktaene avvises begge. None hopper over regelen.
+
+    ``konklusjon`` er første setning, regnet ut i appen. Svaret må starte med den ordrett (``konklusjon``)."""
     tekst = (tekst or "").strip()
     if not tekst:
         return "tom"
+    if konklusjon is not None and not re.sub(r"\s+", " ", tekst).startswith(re.sub(r"\s+", " ", konklusjon.strip())):
+        return "konklusjon"
     if len(tekst) > MAKS_TEGN:
         return "lengde"
     if antall_setninger(tekst) > MAKS_SETNINGER:
@@ -152,11 +146,15 @@ def kontroller(
         for m in monster.finditer(tekst):
             if not re.search(r"(?<!\w)" + re.escape(m.group(0)) + r"(?!\w)", input_tekst, re.IGNORECASE):
                 return "skipsnavn"
+    if _BEGREP.search(tekst):
+        return "begrep"
     if _AARSAK.search(tekst):
         return "aarsak"
     if forventet_forsinket is not True and _FORSINK.search(tekst):
         return "forsink"
     if retning is not None:
-        if (retning <= 0 and _SENERE.search(tekst)) or (retning >= 0 and _TIDLIGERE.search(tekst)):
+        senere_lov = retning > 0 or bool(_SENERE.search(verdier))
+        tidligere_lov = retning < 0 or bool(_TIDLIGERE.search(verdier))
+        if (not senere_lov and _SENERE.search(tekst)) or (not tidligere_lov and _TIDLIGERE.search(tekst)):
             return "retning"
     return None

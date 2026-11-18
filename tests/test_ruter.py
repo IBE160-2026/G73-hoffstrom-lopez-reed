@@ -843,7 +843,7 @@ import time  # noqa: E402
 from conftest import FalskTransport  # noqa: E402
 
 import app.begrunnelse as begrunnelse  # noqa: E402
-from app.begrunnelse.input import lag_fakta  # noqa: E402
+from app.begrunnelse.klartekst import konklusjon  # noqa: E402
 
 FALSK_NOKKEL = "sk-or-TEST-IKKE-EKTE"
 HENTER = "Henter forklaring …"
@@ -871,8 +871,7 @@ def _godt_svar(voyageid=BERGEN_ENERGY, naa=STANDARD_NAA):
     anlop = next(a for a in anlop_i_vindu(naa) if a.voyageid == voyageid)
     inp = lag_input(anlop, naa)
     p = BaselinePrediktor().prediker([inp], naa)[0]
-    fakta = lag_fakta(inp, p)
-    return f"{inp.shipname} har rapportert ETA {fakta['Rapportert ETA (norsk tid)']}. Prediksjonen er kalibrert baseline."
+    return f"{konklusjon(inp, p)} Tiden bygger på vanlig avvik for skipsgruppen."
 
 
 def test_skipsnavn_lenker_til_detaljsiden(client, dokument):
@@ -904,7 +903,8 @@ def test_detalj_begrunnelse(client):
     region = _med_id(d, "begrunnelse-svar")
     assert region.attrs.get("aria-live") == "polite"
     assert "data-url" not in region.attrs
-    assert _ren(region.tekst()).startswith("Testmodus BERGEN ENERGY har rapportert ETA ons 08.10 11:00")
+    assert _ren(region.tekst()) == _ren(f"Testmodus {begrunnelse.testtekst(*_inp_p()).tekst}")
+    assert _ren(region.tekst()).startswith("Testmodus Ventes 64 min tidligere enn rapportert ETA (09:56 mot 11:00).")
     assert HENTER not in tekst
     assert d.finn_alle("script") == [] and d.finn_alle("noscript") == []
     assert begrunnelse.antall_kall() == 0
@@ -976,9 +976,12 @@ def test_cachet_svar_vises_server_rendret(client, monkeypatch):
 
 @pytest.mark.parametrize("utfall, kode", [
     (TimeoutError(), "timeout"), (500, "http_500"), (402, "kvote_402"), (401, "http_401"),
-    ("Været er dårlig.", "kontroll_aarsak"), ("", "kontroll_tom"),
+    ("{konklusjon} Været er dårlig.", "kontroll_aarsak"), ("Været er dårlig.", "kontroll_konklusjon"),
+    ("{konklusjon} Ifølge baselinen er det slik.", "kontroll_begrep"), ("", "kontroll_tom"),
 ])
 def test_begrunnelse_endepunkt_alltid_200(client, monkeypatch, caplog, utfall, kode):
+    if isinstance(utfall, str):
+        utfall = utfall.replace("{konklusjon}", konklusjon(*_inp_p()))
     _ekte(monkeypatch, FalskTransport(utfall))
     with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
         svar = client.post(f"/anlop/{BERGEN_ENERGY}/begrunnelse")
@@ -1054,7 +1057,7 @@ def test_detalj_med_modellen_varsel(modell_validering):
     assert "Modell v1 (" in tekst and "Modellen varsler når predikert avvik er over 120 min." in tekst
     assert f"justert med modellens predikerte avvik på +{p.forklaring['predikert_avvik_min']:.0f} min." in tekst
     region = _ren(_med_id(d, "begrunnelse-svar").tekst())
-    assert region.startswith("Testmodus Modell v1") and "over varselgrensen på 120 min" in region
+    assert region.startswith(f"Testmodus {konklusjon(inp, p)}") and "over varselgrensen på 120 min" in region
 
 
 def test_detalj_med_modellen_uten_varsel(modell_validering):

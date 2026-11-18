@@ -48,7 +48,8 @@ def test_testmodus_uten_nett():
     svar = hent_begrunnelse(inp, p, BASELINE)
     assert isinstance(svar, Begrunnelse)
     assert svar.merke == MERKE_TEST
-    assert inp.shipname in svar.tekst
+    from app.begrunnelse.klartekst import konklusjon
+    assert svar.tekst.startswith(konklusjon(inp, p))
     assert begrunnelse.antall_kall() == 0
     # Deterministisk, og siden kan vise den uten å vente.
     assert hent_begrunnelse(inp, p, BASELINE) == svar == cachet(inp, p, BASELINE)
@@ -162,13 +163,17 @@ def test_input_baseline_har_tider_som_paa_skjermen():
     from app.visning import ukedag_dato_klokke
 
     inp, p, _ = baselinepar()
+    from app.begrunnelse.klartekst import konklusjon
+
     fakta = lag_fakta(inp, p)
+    assert list(fakta)[0] == "Konklusjon (første setning, ordrett)"
+    assert fakta["Konklusjon (første setning, ordrett)"] == konklusjon(inp, p)
     assert fakta["Skip"] == inp.shipname
-    assert fakta["Rapportert ETA (norsk tid)"] == ukedag_dato_klokke(inp.eta_reported)
-    assert fakta["Predikert ankomst (norsk tid)"] == ukedag_dato_klokke(p.predikert_ankomst)
-    assert fakta["Metode"] == "Kalibrert baseline"
-    assert fakta["Varsel"] == "ingen (baselinen kan ikke varsle)"
-    assert any(k.startswith("Fast forskyvning") for k in fakta)
+    assert fakta["Rapportert ETA"] == ukedag_dato_klokke(inp.eta_reported)
+    assert fakta["Ventet ankomst"] == ukedag_dato_klokke(p.predikert_ankomst)
+    assert fakta["Metode"] == "vanlig avvik for denne skipsgruppen"
+    assert fakta["Varsel"] == "ingen (beregningen bygger bare på vanlig avvik for skipsgruppen og kan ikke varsle)"
+    assert fakta["Vanlig avvik for skipsgruppen"] == "45 min før rapportert ETA"  # Passasjer, offset 44,75
 
 
 def test_input_modell_har_avvik_og_featurer(monkeypatch):
@@ -176,13 +181,15 @@ def test_input_modell_har_avvik_og_featurer(monkeypatch):
 
     inp, p = modellpar(monkeypatch, True)
     fakta = lag_fakta(inp, p)
-    assert fakta["Metode"] == "Modell v1"
-    assert fakta["Varsel"].startswith("ja")
-    assert fakta["Predikert avvik fra kalibrert baseline (min)"] == f"{p.forklaring['predikert_avvik_min']:.0f}"
-    assert "Distanse til havna (km)" in fakta
+    assert fakta["Metode"] == "modellvurdering av skipets posisjon, fart og tidligere anløp"
+    assert fakta["Varsel"].startswith("ja, over varselgrensen")
+    assert fakta["Modellens vurdering"] == (
+        f"{abs(p.forklaring['predikert_avvik_min']):.0f} min senere enn vanlig for skipsgruppen")
+    assert fakta["Vanlig avvik for skipsgruppen"] == "64 min før rapportert ETA"
+    assert fakta["Avstand til havna"].endswith(" km")
     inp, p = modellpar(monkeypatch, None)
     fakta = lag_fakta(inp, p)
-    assert "Hvorfor Modell v1 ikke vurderer anløpet" in fakta
+    assert "Hvorfor modellen ikke vurderer anløpet" in fakta
     assert fakta["Varsel"].startswith("ingen")
 
 
@@ -196,13 +203,10 @@ from app.begrunnelse.testmodus import MERKE_GRENSE, MERKE_KI  # noqa: E402
 
 
 def godt_svar(inp, p):
-    """Et svar som består kontrollen: bare tall og navn fra inputen, ingen årsaksord."""
-    from app.begrunnelse.input import lag_fakta
+    """Et svar som består kontrollen: konklusjonen først, så én setning uten nye tall, navn eller forbudte ord."""
+    from app.begrunnelse.klartekst import konklusjon
 
-    fakta = lag_fakta(inp, p)
-    return (f"{inp.shipname} har rapportert ETA {fakta['Rapportert ETA (norsk tid)']}. "
-            f"Prediksjonen er kalibrert baseline med forskyvning på "
-            f"{fakta['Fast forskyvning: median tid fra sonegrense til kai for gruppen (min)']} min.")
+    return f"{konklusjon(inp, p)} Tiden bygger på vanlig avvik for skipsgruppen."
 
 
 def sett_transport(monkeypatch, transport):
@@ -231,7 +235,7 @@ def test_ekte_med_mock(monkeypatch):
 
 def test_prompt_er_versjonert():
     tekst = openrouter_klient.PROMPT_FIL.read_text(encoding="utf-8")
-    assert "begrunnelse-v3" in tekst
+    assert "begrunnelse-v4" in tekst
     system, bruker = openrouter_klient.bygg_prompt({"Skip": "X"})
     assert "<!--" not in system + bruker and "{fakta}" not in bruker
     assert "- Skip: X" in bruker
@@ -477,9 +481,9 @@ def test_tillatte_tall_bare_fra_verdiene():
 
 
 def test_desimaler_uten_etterfolgende_nuller():
-    fakta = {"Offset (min)": "64,2", "Fart (knop)": "9"}
-    assert kontroller("Offset 64,20 min og fart 9,0 knop.", fakta, forventet_forsinket=True, skipsnavn=[]) is None
-    assert kontroller("Offset 64,21 min.", fakta, forventet_forsinket=True, skipsnavn=[]) == "tall"
+    fakta = {"Avvik (min)": "64,2", "Fart (knop)": "9"}
+    assert kontroller("Avvik 64,20 min og fart 9,0 knop.", fakta, forventet_forsinket=True, skipsnavn=[]) is None
+    assert kontroller("Avvik 64,21 min.", fakta, forventet_forsinket=True, skipsnavn=[]) == "tall"
 
 
 def test_kontroll_andre_skipsnavn():
@@ -522,18 +526,24 @@ def test_mal_teksten_bestaar_kontrollen(monkeypatch):
     """Testmodus-malen holder de samme grensene som et ekte svar, også uten varsel (ingen «forsink»)."""
     from app.begrunnelse.input import lag_fakta
 
-    for inp, p in [baselinepar()[:2], modellpar(monkeypatch, True), modellpar(monkeypatch, False),
-                   modellpar(monkeypatch, None)]:
-        from app.begrunnelse.kontroll import retning
+    from app.begrunnelse.klartekst import konklusjon
+    from app.begrunnelse.kontroll import retning
 
-        assert kontroller(begrunnelse.testtekst(inp, p).tekst, lag_fakta(inp, p),
-                          forventet_forsinket=p.forventet_forsinket, retning=retning(p)) is None
+    typer = set()
+    for inp, p in alle_rader():
+        typer.add("modell_varsel" if p.forventet_forsinket else "modell" if p.forventet_forsinket is False
+                  else p.forklaring.get("delegert") or "baseline")
+        tekst = begrunnelse.testtekst(inp, p).tekst
+        assert kontroller(tekst, lag_fakta(inp, p), forventet_forsinket=p.forventet_forsinket, retning=retning(p),
+                          konklusjon=konklusjon(inp, p)) is None, tekst
+    assert {"modell_varsel", "modell", "baseline", "passasjer"} <= typer
 
 
 def test_mislykket_kontroll_logges(monkeypatch, caplog):
     ekte(monkeypatch)
     inp, p, _ = baselinepar()
-    sett_transport(monkeypatch, FalskTransport("Været gjør at skipet kommer sent."))
+    from app.begrunnelse.klartekst import konklusjon
+    sett_transport(monkeypatch, FalskTransport(f"{konklusjon(inp, p)} Været gjør at skipet kommer sent."))
     with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
         assert hent_begrunnelse(inp, p, BASELINE).merke == MERKE_FEILET
     assert "kontroll_aarsak" in caplog.text
@@ -579,11 +589,11 @@ def test_kontroll_tallord_ingen_falske_treff(tekst):
 
 
 @pytest.mark.parametrize("tekst, retning, regel", [
-    ("Skipet kommer senere enn baseline.", 1, None),
-    ("Skipet kommer tidligere enn baseline.", 1, "retning"),
+    ("Skipet kommer senere enn rapportert ETA.", 1, None),
+    ("Skipet kommer tidligere enn rapportert ETA.", 1, "retning"),
     ("Skipet kommer før tiden.", 1, "retning"),
-    ("Skipet kommer tidligere enn baseline.", -1, None),
-    ("Skipet kommer senere enn baseline.", -1, "retning"),
+    ("Skipet kommer tidligere enn rapportert ETA.", -1, None),
+    ("Skipet kommer senere enn rapportert ETA.", -1, "retning"),
     ("Skipet er etter planen.", -1, "retning"),
     ("Skipet kommer senere.", 0, "retning"),
     ("Skipet kommer tidligere.", 0, "retning"),
@@ -608,9 +618,11 @@ def test_retning_fra_prediksjonen(monkeypatch):
 
 
 def test_adapteren_avviser_feil_retning(monkeypatch, caplog):
+    from app.begrunnelse.klartekst import konklusjon
+
     ekte(monkeypatch)
-    sett_transport(monkeypatch, FalskTransport("Prediksjonen er tidligere enn rapportert ETA. Baselinen er senere."))
-    inp, p, _ = baselinepar()
+    inp, p, _ = baselinepar()  # baselinen i standardvinduet: tidligere enn rapportert ETA
+    sett_transport(monkeypatch, FalskTransport(f"{konklusjon(inp, p)} Skipet kommer likevel senere enn vanlig."))
     with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
         svar = hent_begrunnelse(inp, p, BASELINE)
     assert svar.merke != MERKE_KI
@@ -620,7 +632,7 @@ def test_adapteren_avviser_feil_retning(monkeypatch, caplog):
 def test_resonnering_er_av_som_standard(monkeypatch):
     """Røykkallet 18.11.2026: med modellens standard gikk alle 300 tokens til resonnering, og svaret var tomt."""
     ekte(monkeypatch)
-    t = FalskTransport("Prediksjonen er kalibrert baseline.")
+    t = FalskTransport("Tiden bygger på vanlig avvik for skipsgruppen.")
     sett_transport(monkeypatch, t)
     inp, p, _ = baselinepar()
     hent_begrunnelse(inp, p, BASELINE)
@@ -632,7 +644,7 @@ def test_resonnering_er_av_som_standard(monkeypatch):
 def test_resonnering_fra_miljoet(monkeypatch, verdi, forventet):
     ekte(monkeypatch)
     monkeypatch.setenv("LLM_RESONNERING", verdi)
-    t = FalskTransport("Prediksjonen er kalibrert baseline.")
+    t = FalskTransport("Tiden bygger på vanlig avvik for skipsgruppen.")
     sett_transport(monkeypatch, t)
     inp, p, _ = baselinepar()
     hent_begrunnelse(inp, p, BASELINE)
@@ -679,3 +691,232 @@ def test_dagens_forskyvninger_er_positive():
 
     offsets = json.loads((Path(__file__).resolve().parent.parent / "data" / "baseline.json").read_text())["offset_minutter"]
     assert offsets == {"Passasjer": 44.75, "Øvrige": 64.2}
+
+
+# ---------- begrunnelse-v4: konklusjon, klartekst, begrep og den utvidede retningsregelen ----------
+
+import datetime as dt  # noqa: E402
+
+from app.begrunnelse import klartekst  # noqa: E402
+from app.begrunnelse.input import _rekker_fram, _retning_mot_havna, lag_fakta  # noqa: E402
+from app.begrunnelse.kontroll import _BEGREP  # noqa: E402
+from app.prediksjon import Prediksjon, PrediksjonsInput  # noqa: E402
+from app.visning import ukedag_dato_klokke  # noqa: E402
+
+ETA = dt.datetime(2025, 8, 15, 14, 30, tzinfo=dt.timezone.utc)  # fre 15.08 16:30 norsk tid
+
+
+def alle_rader():
+    """Alle modellrader (varsel, uten varsel, delegert) i valideringsvinduet og alle baselinerader i standardvinduet."""
+    from conftest import VALIDERING_NAA
+
+    from app.prediksjon import MODELL_DIR
+    from app.prediksjon.modell import ModellPrediktor
+
+    ut = []
+    inputs = [lag_input(a, VALIDERING_NAA) for a in anlop_i_vindu(VALIDERING_NAA)]
+    ut += list(zip(inputs, ModellPrediktor(MODELL_DIR).prediker(inputs, VALIDERING_NAA)))
+    inputs = [lag_input(a, STANDARD_NAA) for a in anlop_i_vindu(STANDARD_NAA)]
+    ut += list(zip(inputs, BaselinePrediktor().prediker(inputs, STANDARD_NAA)))
+    return ut
+
+
+def syntetisk_inp(eta=ETA, h=6, t_kutt=None):
+    return PrediksjonsInput(voyageid=1, mmsino=2, shipname="TESTSKIP", ship_group="Last", gruppe="Øvrige",
+                            eta_reported=eta, horisont_timer=h, t_kutt=t_kutt or eta - dt.timedelta(hours=h))
+
+
+def modellprediksjon(avvik_mot_eta_min, eta=ETA, featurer=None, predikert_avvik=10.0):
+    return Prediksjon(voyageid=1, horisont_timer=6, predikert_ankomst=eta + dt.timedelta(minutes=avvik_mot_eta_min),
+                      forventet_forsinket=predikert_avvik > 120,
+                      forklaring={"metode": "modell", "gruppe": "Øvrige", "predikert_avvik_min": predikert_avvik,
+                                  "offset_ovrige_min": 64.2, "eta_reported": eta, "featurer": featurer or {}})
+
+
+def baselineprediksjon(offset, eta=ETA):
+    return Prediksjon(voyageid=1, horisont_timer=6, predikert_ankomst=eta - dt.timedelta(minutes=offset),
+                      forventet_forsinket=None,
+                      forklaring={"metode": "kalibrert_baseline", "gruppe": "Øvrige", "offset_minutter": offset,
+                                  "eta_reported": eta})
+
+
+@pytest.mark.parametrize("p, forventet", [
+    (modellprediksjon(74), "Ventes 74 min senere enn rapportert ETA (17:44 mot 16:30)."),
+    (modellprediksjon(-138), "Ventes 2 t 18 min tidligere enn rapportert ETA (14:12 mot 16:30)."),
+    (baselineprediksjon(64.2), "Ventes 64 min tidligere enn rapportert ETA (15:26 mot 16:30)."),
+    (baselineprediksjon(-30.0), "Ventes 30 min senere enn rapportert ETA (17:00 mot 16:30)."),  # fortegn fra offset
+    (modellprediksjon(0), "Ventes omtrent ved rapportert ETA (16:30 mot 16:30)."),
+    (baselineprediksjon(0.0), "Ventes omtrent ved rapportert ETA (16:30 mot 16:30)."),
+])
+def test_konklusjon(p, forventet):
+    assert klartekst.konklusjon(syntetisk_inp(), p) == forventet
+
+
+def test_konklusjon_ulike_datoer_har_ukedag():
+    eta = dt.datetime(2025, 8, 15, 21, 30, tzinfo=dt.timezone.utc)  # fre 23:30 norsk tid
+    p = modellprediksjon(74, eta=eta)
+    assert klartekst.konklusjon(syntetisk_inp(eta=eta), p) == (
+        "Ventes 74 min senere enn rapportert ETA (lør 00:44 mot fre 23:30).")
+
+
+@pytest.mark.parametrize("minutter, tekst", [(89, "89 min"), (90, "1 t 30 min"), (120, "2 t"), (-138, "2 t 18 min"),
+                                             (0, "0 min")])
+def test_varighet(minutter, tekst):
+    assert klartekst.varighet(minutter) == tekst
+
+
+def test_retning_er_fortegnet_paa_konklusjonen():
+    assert klartekst.retning(modellprediksjon(74)) == 1
+    assert klartekst.retning(modellprediksjon(-74)) == -1
+    assert klartekst.retning(modellprediksjon(0)) == 0
+    assert klartekst.retning(baselineprediksjon(64.2)) == -1
+    assert klartekst.retning(baselineprediksjon(-30.0)) == 1
+    from app.begrunnelse import kontroll
+    assert kontroll.retning is klartekst.retning
+
+
+KONKL = "Ventes 74 min senere enn rapportert ETA (17:44 mot 16:30)."
+KFAKTA = {"Konklusjon (første setning, ordrett)": KONKL}
+
+
+def kk(tekst, fakta=KFAKTA, retning=1):
+    return kontroller(tekst, fakta, forventet_forsinket=True, skipsnavn=[], retning=retning, konklusjon=KONKL)
+
+
+def test_kontroll_konklusjon():
+    assert kk(f"{KONKL} Skipet går sakte.") is None
+    assert kk(KONKL) is None
+    assert kk(f"Ventes  74 min senere\nenn rapportert ETA (17:44 mot 16:30). Skipet går sakte.") is None  # blanktegn
+    assert kk("Skipet går sakte.") == "konklusjon"  # mangler
+    assert kk("Ventes 75 min senere enn rapportert ETA (17:44 mot 16:30). Skipet går sakte.") == "konklusjon"
+    assert kk("Ventes 74 min senere enn rapportert ETA. Skipet går sakte.") == "konklusjon"  # endret
+    assert kk(f"Skipet går sakte. {KONKL}") == "konklusjon"  # ikke først
+    assert kk("") == "tom"  # «tom» kommer før «konklusjon»
+    # Uten konklusjon hoppes regelen over.
+    assert kontroller("Skipet går sakte.", {}, forventet_forsinket=True, skipsnavn=[]) is None
+
+
+@pytest.mark.parametrize("ord_", ["kalibrert", "Kalibrerte", "baseline", "Baselinen", "slakk", "slakken",
+                                  "treningsdata", "treningsdataene", "kuttet", "kuttpunktet", "kutt", "alder på",
+                                  "posisjonsalderen", "offset", "forskyvning", "forskyvningen", "feature",
+                                  "featurene", "cos"])
+def test_kontroll_begrep(ord_):
+    assert kk(f"{KONKL} Det skyldes {ord_} her.") == "begrep"
+
+
+@pytest.mark.parametrize("tekst", ["Skipet går mot havna.", "Kalibrering er ikke nevnt.", "Det er kosmetisk.",
+                                   "Cosinus er ikke med.", "Alderen er ukjent.", "Skipet er på vei."])
+def test_kontroll_begrep_ingen_falske_treff(tekst):
+    assert kk(f"{KONKL} {tekst}") is None
+
+
+def test_kontroll_begrep_treffer_ogsaa_kutter():
+    """``kutt\\w*`` treffer også «kutter» (båttypen). Det er en kjent falsk positiv: et slikt svar gir mal-teksten."""
+    assert _BEGREP.search("En kutter") is not None
+    assert kk(f"{KONKL} Skipet er en kutter.") == "begrep"
+
+
+def test_retning_tillatt_gjennom_fakta():
+    """Et retningsord mot fortegnet godtas bare når samme retning står i en faktaverdi."""
+    konkl = "Ventes 64 min tidligere enn rapportert ETA (15:26 mot 16:30)."
+    tekst = f"{konkl} Skipet har tidligere kommet senere enn vanlig."
+    med = {"Konklusjon (første setning, ordrett)": konkl,
+           "Skipets tidligere anløp": "anløp, i snitt omtrent mange min senere enn vanlig for skipsgruppen"}
+    uten = {"Konklusjon (første setning, ordrett)": konkl}
+    assert kontroller(tekst, med, forventet_forsinket=None, skipsnavn=[], retning=-1, konklusjon=konkl) is None
+    assert kontroller(tekst, uten, forventet_forsinket=None, skipsnavn=[], retning=-1, konklusjon=konkl) == "retning"
+    # «senere» bare i en etikett teller ikke.
+    etikett = {"Konklusjon (første setning, ordrett)": konkl, "Senere": "x"}
+    assert kontroller(tekst, etikett, forventet_forsinket=None, skipsnavn=[], retning=-1,
+                      konklusjon=konkl) == "retning"
+
+
+@pytest.mark.parametrize("cos, tekst", [(0.3, "på vei mot havna"), (1e-9, "på vei mot havna"),
+                                        (-0.3, "på vei bort fra havna"), (-1e-9, "på vei bort fra havna"),
+                                        (0.0, "på tvers av retningen til havna")])
+def test_retning_mot_havna_tersklene(cos, tekst):
+    assert _retning_mot_havna(cos) == tekst
+
+
+@pytest.mark.parametrize("slakk, h, tekst", [
+    (2.0, 6.0, "ja, omtrent 2,0 timer før rapportert ETA"),
+    (0.0, 6.0, "ja, omtrent 0,0 timer før rapportert ETA"),
+    (-3.5, 6.0, "nei, omtrent 3,5 timer etter rapportert ETA"),
+    (-48.0, 24.0, "nei, minst 48 timer etter rapportert ETA"),
+    (6.0, 6.0, None),  # distanse 0: slakk = h_eff
+])
+def test_rekker_fram(slakk, h, tekst):
+    assert _rekker_fram(slakk, h) == tekst
+
+
+REKKER = "Rekker fram til rapportert ETA med farten ved siste posisjon"
+
+
+def _featurer(**over):
+    f = {"distanse_km": 40.0, "fart_knop": 10.0, "kurs_mot_havn": 0.9, "posisjon_alder_min": 25.0,
+         "slakk_timer": 3.8, "avgangshavn": "annet", "avgatt_for_kutt": None, "timer_siden_avgang": None,
+         "fartoy_antall_tidligere": 0, "fartoy_snittavvik_min": None}
+    f.update(over)
+    return f
+
+
+def test_lag_fakta_tilstand_i_klartekst():
+    inp = syntetisk_inp()
+    fakta = lag_fakta(inp, modellprediksjon(74, featurer=_featurer()))
+    assert fakta["Siste AIS-posisjon"] == ukedag_dato_klokke(inp.t_kutt - dt.timedelta(minutes=25))
+    assert fakta["Avstand til havna"] == "40 km"
+    assert fakta["Fart"] == "10,0 knop"
+    assert fakta["Retning"] == "på vei mot havna"
+    assert fakta[REKKER] == "ja, omtrent 3,8 timer før rapportert ETA"
+    assert "Skipets tidligere anløp" not in fakta  # n = 0
+    assert "Avgang" not in fakta  # avgangshavn «annet»
+
+
+def test_lag_fakta_rekker_fram_utelates():
+    # Under 1 knop: ingen «rekker fram», og farten er «nesten stille».
+    fakta = lag_fakta(syntetisk_inp(), modellprediksjon(74, featurer=_featurer(fart_knop=0.4, slakk_timer=-48.0)))
+    assert fakta["Fart"] == "nesten stille (under 1 knop)"
+    assert REKKER not in fakta
+    # Distanse 0: slakk = h_eff (6 t), ingen seilingstid å regne på.
+    fakta = lag_fakta(syntetisk_inp(), modellprediksjon(74, featurer=_featurer(distanse_km=0.0, slakk_timer=6.0)))
+    assert REKKER not in fakta
+    # Klippet ved −48.
+    fakta = lag_fakta(syntetisk_inp(h=24), modellprediksjon(74, featurer=_featurer(slakk_timer=-48.0)))
+    assert fakta[REKKER] == "nei, minst 48 timer etter rapportert ETA"
+    fakta = lag_fakta(syntetisk_inp(), modellprediksjon(74, featurer=_featurer(slakk_timer=-2.5)))
+    assert fakta[REKKER] == "nei, omtrent 2,5 timer etter rapportert ETA"
+
+
+def test_lag_fakta_uten_tidligere_anlop_selv_med_snitt():
+    """Uten tidligere anløp (F16 = 0) er F15 snittet for Øvrige (``Historikk.fartoy``), ikke skipets eget. Det skal
+    ikke sendes som skipets historikk."""
+    fakta = lag_fakta(syntetisk_inp(), modellprediksjon(74, featurer=_featurer(
+        fartoy_antall_tidligere=0, fartoy_snittavvik_min=23.0)))
+    assert "Skipets tidligere anløp" not in fakta
+
+
+def test_lag_fakta_tidligere_anlop_og_avgang():
+    fakta = lag_fakta(syntetisk_inp(), modellprediksjon(74, featurer=_featurer(
+        fartoy_antall_tidligere=12.0, fartoy_snittavvik_min=-31.0, avgangshavn="ÅGOTNES", avgatt_for_kutt=1.0,
+        timer_siden_avgang=2.5)))
+    assert fakta["Skipets tidligere anløp"] == "12 anløp, i snitt omtrent 31 min tidligere enn vanlig for skipsgruppen"
+    assert fakta["Avgang"].startswith("gikk fra ÅGOTNES omtrent 2,5 timer før ")
+
+
+def test_lag_fakta_uten_interne_begreper_og_kurstall():
+    """Ingen forbudte ord og ingen kursverdi i faktaene, for alle modell-, delegerte og baselinerader i
+    valideringsvinduet og alle baselinerader i standardvinduet."""
+    from app.visning import tall
+
+    sett = set()
+    for inp, p in alle_rader():
+        fakta = lag_fakta(inp, p)
+        tekst = "\n".join(f"{k}: {v}" for k, v in fakta.items())
+        assert not _BEGREP.search(tekst), (inp.voyageid, _BEGREP.search(tekst))
+        assert "kurs" not in tekst.lower()
+        kurs = (p.forklaring.get("featurer") or {}).get("kurs_mot_havn")
+        if kurs is not None:
+            assert tall(kurs, 2) not in tekst and tall(kurs, 1) not in fakta.get("Retning", "")
+            sett.add("kurs")
+        sett.add(p.forklaring.get("delegert") or p.forklaring["metode"])
+    assert {"kurs", "modell", "kalibrert_baseline", "passasjer"} <= sett

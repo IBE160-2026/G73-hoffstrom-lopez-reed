@@ -108,6 +108,7 @@ def _ekte(inp, prediksjon, api_nokkel: str) -> Tuple[Optional[str], Optional[str
     """Ett ekte kall med kontroll. Gir (tekst, None) eller (None, årsakskode)."""
     from app.begrunnelse import openrouter_klient
     from app.begrunnelse.input import lag_fakta
+    from app.begrunnelse.klartekst import konklusjon
     from app.begrunnelse.kontroll import kontroller, retning
 
     fakta = lag_fakta(inp, prediksjon)
@@ -119,7 +120,8 @@ def _ekte(inp, prediksjon, api_nokkel: str) -> Tuple[Optional[str], Optional[str
         )
     except openrouter_klient.KlientFeil as feil:
         return None, feil.kode
-    regel = kontroller(tekst, fakta, forventet_forsinket=prediksjon.forventet_forsinket, retning=retning(prediksjon))
+    regel = kontroller(tekst, fakta, forventet_forsinket=prediksjon.forventet_forsinket, retning=retning(prediksjon),
+                       konklusjon=konklusjon(inp, prediksjon))
     if regel:
         return None, f"kontroll_{regel}"
     return tekst.strip(), None

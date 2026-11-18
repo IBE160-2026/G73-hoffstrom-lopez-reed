@@ -7,7 +7,8 @@ På baselinen, og for rader modellen har delegert til baselinen, påstår tekste
 """
 from __future__ import annotations
 
-from app.visning import DELEGERT_TEKST, horisont_etikett, tall, ukedag_dato_klokke
+from app.begrunnelse.klartekst import DELEGERT_KLARTEKST, konklusjon
+from app.visning import tall
 
 MERKE_TEST = "Testmodus"
 MERKE_FEILET = "Testmodus (ekte kall feilet)"
@@ -19,33 +20,18 @@ VARSEL_GRENSE_MIN = 120  # beslutning 06, A3: varsel når predikert avvik er ove
 GRUPPE_TEKST = {"Passasjer": "passasjerskip", "Øvrige": "øvrige (ikke-rutegående) skip"}
 
 
-def _baseline_setning(prediksjon) -> str:
-    f = prediksjon.forklaring
-    offset = f.get("offset_minutter")
-    gruppe = GRUPPE_TEKST.get(f.get("gruppe"), "gruppen")
-    if offset is None:
-        return "Prediksjonen er kalibrert baseline."
-    return (f"Prediksjonen er kalibrert baseline: rapportert ETA minus {tall(offset, 1)} min, "
-            f"som er median tid fra sonegrense til kai for {gruppe}.")
-
-
 def mal(inp, prediksjon) -> str:
-    """Mal-teksten for ett anløp. Høyst 3 setninger og under 400 tegn (samme grense som ekte svar)."""
+    """Mal-teksten for ett anløp (``begrunnelse-v4``): konklusjonen i forhold til rapportert ETA, så én setning i
+    vanlig språk. Samme form og grenser som et ekte svar, og den består kontrollen."""
     f = prediksjon.forklaring
-    horisont = horisont_etikett(inp.horisont_timer)
+    start = konklusjon(inp, prediksjon)
     if f.get("metode") == "modell":
-        avvik = f["predikert_avvik_min"]
-        pred = ukedag_dato_klokke(prediksjon.predikert_ankomst)
+        avvik = round(f["predikert_avvik_min"])
         if prediksjon.forventet_forsinket is True:
-            return (f"Modell v1 ({horisont}) venter at {inp.shipname} kommer {tall(avvik, 0)} min senere enn "
-                    f"kalibrert baseline, over varselgrensen på {VARSEL_GRENSE_MIN} min. "
-                    f"Predikert ankomst er {pred}, mot rapportert ETA {ukedag_dato_klokke(inp.eta_reported)}.")
-        return (f"Modell v1 ({horisont}) predikerer {tall(avvik, 0)} min avvik fra kalibrert baseline for "
-                f"{inp.shipname}, under varselgrensen på {VARSEL_GRENSE_MIN} min. Predikert ankomst er {pred}.")
-    grunn = DELEGERT_TEKST.get(f.get("delegert"))
+            return (f"{start} Modellen venter {tall(abs(avvik), 0)} min mer enn vanlig for skipsgruppen, "
+                    f"over varselgrensen på {VARSEL_GRENSE_MIN} min.")
+        return f"{start} Modellen vurderer anløpet som under varselgrensen på {VARSEL_GRENSE_MIN} min."
+    grunn = DELEGERT_KLARTEKST.get(f.get("delegert"))
     if grunn:
-        start = f"Modell v1 vurderer ikke {inp.shipname} ({grunn}), og det er ikke varslet avvik."
-    else:
-        start = (f"{inp.shipname} har rapportert ETA {ukedag_dato_klokke(inp.eta_reported)} og horisont "
-                 f"{horisont}. Baselinen kan ikke varsle avvik.")
-    return f"{start} {_baseline_setning(prediksjon)}"
+        return f"{start} Modellen vurderer ikke anløpet ({grunn}), så tiden bygger på vanlig avvik for skipsgruppen."
+    return f"{start} Tiden bygger på vanlig avvik for skipsgruppen, og beregningen kan ikke varsle."
