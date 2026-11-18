@@ -51,6 +51,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | E0-S19 | Resten av faglærers tilbakemelding på PRD-en (punkt 4.2–4.5 og kapittel 5): FR11a og FR11b (feil og kostnad i AI-laget, mock-fallback), UJ-1 og UJ-2, testbare kriterier for FR5–FR7 og FR14, ordliste, FR9 før FR9a, A1 inline | `docs/prd.md` | ✅ |
 | E0-S20 | Refleksjonsrapporten opprettet etter kursmalen, med utkast til svar på faglærers to refleksjonsspørsmål. De individuelle refleksjonene står tomme. | `docs/refleksjon/rapport.md` | ◐ utkast |
 | E0-S21 | Vercel-deploy: eget inngangspunkt (`wsgi.py`), Python 3.12, utelatelser i bunten, test av at appen ikke skriver til disk. Arkitektur §11. I produksjon på <https://g73-hoffstrom-lopez-reed.vercel.app> (PR #7). | `wsgi.py`, `.python-version`, `vercel.json`, `tests/test_wsgi.py`, `docs/arkitektur.md`, `README.md` | ✅ |
+| E0-S22 | `technology.md` fjernet etter faglærers svar (rest, ikke et krav). `.env.example` har fått `OPENROUTER_API_KEY` for kursnøkkelen. Den lokale `.env` er ignorert av git. | `_bmad-output/planning-artifacts/architecture/`, `.env.example` | ✅ |
 
 ---
 
@@ -485,3 +486,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-17** — E0-S21 er lagt til: Vercel-deploy fra `deploy/vercel`. Deployen av `main` feilet med `FLASK_ENTRYPOINT_NOT_FOUND`. Vercel foreslo `tests.conftest:app`, men det er en testfikstur og er ikke brukt (Theodor Gimming).
 - **2026-11-17** — E0-S21: `pyproject.toml` er fjernet etter at avhengighetene ikke ble installert på Vercel, og `requirements.txt` er eneste kilde. Vercel finner `wsgi.py` selv (Theodor Gimming).
 - **2026-11-17** — E0-S21 er ferdig. Theodor åpnet forhåndsvisningen og så at siden virker, og PR #7 er merget (`f6da1d7`). Produksjonsadressen er åpen uten innlogging og står i README (Theodor Gimming).
+- **2026-11-18** — E0-S22 er ferdig. Faglærer svarte at `technology.md` var en rest og ikke skal brukes, så den er fjernet. Han deler ut en OpenRouter-nøkkel med bruksgrense til testing. Navnet `OPENROUTER_API_KEY` står i `.env.example`, og nøkkelen legges bare i den lokale `.env`. Hvilken leverandør E3 bruker (arkitekturen sier fortsatt Anthropic), er ikke avgjort her (Theodor Gimming).
