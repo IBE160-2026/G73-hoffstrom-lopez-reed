@@ -175,5 +175,365 @@ def test_input_modell_har_avvik_og_featurer(monkeypatch):
     assert "Distanse til havna (km)" in fakta
     inp, p = modellpar(monkeypatch, None)
     fakta = lag_fakta(inp, p)
-    assert "Hvorfor modellen ikke vurderer anløpet" in fakta
+    assert "Hvorfor Modell v1 ikke vurderer anløpet" in fakta
     assert fakta["Varsel"].startswith("ingen")
+
+
+# --- E3-S03: ekte klient (bare med falsk transport), prompt og kontroll -----------------------------------------
+
+import json  # noqa: E402
+import urllib.error  # noqa: E402
+
+from app.begrunnelse import openrouter_klient  # noqa: E402
+from app.begrunnelse.kontroll import antall_setninger, kontroller  # noqa: E402
+from app.begrunnelse.testmodus import MERKE_GRENSE, MERKE_KI  # noqa: E402
+
+
+class FalskTransport:
+    """Svarer som OpenRouter uten nett. ``svar`` er tekst (200), et heltall (HTTP-status) eller et unntak."""
+
+    def __init__(self, svar="", finish_reason="stop"):
+        self.svar = svar
+        self.finish_reason = finish_reason
+        self.kall = []
+
+    def __call__(self, url, headers, body, timeout):
+        self.kall.append({"url": url, "headers": dict(headers), "body": json.loads(body), "timeout": timeout})
+        if isinstance(self.svar, BaseException):
+            raise self.svar
+        if isinstance(self.svar, int):
+            return self.svar, b""
+        if isinstance(self.svar, bytes):
+            return 200, self.svar
+        kropp = {"choices": [{"message": {"role": "assistant", "content": self.svar},
+                              "finish_reason": self.finish_reason}]}
+        return 200, json.dumps(kropp).encode("utf-8")
+
+
+def godt_svar(inp, p):
+    """Et svar som består kontrollen: bare tall og navn fra inputen, ingen årsaksord."""
+    from app.begrunnelse.input import lag_fakta
+
+    fakta = lag_fakta(inp, p)
+    return (f"{inp.shipname} har rapportert ETA {fakta['Rapportert ETA (norsk tid)']}. "
+            f"Prediksjonen er kalibrert baseline med forskyvning på "
+            f"{fakta['Fast forskyvning: median tid fra sonegrense til kai for gruppen (min)']} min.")
+
+
+def sett_transport(monkeypatch, transport):
+    monkeypatch.setattr(begrunnelse, "transport", transport)
+    return transport
+
+
+def test_ekte_med_mock(monkeypatch):
+    ekte(monkeypatch)
+    inp, p, _ = baselinepar()
+    t = sett_transport(monkeypatch, FalskTransport(godt_svar(inp, p)))
+    svar = hent_begrunnelse(inp, p, BASELINE)
+    assert svar == Begrunnelse(godt_svar(inp, p), MERKE_KI)
+    assert len(t.kall) == 1 and begrunnelse.antall_kall() == 1
+    k = t.kall[0]
+    assert k["url"] == "https://openrouter.ai/api/v1/chat/completions"
+    assert k["headers"]["Authorization"] == f"Bearer {FALSK_NOKKEL}"
+    assert k["body"]["model"] == "deepseek/deepseek-v4.1-flash-1017:floor"
+    assert k["body"]["max_tokens"] == 300
+    assert k["timeout"] == 8
+    system, bruker = k["body"]["messages"][0]["content"], k["body"]["messages"][1]["content"]
+    assert "Ikke finn på årsaker" in system
+    assert f"- Skip: {inp.shipname}" in bruker
+    assert str(inp.mmsino) not in json.dumps(k["body"])
+
+
+def test_prompt_er_versjonert():
+    tekst = openrouter_klient.PROMPT_FIL.read_text(encoding="utf-8")
+    assert "begrunnelse-v1" in tekst
+    system, bruker = openrouter_klient.bygg_prompt({"Skip": "X"})
+    assert "<!--" not in system + bruker and "{fakta}" not in bruker
+    assert "- Skip: X" in bruker
+
+
+@pytest.mark.parametrize("feil, kode", [
+    (TimeoutError("timed out"), "timeout"),
+    (urllib.error.URLError(TimeoutError("timed out")), "timeout"),
+    (urllib.error.URLError("Name or service not known"), "nett"),
+    (ConnectionResetError(), "nett"),
+    (500, "http_500"),
+    (503, "http_503"),
+    (429, "http_429"),
+    (401, "http_401"),
+    (402, "kvote_402"),
+    (b"ikke json", "svar_format"),
+    (b'{"choices": []}', "svar_format"),
+    (b'{"error": {"code": 400, "message": "x"}}', "svar_format"),
+])
+def test_fallback_ved_feil(monkeypatch, caplog, feil, kode):
+    ekte(monkeypatch)
+    sett_transport(monkeypatch, FalskTransport(feil))
+    inp, p, _ = baselinepar()
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        svar = hent_begrunnelse(inp, p, BASELINE)
+    assert svar.merke == MERKE_FEILET
+    assert svar.tekst == begrunnelse.testtekst(inp, p).tekst
+    assert f"begrunnelse: {kode} voyageid={inp.voyageid} prediktor={BASELINE}" in caplog.text
+    assert FALSK_NOKKEL not in caplog.text
+
+
+def test_avkortet_svar_avvises(monkeypatch, caplog):
+    ekte(monkeypatch)
+    inp, p, _ = baselinepar()
+    sett_transport(monkeypatch, FalskTransport(godt_svar(inp, p), finish_reason="length"))
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        assert hent_begrunnelse(inp, p, BASELINE).merke == MERKE_FEILET
+    assert "avkortet" in caplog.text
+
+
+def test_uventet_feil_gir_testmodus(monkeypatch, caplog):
+    ekte(monkeypatch)
+    sett_transport(monkeypatch, FalskTransport(RuntimeError(f"hemmelig {FALSK_NOKKEL}")))
+    inp, p, _ = baselinepar()
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        assert hent_begrunnelse(inp, p, BASELINE).merke == MERKE_FEILET
+    assert "uventet_RuntimeError" in caplog.text and FALSK_NOKKEL not in caplog.text
+
+
+def test_urllib_transport_mapper_feil(monkeypatch):
+    """Standardtransporten med en sperret urlopen: HTTP-feil gir statuskoden, nettfeil gir ``nett``."""
+    def http_feil(req, timeout):
+        assert req.get_header("Authorization") == f"Bearer {FALSK_NOKKEL}"
+        raise urllib.error.HTTPError(req.full_url, 402, "Payment Required", {}, None)
+
+    monkeypatch.setattr(urllib.request, "urlopen", http_feil)
+    with pytest.raises(openrouter_klient.KlientFeil) as e:
+        openrouter_klient.kall("s", "b", modell="m", nokkel=FALSK_NOKKEL, timeout=1)
+    assert e.value.kode == "kvote_402" and FALSK_NOKKEL not in str(e.value) and e.value.__cause__ is None
+
+    def nettfeil(req, timeout):
+        raise urllib.error.URLError("ingen rute")
+
+    monkeypatch.setattr(urllib.request, "urlopen", nettfeil)
+    with pytest.raises(openrouter_klient.KlientFeil) as e:
+        openrouter_klient.kall("s", "b", modell="m", nokkel=FALSK_NOKKEL, timeout=1)
+    assert e.value.kode == "nett" and FALSK_NOKKEL not in repr(e.value)
+
+
+def test_nokkelen_lekker_ikke(monkeypatch, caplog):
+    """Den falske nøkkelen står aldri i logg, svar eller unntakstekst, uansett utfall."""
+    ekte(monkeypatch)
+    inp, p, _ = baselinepar()
+    tekster = []
+    with caplog.at_level(logging.DEBUG):
+        for i, utfall in enumerate([godt_svar(inp, p), 401, 402, TimeoutError("timed out"), "tull 99999."]):
+            sett_transport(monkeypatch, FalskTransport(utfall))
+            svar = hent_begrunnelse(inp, p, f"P{i}")
+            tekster.append(json.dumps(svar.som_dict()))
+            try:
+                openrouter_klient.kall("s", "b", modell="m", nokkel=FALSK_NOKKEL, timeout=1,
+                                       transport=FalskTransport(utfall))
+            except openrouter_klient.KlientFeil as feil:
+                tekster += [str(feil), repr(feil), str(feil.__cause__ or ""), str(feil.__context__ or "")]
+    assert FALSK_NOKKEL not in caplog.text
+    assert all(FALSK_NOKKEL not in t for t in tekster)
+
+
+# Cache og kallgrense (FR11b slik den er endret, spec-valg S5–S6) ------------------------------------------------
+
+class Klokke:
+    def __init__(self, t=1000.0):
+        self.t = t
+
+    def __call__(self):
+        return self.t
+
+
+def test_cache_gir_null_nye_kall(monkeypatch):
+    ekte(monkeypatch)
+    inp, p, _ = baselinepar()
+    t = sett_transport(monkeypatch, FalskTransport(godt_svar(inp, p)))
+    klokke = Klokke()
+    monkeypatch.setattr(begrunnelse, "klokke", klokke)
+    forste = hent_begrunnelse(inp, p, BASELINE)
+    klokke.t += 10 ** 9  # et godkjent svar utløper aldri
+    assert hent_begrunnelse(inp, p, BASELINE) == forste == cachet(inp, p, BASELINE)
+    assert len(t.kall) == 1
+    # Ny prediktor er en ny nøkkel.
+    hent_begrunnelse(inp, p, "Modell v1")
+    assert len(t.kall) == 2
+
+
+@pytest.mark.parametrize("utfall", [500, "tull 99999.", TimeoutError()])
+def test_feil_caches_i_300_s(monkeypatch, utfall):
+    ekte(monkeypatch)
+    inp, p, _ = baselinepar()
+    t = sett_transport(monkeypatch, FalskTransport(utfall))
+    klokke = Klokke(1000.0)
+    monkeypatch.setattr(begrunnelse, "klokke", klokke)
+    assert hent_begrunnelse(inp, p, BASELINE).merke == MERKE_FEILET
+    klokke.t = 1299.0
+    assert hent_begrunnelse(inp, p, BASELINE).merke == MERKE_FEILET
+    assert cachet(inp, p, BASELINE).merke == MERKE_FEILET
+    assert len(t.kall) == 1
+    klokke.t = 1300.0
+    assert cachet(inp, p, BASELINE) is None
+    t.svar = godt_svar(inp, p)
+    assert hent_begrunnelse(inp, p, BASELINE).merke == MERKE_KI
+    assert len(t.kall) == 2 and begrunnelse.antall_kall() == 2
+
+
+def test_feil_ttl_fra_miljoet(monkeypatch):
+    ekte(monkeypatch)
+    monkeypatch.setenv("LLM_FEIL_TTL_S", "5")
+    inp, p, _ = baselinepar()
+    t = sett_transport(monkeypatch, FalskTransport(500))
+    klokke = Klokke(0.0)
+    monkeypatch.setattr(begrunnelse, "klokke", klokke)
+    hent_begrunnelse(inp, p, BASELINE)
+    klokke.t = 4.9
+    hent_begrunnelse(inp, p, BASELINE)
+    klokke.t = 5.0
+    hent_begrunnelse(inp, p, BASELINE)
+    assert len(t.kall) == 2
+
+
+def test_kallgrense_20(monkeypatch, caplog):
+    ekte(monkeypatch)
+    inp, p, _ = baselinepar()
+    t = sett_transport(monkeypatch, FalskTransport(godt_svar(inp, p)))
+    for i in range(20):
+        assert hent_begrunnelse(inp, p, f"P{i}").merke == MERKE_KI
+    assert len(t.kall) == 20
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        svar = hent_begrunnelse(inp, p, "P20")
+    assert svar == Begrunnelse(begrunnelse.testtekst(inp, p).tekst, MERKE_GRENSE)
+    assert len(t.kall) == 20 and begrunnelse.antall_kall() == 20
+    assert "kallgrense" in caplog.text
+    # Cachede svar vises fortsatt over grensen.
+    assert hent_begrunnelse(inp, p, "P0").merke == MERKE_KI
+
+
+def test_feil_teller_mot_grensen(monkeypatch):
+    ekte(monkeypatch)
+    monkeypatch.setenv("LLM_MAKS_KALL", "2")
+    inp, p, _ = baselinepar()
+    t = sett_transport(monkeypatch, FalskTransport(500))
+    klokke = Klokke(0.0)
+    monkeypatch.setattr(begrunnelse, "klokke", klokke)
+    hent_begrunnelse(inp, p, BASELINE)
+    klokke.t = 300.0
+    hent_begrunnelse(inp, p, BASELINE)
+    klokke.t = 600.0
+    t.svar = godt_svar(inp, p)
+    assert hent_begrunnelse(inp, p, BASELINE).merke == MERKE_GRENSE
+    assert len(t.kall) == 2
+
+
+# Kontrollen ---------------------------------------------------------------------------------------------------
+
+FAKTA = {"Skip": "BERGEN ENERGY", "Rapportert ETA (norsk tid)": "ons 08.10 11:00", "Horisont": "≤ 6 t",
+         "Predikert avvik fra kalibrert baseline (min)": "152", "Avgangshavn": "ÅGOTNES"}
+NAVN = ["BERGEN ENERGY", "BERGEN TANK", "SIEM PEARL", "PEARL", "ÅGOTNES"]
+
+
+def k(tekst, varsel=True, fakta=FAKTA):
+    return kontroller(tekst, fakta, forventet_forsinket=varsel, skipsnavn=NAVN)
+
+
+def test_kontroll_godtar_et_godt_svar():
+    assert k("BERGEN ENERGY har ETA ons 08.10 11:00. Modellen venter 152 min forsinkelse fra ÅGOTNES.") is None
+
+
+@pytest.mark.parametrize("tekst", ["", "   \n ", None])
+def test_kontroll_tom(tekst):
+    assert k(tekst) == "tom"
+
+
+def test_kontroll_lengde_400_mot_401():
+    assert k("a" * 399 + ".") is None
+    assert k("a" * 400 + ".") == "lengde"
+    assert k("  " + "a" * 399 + ".  ") is None  # blanktegn rundt telles ikke
+
+
+def test_kontroll_setninger_3_mot_4():
+    assert k("En. To. Tre.") is None
+    assert k("En. To. Tre. Fire.") == "setninger"
+    assert k("En! To? Tre … Fire") == "setninger"
+    assert antall_setninger("Uten punktum") == 1
+    assert antall_setninger("Avvik på 64,2 min. Neste.") == 2
+
+
+def test_tall_finnes_i_input():
+    assert k("Avviket er 152 min.") is None
+    assert k("Avviket er 153 min.") == "tall"
+    assert k("ETA er 11:00 og 11:01.") == "tall"
+    assert k("ETA er kl 11.00.") == "tall"  # streng med vilje: «11.00» leses som desimaltall, ikke som 11:00
+    assert k("Horisonten er 6 t.") is None
+    assert k("Avviket er 152,5 min.") == "tall"
+
+
+def test_kontroll_andre_skipsnavn():
+    assert k("BERGEN TANK kommer også.") == "skipsnavn"
+    assert k("Bergen Tank kommer også.") == "skipsnavn"
+    assert k("SIEM PEARL er nær.") == "skipsnavn"
+    assert k("Skipet kom fra Ågotnes.") is None  # står i inputen
+    assert k("Bergen Energy er nær.") is None
+    fakta = dict(FAKTA, Skip="SIEM PEARL")
+    assert kontroller("SIEM PEARL er nær.", fakta, forventet_forsinket=True, skipsnavn=NAVN) is None
+
+
+def test_kontroll_standard_skipsnavn_fra_utdraget():
+    inp, p, _ = baselinepar()
+    fakta = {"Skip": inp.shipname}
+    annen = next(a.shipname for a in anlop_i_vindu(STANDARD_NAA) if a.shipname != inp.shipname)
+    assert kontroller(f"{inp.shipname} er nær.", fakta, forventet_forsinket=None) is None
+    assert kontroller(f"{annen} er nær.", fakta, forventet_forsinket=None) == "skipsnavn"
+
+
+@pytest.mark.parametrize("tekst", ["Været er dårlig.", "Det er streik i havna.", "Motoren har feil.",
+                                   "Mannskapet er sent ute.", "Kraftig vind.", "Tett tåke ved innseilingen.",
+                                   "Engine trouble."])
+def test_kontroll_aarsaksord(tekst):
+    assert k(tekst) == "aarsak"
+
+
+@pytest.mark.parametrize("tekst", ["Vinduet er 24 timer.", "Skipet går mot havna.", "Det er vist i lista."])
+def test_kontroll_aarsaksord_ingen_falske_treff(tekst):
+    assert kontroller(tekst, {"x": "24"}, forventet_forsinket=True, skipsnavn=[]) is None
+
+
+def test_kontroll_forsink_bare_med_varsel():
+    assert k("Anløpet blir forsinket.", varsel=True) is None
+    assert k("Anløpet blir forsinket.", varsel=False) == "forsink"
+    assert k("Ingen forsinkelse ventet.", varsel=None) == "forsink"
+
+
+def test_mal_teksten_bestaar_kontrollen(monkeypatch):
+    """Testmodus-malen holder de samme grensene som et ekte svar, også uten varsel (ingen «forsink»)."""
+    from app.begrunnelse.input import lag_fakta
+
+    for inp, p in [baselinepar()[:2], modellpar(monkeypatch, True), modellpar(monkeypatch, False),
+                   modellpar(monkeypatch, None)]:
+        assert kontroller(begrunnelse.testtekst(inp, p).tekst, lag_fakta(inp, p),
+                          forventet_forsinket=p.forventet_forsinket) is None
+
+
+def test_mislykket_kontroll_logges(monkeypatch, caplog):
+    ekte(monkeypatch)
+    inp, p, _ = baselinepar()
+    sett_transport(monkeypatch, FalskTransport("Været gjør at skipet kommer sent."))
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        assert hent_begrunnelse(inp, p, BASELINE).merke == MERKE_FEILET
+    assert "kontroll_aarsak" in caplog.text
+
+
+def test_modell_id_bare_i_konfig():
+    """Modell-ID-en står bare i ``konfig.py`` (beslutning 13), og URL-en bare i klienten."""
+    from pathlib import Path
+
+    rot = Path(__file__).resolve().parent.parent / "app"
+    for fil in rot.rglob("*"):
+        if fil.suffix not in {".py", ".md", ".html", ".js", ".css"}:
+            continue
+        tekst = fil.read_text(encoding="utf-8")
+        if fil.name != "konfig.py":
+            assert "deepseek" not in tekst, fil
+        if fil.name != "openrouter_klient.py":
+            assert "openrouter.ai" not in tekst, fil

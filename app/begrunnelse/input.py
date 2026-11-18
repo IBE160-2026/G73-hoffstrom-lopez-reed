@@ -91,7 +91,7 @@ def lag_fakta(inp: PrediksjonsInput, prediksjon: Prediksjon) -> Dict[str, str]:
             f["offset_minutter"], 0)
     fakta["Varsel"] = _varsel(prediksjon)
     if f.get("delegert"):
-        fakta["Hvorfor modellen ikke vurderer anløpet"] = DELEGERT_TEKST.get(f["delegert"], f["delegert"])
+        fakta["Hvorfor Modell v1 ikke vurderer anløpet"] = DELEGERT_TEKST.get(f["delegert"], f["delegert"])
     for navn, verdi in (f.get("featurer") or {}).items():
         if navn in FEATURE_ETIKETT and verdi is not None:
             fakta[FEATURE_ETIKETT[navn][0]] = _feature(navn, verdi)

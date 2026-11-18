@@ -378,9 +378,9 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_begrunnelse.py::test_input_uten_fasit`
 
-### E3-S03 — Ekte klient og versjonert prompt ☐
+### E3-S03 — Ekte klient og versjonert prompt ✅
 **Krav:** FR11, A8 · **Avhenger av:** E3-S02
-- `anthropic_klient.py` leser `ANTHROPIC_API_KEY` og `LLM_MODELL`, og prompten ligger i `app/begrunnelse/prompt.md`.
+- `openrouter_klient.py` kaller OpenRouter med `urllib.request`. Nøkkelen leses fra `OPENROUTER_API_KEY`, og modellstrengen bygges i `konfig.py` fra `LLM_MODELL` og `LLM_ROUTING` (beslutning 13). Prompten ligger i `app/begrunnelse/prompt.md`, og svaret kontrolleres i `kontroll.py` før det vises.
 - Ved tidsavbrudd eller feil faller den tilbake til testmodus med merket fra UX §5.
 - Den første ekte prompten og et svar logges i sesjonsloggen (`.logs/<bruker>/`).
 
@@ -487,3 +487,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-17** — E0-S21: `pyproject.toml` er fjernet etter at avhengighetene ikke ble installert på Vercel, og `requirements.txt` er eneste kilde. Vercel finner `wsgi.py` selv (Theodor Gimming).
 - **2026-11-17** — E0-S21 er ferdig. Theodor åpnet forhåndsvisningen og så at siden virker, og PR #7 er merget (`f6da1d7`). Produksjonsadressen er åpen uten innlogging og står i README (Theodor Gimming).
 - **2026-11-18** — E0-S22 er ferdig. Faglærer svarte at `technology.md` var en rest og ikke skal brukes, så den er fjernet. Han deler ut en OpenRouter-nøkkel med bruksgrense til testing. Navnet `OPENROUTER_API_KEY` står i `.env.example`, og nøkkelen legges bare i den lokale `.env`. Hvilken leverandør E3 bruker (arkitekturen sier fortsatt Anthropic), er ikke avgjort her (Theodor Gimming).
+- **2026-11-18** — E3-S01–S03 er ferdige på `epic/e3-ai-lag`: adapter med testmodus, input fra modellens egne data og ekte klient mot OpenRouter (beslutning 13). E3-S03 sier nå `openrouter_klient.py` og `OPENROUTER_API_KEY` i stedet for `anthropic_klient.py` og `ANTHROPIC_API_KEY` (Theodor Gimming).

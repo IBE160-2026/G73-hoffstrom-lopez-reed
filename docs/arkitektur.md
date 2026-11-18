@@ -43,7 +43,7 @@ Sensor trenger bare det som er i git: `app/`, `data/`, `requirements.txt` og REA
 | **A5** | **Prediktor-grensesnitt (§3) som eneste kobling mellom dashbord og modell** | Dashbordet leser modellens output-CSV direkte | Gjør at E2 kan byttes inn uten endringer i visningskoden (PRD §1), og at Thomas og Felipe kan jobbe parallelt mot en avtalt kontrakt. |
 | **A6** | **Én metrikkmodul brukt av både dashbord og evalueringsskript** | Egen utregning i notebook | NFR3: tallet på skjermen og tallet i rapporten *kan ikke* bli ulike. |
 | **A7** | **scikit-learn for modellen, lagret med joblib i `data/modell/`** (endelig valg i E2-S01) | XGBoost, LightGBM | scikit-learn har gradient boosting innebygd, og hjul for alle plattformer gjør installasjonen triviell for sensor. XGBoost vurderes bare hvis E2-S01 viser at det trengs. |
-| **A8** | **LLM bak adapter med testmodus som standard.** Ekte modus: Anthropic API (`anthropic`-pakken). | Kalle API direkte fra ruten | Sensor har ingen nøkkel (FR13). Adapteren gjør leverandøren byttbar og testene nettfrie. |
+| **A8** | **LLM bak adapter med testmodus som standard.** Ekte modus: OpenRouter med `deepseek/deepseek-v4.1-flash-1017` og prisgulv-routing, kalt med `urllib.request` (beslutning 13). | Kalle API direkte fra ruten | Sensor har ingen nøkkel (FR13). Adapteren gjør leverandøren byttbar og testene nettfrie. |
 
 ## 3. Prediktor-grensesnittet (A5)
 
@@ -154,9 +154,12 @@ app/
     modell.py          ModellPrediktor                                        (E2)
     koding.py          matrise(): F1–F16 til modellens input, delt med scripts/tren.py (E2)
   begrunnelse/                                                                (E3)
-    __init__.py        hent_begrunnelse(), hent_brief() — velger modus
-    testmodus.py       opptak + deterministisk mal
-    anthropic_klient.py
+    __init__.py        hent_begrunnelse(), cachet(), hent_brief() (E3-S05) — velger modus, cache og kallgrense
+    konfig.py          all LLM-konfigurasjon; modellstrengen bygges bare her
+    testmodus.py       opptak (E3-S06) + deterministisk mal, merkene
+    input.py           lag_fakta(): input bygd fra PrediksjonsInput + Prediksjon
+    openrouter_klient.py  ekte klient (urllib), injiserbar transport
+    kontroll.py        kontroll av svaret før det vises
     prompt.md          versjonert prompt
   templates/  base.html, dashbord.html, anlop.html, metode.html, _feil.html
   static/     style.css
@@ -183,9 +186,15 @@ wsgi.py       app = create_app(), inngangspunktet lokalt og på Vercel (§11)
 # Alt er valgfritt. Appen starter og alle tester kjører uten .env.
 PREDIKTOR=auto            # baseline | modell | auto
 LLM_MODUS=test            # test | ekte  — test krever ingen nøkkel
-ANTHROPIC_API_KEY=        # bare for LLM_MODUS=ekte. Aldri committ en ekte nøkkel.
-LLM_MODELL=claude-haiku-5-5
+OPENROUTER_API_KEY=       # bare for LLM_MODUS=ekte. Aldri committ en ekte nøkkel.
+LLM_MODELL=deepseek/deepseek-v4.1-flash-1017
+LLM_ROUTING=floor         # prisgulv: billigste leverandør av modellen
+LLM_MAKS_KALL=20          # ekte forsøk per prosess (per Vercel-instans)
+LLM_FEIL_TTL_S=300        # hvor lenge en feil caches før nytt forsøk
+LLM_TIMEOUT_S=8
 ```
+
+Verdiene leses bare i `app/begrunnelse/konfig.py` (beslutning 13).
 
 ## 8. Teststrategi (NFR2)
 
@@ -204,7 +213,7 @@ LLM_MODELL=claude-haiku-5-5
 
 ## 9. Avhengigheter
 
-`requirements.txt`: `flask>=3,<4`, `tzdata`, `pytest`. E2 legger til `scikit-learn`, og E3 legger til `anthropic`. Hver ny avhengighet begrunnes i commit-meldingen til storyen som legger den til.
+`requirements.txt`: `flask>=3,<4`, `tzdata`, `pytest`. E2 legger til `scikit-learn`. E3 legger ikke til noe: OpenRouter kalles med `urllib.request` fra standardbiblioteket (beslutning 13). Hver ny avhengighet begrunnes i commit-meldingen til storyen som legger den til.
 
 ## 10. Filer og endepunkter bak PRD-kravene
 
@@ -229,7 +238,7 @@ PRD-en beskriver kravene uten filnavn og ruter (faglærers tilbakemelding på PR
 - **Størrelse:** grensen for en Python-funksjon er 500 MB. Pakkene for Linux med 3.12 er ca. 235 MB, og koden og `data/` er ca. 8 MB etter utelatelsene i `vercel.json` (`excludeFiles`: `tests/`, `docs/`, `_bmad*/`, `.logs/`, `.claude/`, `pipeline/`, `scripts/` og skjermbildene). Målt 17.11.2026.
 - **pytest blir i `requirements.txt`.** Den utgjør ca. 8 MB, så bunten holder seg godt under grensen uansett. README og klone-testen bygger på én `pip install -r requirements.txt` før `pytest`, og det skal ikke brytes.
 - **Skrivebeskyttet filsystem.** Appen skriver ingenting til disk når den kjører: den leser `data/` og maler, og modellartefaktene caches i minnet (`lru_cache`). `tests/test_wsgi.py` sperrer alle skrivekall mens forsiden, stilarket og modellen lastes. Den 17.11.2026 ble appen i tillegg kjørt fra en skrivebeskyttet kopi med Python 3.12 og de ekte filene: `/` svarte 200 med modellen, og ingen filer ble skrevet.
-- **E3: caching bare i minnet.** Svarene fra språkmodellen (PRD FR11b) caches i minnet i prosessen, aldri på disk, av samme grunn. På Vercel lever en prosess bare så lenge funksjonsinstansen gjør, så cachen og kallgrensen per økt gjelder per instans. Det må E3-arkitekturen ta med i vurderingen. Opptakene av ekte svar (`data/begrunnelser_opptak.json`, E3-S06) lages lokalt med skriptet og committes. De skrives aldri av appen.
+- **E3: caching bare i minnet.** Svarene fra språkmodellen (PRD FR11b) caches i minnet i prosessen, aldri på disk, av samme grunn. På Vercel lever en prosess bare så lenge funksjonsinstansen gjør, og det kan være flere instanser samtidig, så cachen og kallgrensen (`LLM_MAKS_KALL`) gjelder per instans, ikke per demo. Det totale forbruket stoppes av bruksgrensen på USD 20 på OpenRouter-nøkkelen (HTTP 402, logget som `kvote_402`), ikke av appen (beslutning 13). Begrunnelsen hentes i en egen `POST`-forespørsel som nettleseren starter etter at siden er vist, ikke i en bakgrunnstråd, fordi arbeid etter svaret kan bli stoppet på Vercel. Opptakene av ekte svar (`data/begrunnelser_opptak.json`, E3-S06) lages lokalt med skriptet og committes. De skrives aldri av appen.
 - **Statiske filer:** Flask serverer `app/static/` fra funksjonen, som lokalt. Vercels dokumentasjon anbefaler `public/` for statiske filer på CDN. Det er ikke gjort, så appen er lik lokalt og på Vercel. Sjekkes i forhåndsvisningen.
 
 ## Endringslogg
@@ -255,3 +264,4 @@ PRD-en beskriver kravene uten filnavn og ruter (faglærers tilbakemelding på PR
 - **2026-11-17** — E0-S19, faglærers tilbakemelding på PRD-en (kapittel 5): ny §10 med filene, rutene og kommandoene som er flyttet ut av PRD FR8, NFR1 og NFR2. Raden for dataregresjon i §8 har fått dekningen 91,1 %, som før sto i FR8. Ingen krav er endret.
 - **2026-11-17** — E0-S21: ny §11 om drift på Vercel. Den dekker inngangspunktet `wsgi.py`, Python 3.12, størrelsen og utelatelsene, at filsystemet er skrivebeskyttet, at E3s caching må ligge i minnet, og de statiske filene. §5 har fått `wsgi.py` og Vercel-filene.
 - **2026-11-17** — E0-S21, rettelse: `pyproject.toml` er fjernet, og Vercel finner `wsgi.py` selv. §11 sa at Vercel installerer fra `requirements.txt` når `pyproject.toml` ikke har `[project]`. Det var ikke sjekket, og avhengighetene ble ikke installert. §11 forteller nå hva som skjedde.
+- **2026-11-18** — E3-S03, beslutning 13: A8 bruker OpenRouter med `deepseek/deepseek-v4.1-flash-1017` og prisgulv-routing i stedet for Anthropic. §5 har fått filene i `app/begrunnelse/` (`openrouter_klient.py` i stedet for `anthropic_klient.py`), §7 har `OPENROUTER_API_KEY` og de nye LLM-variablene i stedet for `ANTHROPIC_API_KEY` og `claude-haiku-5-5`, §9 sier at E3 ikke legger til noen avhengighet, og §11 sier at grensen gjelder per instans og at nøkkelens bruksgrense stopper totalen.
