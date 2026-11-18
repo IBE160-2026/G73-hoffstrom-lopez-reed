@@ -335,3 +335,13 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Hvordan det ble oppdaget:** Claude selv, da `issues.md` ble lest igjen samme dag.
 - **Resultat:** rettet til «Theodor» i begge filene (`740a8a9`).
 - **Lærdom (råt):** bruk navnet. Et navn sier ingenting om hvilke pronomen personen bruker.
+
+## 2026-11-18 — Røykkallet ga ingen tekst: resonneringen brukte opp hele token-grensen (E3-S03)
+
+- **Hva:** Claude satte `max_tokens` = 300 i specen og klienten. Overslaget i beslutning 13 regnet med at hele grensen gikk til svaret. Modellen resonnerer likevel som standard (innsats `high`). Dermed brukte alle tre ekte kall alle 300 tokens på resonnering og ga `content` = null. Risikoen var nevnt i specen og i beslutning 13, og reviewen meldte den (utsatt som «maybe-false»). Claude sjekket likevel ikke modellens standard for resonnering i OpenRouters offentlige modellliste. Den lå i den samme fila som ble lastet ned for å sjekke modellnavnet.
+- **Hvordan det ble oppdaget:** røykkallet med 3 kall (Theodor ba om det). Utskriften viste `reasoning_tokens` = 300 og `finish_reason` = `length` for alle tre.
+- **Resultat:** kontrollen ga tilbakefallet (`avkortet`), så ingen feil tekst ble vist. Kostnaden var USD 0,0005 for alle tre. Klienten sender nå `reasoning: {"effort": "none"}`. Rettingen er ikke prøvd med et ekte kall ennå. Se `5b2f820` og beslutning 13.
+- **Lærdom (råt):**
+  - En risiko som er «nevnt», er ikke sjekket. Når svaret ligger i en fil som allerede er lastet ned, skal den leses før koden skrives.
+  - Røykkallet var verdt det: tre kall og en halv tiendedels cent fant en feil som ville gitt testmodus på hvert eneste kall i produksjon.
+  - Tilbakefallet virket som det skulle. Den ekte feilen ble stoppet av kontrollen, ikke av flaks.
