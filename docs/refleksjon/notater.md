@@ -310,3 +310,28 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
   - Det dokumentasjonen *ikke* sier, er ikke en bekreftelse. «Avhengighetene kommer fra X fordi Y mangler» må stå som en antakelse til den er sett i en byggelogg.
   - En grønn deploy-sjekk betyr at bygget gikk, ikke at appen svarer. Si aldri at noe virker før siden faktisk er åpnet.
   - Samme mønster som tidligere i prosjektet («verified against live API» 22.10): en påstand om et eksternt system ble skrevet uten å være prøvd mot systemet.
+
+## 2026-11-18 — Mutasjonssjekken ga først gale svar på grunn av gamle `.pyc`-filer (E3-S01–S04)
+
+- **Hva:** Implementeringsagenten kjørte mutasjonssjekken på kallgrensen, cache-tiden og lengdekontrollen. Den første runden ga feil resultat. `sys.pycache_prefix` peker til `~/Library/Caches/com.apple.python`, og en endring av samme størrelse innenfor samme sekund ble ikke kompilert på nytt. Testene kjørte altså mot den gamle koden.
+- **Hvordan det ble oppdaget:** agenten selv, da resultatene ikke stemte med mutantene.
+- **Resultat:** cachen ble tømt, og alt ble kjørt på nytt med `PYTHONDONTWRITEBYTECODE=1`. 14 av 14 mutanter ble fanget, og en kontrollkjøring uten endring var grønn.
+- **Lærdom (råt):**
+  - En mutasjonssjekk som bare endrer ett tegn, kan gå under radaren til bytekode-cachen. Kjør mutasjonene med `PYTHONDONTWRITEBYTECODE=1`.
+  - En kontrollkjøring på uendret kode viser ikke denne feilen. Det gjør bare en mutant som *skal* gi rødt.
+
+## 2026-11-18 — Reviewen fant at tallkontrollen ikke ser fortegn (E3-S03)
+
+- **Hva:** Kontrollen av svaret fra språkmodellen sammenligner tallene i svaret med tallene i inputen, men regex-en tok ikke med fortegn. Et svar med «+12 min» der inputen sa «−12», ville bestått og blitt vist som «KI-GENERERT». Tallene i etikettene (for eksempel «1 = rett mot, −1 = rett bort») var også tillatt i svaret. Mutasjonssjekken dekket grensene den var bedt om (20 kall, 300 s, 400 tegn og 3 setninger), men ikke dette.
+- **Hvordan det ble oppdaget:** alle tre review-lagene (BH, EC og VG) meldte det hver for seg.
+- **Resultat:** se Review Triage Log i specen (`spec-e3-s01-s04-…`, rad 4 og 5) og `git log --grep E3-S03`.
+- **Lærdom (råt):**
+  - En kontroll som skal stoppe oppdiktede tall, må testes med feil *retning*, ikke bare med tall som mangler.
+  - Mutasjonssjekken finner bare hull i grensene den blir bedt om å sjekke. Den erstatter ikke reviewen.
+
+## 2026-11-18 — Claude skrev «han» om Theodor i loggen (E0-S16)
+
+- **Hva:** I sesjonsloggen og i `issues.md` skrev Claude «før han sier fra» om Theodor. Ingen i gruppa har oppgitt pronomen, og Claude skal da bruke navnet.
+- **Hvordan det ble oppdaget:** Claude selv, da `issues.md` ble lest igjen samme dag.
+- **Resultat:** rettet til «Theodor» i begge filene (`740a8a9`).
+- **Lærdom (råt):** bruk navnet. Et navn sier ingenting om hvilke pronomen personen bruker.
