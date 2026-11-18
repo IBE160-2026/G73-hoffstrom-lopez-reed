@@ -155,3 +155,32 @@ Deretter skulle de samme 3 røykkallene kjøres. Push, men ikke merge.
 ### Åpne punkter
 - ISLAND CLIPPER er en modellrad, men svaret sier «Tiden bygger på vanlig avvik for skipsgruppen». Det er misvisende. Prompten ba om den setningen bare når faktaene ikke gir noen grunn. Kontrollen kan avvise setningen på modellrader. Theodor avgjør.
 - Konklusjonen «Ventes 64 min tidligere enn rapportert ETA» på baselinerader kan leses som at skipet er tidlig. I virkeligheten er predikert tid inngang i havneområdet, og den ligger vanligvis rundt 64 min før ETA til kai (beslutning 03 og 04). Gruppa bør vurdere ordlyden.
+
+## 2026-11-18 kl. 16:12 — Theodor Gimming (begrunnelse-v5 og røykkall 4)
+
+### Oppgave
+Fire endringer:
+1. Konklusjonen skal si at tiden gjelder havneområdet, ikke kai. Baselinerader får i tillegg «Det er vanlig for denne skipsgruppen.»
+2. Varselrader får avviket fra det vanlige for skipsgruppen, regnet ut i appen.
+3. «Vanlig avvik for skipsgruppen» skal avvises som forklaring på modellrader.
+4. Avgangshavn og ETD skal formuleres som registrert informasjon (beslutning 11).
+
+Deretter skulle kontroll, tester og mutanter oppdateres, de 3 røykkallene kjøres, og grenen pushes uten merge.
+
+### Plan
+- `klartekst.innledning`: setningene appen skriver, som svaret må starte med ordrett.
+- Ny kontrollregel `metode` (med `modellrad`).
+- «kl.» og «ca.» skal ikke telles som setningsslutt.
+- Faktafeltet «Setninger du kan legge til», og prompten `begrunnelse-v5`.
+- Implementeringsagenten oppdaterte testene.
+
+### Resultat
+- **`aeff198` (E3-S03).** Suiten er grønn med 716 tester.
+- **Mutasjonssjekk:** alle 16 mutanter ble fanget, og kontrollkjøringen var grønn. To overlevde først: adapteren sendte ikke `modellrad`, eller bare konklusjonen. Det fikk to tester gjennom adapteren, og står i `notater.md`.
+- **Røykkall 4** (Wafer, ingen resonnering, alle godtatt, til sammen USD 0,000176):
+  1. BERGEN ENERGY (243 tegn): «Ventes inn i havneområdet kl. 17:44, 74 min etter rapportert ETA (16:30). Det er 2 t 18 min senere enn vanlig for skipsgruppen. Skipet var på vei bort fra havna ved siste posisjon, og avgang fra Ågotnes var ikke registrert per tor 14.08 16:30.»
+  2. ISLAND CLIPPER (228 tegn): «Ventes inn i havneområdet kl. 18:16, 74 min før rapportert ETA (19:30). Skipet er på vei mot havna og rekker fram til rapportert ETA med farten ved siste posisjon. Avgang fra Mongstadbase var ikke registrert per tor 14.08 19:30.»
+  3. NORMAND SIGMA (109 tegn): «Ventes inn i havneområdet kl. 06:56, 64 min før rapportert ETA (08:00). Det er vanlig for denne skipsgruppen.»
+
+### Åpne punkter
+- Avvik på 90 min eller mer vises som timer og minutter («2 t 18 min»). Theodor brukte «138 min» som eksempel, så formatet bør avklares.
