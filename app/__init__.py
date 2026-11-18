@@ -6,7 +6,7 @@ from flask import Flask, current_app, render_template
 from app.data import anlop_i_vindu
 from app.panel import lag_panel
 from app.prediksjon import VINDU_TIMER, i_testperioden, lag_input, velg_prediktor_med_merknad
-from app.visning import OSLO, gruppe_visning, horisont_etikett, ukedag_dato_klokke, ukedag_klokke
+from app.visning import DELEGERT_TEKST, OSLO, gruppe_visning, horisont_etikett, ukedag_dato_klokke, ukedag_klokke
 
 # Standard «nå» (UX §2): ons 08.10.2025 08:00 norsk tid.
 STANDARD_NAA = dt.datetime(2025, 10, 8, 8, 0, tzinfo=OSLO)
@@ -18,14 +18,6 @@ PREDIKTOR_BESKRIVELSE = {
                  "Anløp modellen ikke dekker, får kalibrert baseline.",
 }
 
-# Synlig grunn i Varsel når modellen har delegert raden til baselinen (beslutning 3 i E2-S08-specen).
-# «ankomstsone» er gruppens interne ord; på skjermen står «havneområdet».
-DELEGERT_TEKST = {
-    "passasjer": "rutegående: bare baseline",
-    "ingen_tilstand": "ingen AIS-tilstand",
-    "i_sonen_ved_kutt": "allerede i havneområdet",
-    "ingen_featurerad": "ingen modelldata ved kuttet",
-}
 
 
 def _rader(naa):

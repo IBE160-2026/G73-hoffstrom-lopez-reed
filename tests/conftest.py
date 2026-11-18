@@ -52,6 +52,38 @@ def _ingen_modell_paa_testrader(request, monkeypatch):
     monkeypatch.setattr(ModellPrediktor, "prediker", vaktet)
 
 
+class NettSperret(AssertionError):
+    """En test prøvde å åpne en socket. AI-testene bruker bare testmodus eller en falsk transport (E3-S01)."""
+
+
+@pytest.fixture(autouse=True)
+def _ai_vakter(monkeypatch):
+    """AI-laget (E3-S01): ingen nøkkel, testmodus, socketer sperret og tom cache i hver test.
+
+    Ingen test gjør et ekte kall. Ekte modus testes bare med en falsk transport og den falske nøkkelen
+    ``sk-or-TEST-IKKE-EKTE``."""
+    import socket
+
+    import app.begrunnelse as begrunnelse
+
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    for navn in ("LLM_MODELL", "LLM_ROUTING", "LLM_MAKS_KALL", "LLM_FEIL_TTL_S", "LLM_TIMEOUT_S"):
+        monkeypatch.delenv(navn, raising=False)
+    monkeypatch.setenv("LLM_MODUS", "test")
+
+    def sperret(*args, **kwargs):
+        raise NettSperret("nettkall i en test")
+
+    monkeypatch.setattr(socket.socket, "connect", sperret)
+    monkeypatch.setattr(socket.socket, "connect_ex", sperret)
+    monkeypatch.setattr(socket, "create_connection", sperret)
+    monkeypatch.setattr(socket, "getaddrinfo", sperret)
+    monkeypatch.setattr(begrunnelse, "transport", None)
+    begrunnelse.nullstill()
+    yield
+    begrunnelse.nullstill()
+
+
 # Den ekte ``metrikker.json`` sett som før testkjøringen (E2-S10, beslutning 1A): ``testkjoringer = 0``, tom logg og uten
 # ``test``-blokken. Testene som leser den ekte fila og forventer valideringsvisningen, er da grønne både før og etter
 # den ene testkjøringen, og ingen test må endres etter den.

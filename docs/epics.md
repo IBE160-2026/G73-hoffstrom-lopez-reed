@@ -365,10 +365,10 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Mål:** begrunnelser sensor kan se uten nøkkel. **Ferdig når:** appen kjører med `LLM_MODUS=test` uten nett, og ekte modus er vist og logget minst én gang.
 
-### E3-S01 — Adapter og testmodus ☐
+### E3-S01 — Adapter og testmodus ✅
 **Krav:** FR13, A8, NFR6 · **Avhenger av:** E2-S07 (eller E1-S04 hvis E2 glipper)
-- `hent_begrunnelse(prediksjon, anlop)` og `hent_brief(vindu)`. `LLM_MODUS=test` er standard og gir en deterministisk mal-tekst merket «Testmodus».
-- Ingen nettkall i testmodus.
+- `hent_begrunnelse(inp, prediksjon, prediktor_navn)` og `cachet(...)` i `app/begrunnelse/`. Adapteren tar `PrediksjonsInput` + `Prediksjon`, aldri et `Anlop`. `hent_brief(vindu)` kommer i E3-S05. `LLM_MODUS=test` er standard og gir en deterministisk mal-tekst merket «Testmodus».
+- Ingen nettkall i testmodus. All konfigurasjon leses i `app/begrunnelse/konfig.py`. Cache og kallgrense per prosess (FR11b slik den er endret 18.11.2026).
 
 **Test:** `tests/test_begrunnelse.py::test_testmodus_uten_nett` (nettkall blokkert i testen)
 
