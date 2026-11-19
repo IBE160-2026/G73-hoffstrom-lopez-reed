@@ -53,9 +53,9 @@ Det ble gjort 3 kall, med de samme tilfellene og `reasoning.effort = none`. Alle
 
 Det ble gjort 3 kall med de samme tilfellene. Alle tre ble godtatt, med 243, 228 og 109 tegn og høyst 3 setninger. De brukte 834–1027 input-tokens og 41–90 output-tokens, uten resonnering. Til sammen kostet de USD 0,000176. For alle fire røykkallene er summen USD 0,001083.
 
-### `begrunnelse-v6`, 19.11.2026 (ikke røykkalt)
+### Røykkall 5, 19.11.2026 (`begrunnelse-v6`)
 
-Timer i faktaene (om skipet rekker fram, og avgang) er avrundet til hele tall, halve opp. De skrives «ca. 42 timer», «ca. 1 time» og «under 1 time» i stedet for «omtrent 42,0 timer». Prompten tillater nå «ca.» slik det står i faktaene. Kontrollen er uendret: «ca.» deler ikke setninger, og et desimaltall modellen regner ut selv, avvises av tallregelen (test `test_kontrollen_med_hele_timer_fra_faktaene`). Det er ikke gjort et ekte kall med v6.
+Timer i faktaene (om skipet rekker fram, og avgang) er avrundet til hele tall, halve opp. De skrives «ca. 42 timer», «ca. 1 time» og «under 1 time» i stedet for «omtrent 42,0 timer». Prompten tillater nå «ca.» slik det står i faktaene. Kontrollen er uendret: «ca.» deler ikke setninger, og et desimaltall modellen regner ut selv, avvises av tallregelen (test `test_kontrollen_med_hele_timer_fra_faktaene`). Det ble gjort 3 kall med de samme tilfellene, lokalt med `LLM_MODUS=ekte` bare for kjøringen. Alle gikk til Particle AI og stoppet av seg selv, uten resonnering. Alle tre ble godtatt, med 243, 228 og 109 tegn, og tekstene var de samme som i røykkall 4. De brukte 838–1028 input-tokens og 41–90 output-tokens. Til sammen kostet de USD 0,000139, altså USD 0,000035–0,000053 per kall. For alle fem røykkallene er summen USD 0,001222. Faktaene for de to modellradene hadde «ca. 6 timer» og «ca. 16 timer», men ingen av svarene brukte timetallet, så «ca.» i et svar er bare dekket av testen.
 
 **Risiko som er igjen:** kontrollen avviser nå tall skrevet med ord og retningsord som ikke stemmer med fortegnet på avviket. Den fanger likevel ikke «en» og «ett» som tall, eller en feil påstand skrevet med ord og tall som finnes i inputen.
 
