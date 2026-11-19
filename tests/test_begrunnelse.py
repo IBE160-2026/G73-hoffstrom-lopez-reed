@@ -235,7 +235,8 @@ def test_ekte_med_mock(monkeypatch):
 
 def test_prompt_er_versjonert():
     tekst = openrouter_klient.PROMPT_FIL.read_text(encoding="utf-8")
-    assert "begrunnelse-v5" in tekst
+    assert "begrunnelse-v6" in tekst
+    assert "utenom slik de står i innledningen eller faktaene" in tekst
     system, bruker = openrouter_klient.bygg_prompt({"Skip": "X"})
     assert "<!--" not in system + bruker and "{fakta}" not in bruker
     assert "- Skip: X" in bruker
@@ -844,9 +845,13 @@ def test_retning_mot_havna_tersklene(cos, tekst):
 
 
 @pytest.mark.parametrize("slakk, h, tekst", [
-    (2.0, 6.0, "ja, omtrent 2,0 timer før rapportert ETA"),
-    (0.0, 6.0, "ja, omtrent 0,0 timer før rapportert ETA"),
-    (-3.5, 6.0, "nei, omtrent 3,5 timer etter rapportert ETA"),
+    (2.0, 6.0, "ja, ca. 2 timer før rapportert ETA"),
+    (2.5, 6.0, "ja, ca. 3 timer før rapportert ETA"),  # halve rundes opp
+    (1.2, 6.0, "ja, ca. 1 time før rapportert ETA"),
+    (0.49, 6.0, "ja, under 1 time før rapportert ETA"),
+    (0.0, 6.0, "ja, under 1 time før rapportert ETA"),
+    (-3.5, 6.0, "nei, ca. 4 timer etter rapportert ETA"),
+    (-0.2, 6.0, "nei, under 1 time etter rapportert ETA"),
     (-48.0, 24.0, "nei, minst 48 timer etter rapportert ETA"),
     (6.0, 6.0, None),  # distanse 0: slakk = h_eff
 ])
@@ -872,7 +877,7 @@ def test_lag_fakta_tilstand_i_klartekst():
     assert fakta["Avstand til havna"] == "40 km"
     assert fakta["Fart"] == "10,0 knop"
     assert fakta["Retning"] == "på vei mot havna"
-    assert fakta[REKKER] == "ja, omtrent 3,8 timer før rapportert ETA"
+    assert fakta[REKKER] == "ja, ca. 4 timer før rapportert ETA"
     assert "Skipets tidligere anløp" not in fakta  # n = 0
     assert "Avgang" not in fakta  # avgangshavn «annet»
 
@@ -889,7 +894,7 @@ def test_lag_fakta_rekker_fram_utelates():
     fakta = lag_fakta(syntetisk_inp(h=24), modellprediksjon(74, featurer=_featurer(slakk_timer=-48.0)))
     assert fakta[REKKER] == "nei, minst 48 timer etter rapportert ETA"
     fakta = lag_fakta(syntetisk_inp(), modellprediksjon(74, featurer=_featurer(slakk_timer=-2.5)))
-    assert fakta[REKKER] == "nei, omtrent 2,5 timer etter rapportert ETA"
+    assert fakta[REKKER] == "nei, ca. 3 timer etter rapportert ETA"
 
 
 def test_lag_fakta_uten_tidligere_anlop_selv_med_snitt():
@@ -906,7 +911,7 @@ def test_lag_fakta_tidligere_anlop_og_avgang():
         timer_siden_avgang=2.5)))
     assert fakta["Skipets tidligere anløp"] == "12 anløp, i snitt omtrent 31 min tidligere enn vanlig for skipsgruppen"
     tid = ukedag_dato_klokke(syntetisk_inp().t_kutt)
-    assert fakta["Avgang"] == f"avgang fra ÅGOTNES var registrert omtrent 2,5 timer før {tid}"
+    assert fakta["Avgang"] == f"avgang fra ÅGOTNES var registrert ca. 3 timer før {tid}"
 
 
 def test_lag_fakta_uten_interne_begreper_og_kurstall():
@@ -1031,7 +1036,10 @@ def test_setninger_du_kan_legge_til_paa_ekte_rader():
 
 
 @pytest.mark.parametrize("over, forventet", [
-    ({"avgatt_for_kutt": 1.0, "timer_siden_avgang": 2.5}, "avgang fra ÅGOTNES var registrert omtrent 2,5 timer før {tid}"),
+    ({"avgatt_for_kutt": 1.0, "timer_siden_avgang": 2.5}, "avgang fra ÅGOTNES var registrert ca. 3 timer før {tid}"),
+    ({"avgatt_for_kutt": 1.0, "timer_siden_avgang": 41.96}, "avgang fra ÅGOTNES var registrert ca. 42 timer før {tid}"),
+    ({"avgatt_for_kutt": 1.0, "timer_siden_avgang": 1.0}, "avgang fra ÅGOTNES var registrert ca. 1 time før {tid}"),
+    ({"avgatt_for_kutt": 1.0, "timer_siden_avgang": 0.3}, "avgang fra ÅGOTNES var registrert under 1 time før {tid}"),
     ({"avgatt_for_kutt": 1.0, "timer_siden_avgang": None}, "avgang fra ÅGOTNES var registrert per {tid}"),
     ({"avgatt_for_kutt": 0.0, "timer_siden_avgang": None}, "avgang fra ÅGOTNES var ikke registrert per {tid}"),
 ])
@@ -1079,3 +1087,24 @@ def test_adapteren_krever_hele_innledningen(monkeypatch, caplog):
         svar = hent_begrunnelse(inp, p, BASELINE)
     assert svar.merke == MERKE_FEILET
     assert "kontroll_konklusjon" in caplog.text
+
+
+# ---------- begrunnelse-v6: timer avrundet til hele tall, «ca.» slik det står i faktaene ----------
+
+def test_kontrollen_med_hele_timer_fra_faktaene():
+    """Faktaene sier «ca. 42 timer». Svaret kan bruke «ca.» uten at setningen deles, og tallet godtas. Et
+    desimaltall modellen har regnet ut selv (41,7), avvises."""
+    inp = syntetisk_inp()
+    p = modellprediksjon(74, featurer=_featurer(avgangshavn="ÅGOTNES", avgatt_for_kutt=1.0,
+                                                 timer_siden_avgang=41.7))
+    fakta = lag_fakta(inp, p)
+    assert fakta["Avgang"].startswith("avgang fra ÅGOTNES var registrert ca. 42 timer før ")
+    assert "omtrent 41,7" not in " ".join(fakta.values())
+
+    def sjekk(tillegg):
+        return kontroller(f"{K74} {tillegg}", fakta, forventet_forsinket=False, skipsnavn=[],
+                          retning=klartekst.retning(p), konklusjon=K74, modellrad=True)
+
+    assert sjekk("Avgang fra Ågotnes var registrert ca. 42 timer før. Skipet rekker ca. 4 timer før.") is None
+    assert antall_setninger(f"{K74} Avgang var registrert ca. 42 timer før. Skipet er 40 km unna.") == 3
+    assert sjekk("Avgang fra Ågotnes var registrert 41,7 timer før.") == "tall"

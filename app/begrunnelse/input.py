@@ -14,6 +14,7 @@ posisjonen, kurs som tall) sendes ikke. Det som aldri sendes: MMSI, seilas-ID og
 from __future__ import annotations
 
 import datetime as dt
+import math
 from typing import Dict, Optional
 
 from app.begrunnelse.klartekst import DELEGERT_KLARTEKST, innledning
@@ -33,6 +34,14 @@ def _retning_mot_havna(kurs_cos: float) -> str:
     return "på tvers av retningen til havna"
 
 
+def _ca_timer(timer: float) -> str:
+    """Timer avrundet til hele tall (halve opp): «ca. 42 timer», «ca. 1 time», og «under 1 time» under en halv."""
+    hele = math.floor(timer + 0.5)
+    if hele == 0:
+        return "under 1 time"
+    return f"ca. {hele} time" if hele == 1 else f"ca. {hele} timer"
+
+
 def _rekker_fram(slakk: float, h_eff: float) -> Optional[str]:
     """F7 er (rapportert ETA − kuttet) minus seilingstiden med farten da, klippet til [−48, h_eff] timer."""
     if slakk >= h_eff:  # distanse 0: ingen seilingstid å regne på
@@ -40,8 +49,8 @@ def _rekker_fram(slakk: float, h_eff: float) -> Optional[str]:
     if slakk <= SLAKK_MIN_TIMER:
         return "nei, minst 48 timer etter rapportert ETA"
     if slakk >= 0:
-        return f"ja, omtrent {tall(slakk, 1)} timer før rapportert ETA"
-    return f"nei, omtrent {tall(-slakk, 1)} timer etter rapportert ETA"
+        return f"ja, {_ca_timer(slakk)} før rapportert ETA"
+    return f"nei, {_ca_timer(-slakk)} etter rapportert ETA"
 
 
 def _vanlig(offset: float) -> str:
@@ -94,7 +103,7 @@ def _tilstand(inp: PrediksjonsInput, featurer: dict) -> Dict[str, str]:
     if featurer.get("avgatt_for_kutt") is not None and havn and havn != "annet":
         if featurer["avgatt_for_kutt"]:
             timer = featurer.get("timer_siden_avgang")
-            ut["Avgang"] = (f"avgang fra {havn} var registrert omtrent {tall(timer, 1)} timer før {tidspunkt}"
+            ut["Avgang"] = (f"avgang fra {havn} var registrert {_ca_timer(timer)} før {tidspunkt}"
                             if timer is not None else f"avgang fra {havn} var registrert per {tidspunkt}")
         else:
             ut["Avgang"] = f"avgang fra {havn} var ikke registrert per {tidspunkt}"
