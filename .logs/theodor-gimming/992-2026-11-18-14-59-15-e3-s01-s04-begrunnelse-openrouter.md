@@ -212,3 +212,25 @@ Avslutte dagen uten å merge PR #11:
 
 ### Åpne punkter
 - Står i `issues.md`: UU-sjekk av skjerm C, gjennomgang og merge av PR #11, `LLM_MODUS=ekte` i Vercel, sjekk av kostnadsoverslaget før levering, og refleksjonsrapporten.
+
+## 2026-11-19 kl. 15:30 — Theodor Gimming (UU-sjekk av skjerm C og begrunnelse-v6)
+
+### Oppgave
+- Lage stegene for en manuell UU-sjekk av skjerm C i forhåndsvisningen av PR #11, også med en henting som feiler.
+- Krysse av resultatet i UX §6.
+- Avrunde timer i faktaene til hele tall («ca. 42 timer» i stedet for «omtrent 42,0 timer»).
+- Pushe til PR #11 uten å merge.
+
+### Plan
+- Sjekket at PR #11 og Vercel-forhåndsvisningen var oppdatert (`3c5a1b8`, Vercel SUCCESS). Fant OCEAN RESPONSE (3386826, med varsel) og EINARSON (3390320, uten varsel) i standardvinduet.
+- Fant at en henting bare skjer i ekte modus, fordi testmodus skriver mal-teksten rett inn på siden. «Offline etter lasting» virker ikke, fordi hentingen er ferdig før du rekker det. Theodor brukte derfor Network request blocking (`*/begrunnelse`).
+- Prompten forbød «ca.» utenom innledningen. Theodor valgte v6, som tillater «ca.» slik det står i faktaene, og «under 1 time» / «ca. 1 time» for 0 og 1.
+
+### Resultat
+- **UU-sjekken** ble gjort av Theodor 19.11 i forhåndsvisningen, i ekte modus. `LLM_MODUS=ekte` er satt for Preview i Vercel, ikke for Production. Alle seks stegene besto: modus, tastatur, VoiceOver/aria-live, uten JavaScript, blokkert henting («Testmodus (ekte kall feilet)», uten feilmelding) og overskriftene. Radene for skjerm C i UX §6 er krysset av (`4f73a14`, E3-S04).
+- **`02f4372` (E3-S03), begrunnelse-v6:** `_ca_timer` i `app/begrunnelse/input.py` runder av halve opp. Det gjelder «Rekker fram» og «Avgang». Prompten tillater «ca.» slik det står i faktaene. Kontrollkoden er uendret, fordi «ca.» allerede ikke deler setninger og tallregelen avviser 41,7. Det er dekket av en ny test. Beslutning 13 har fått et avsnitt om v6.
+- **Suiten:** 724 tester grønne (716 + 8).
+
+### Åpne punkter
+- Det er ikke gjort et røykkall med `begrunnelse-v6`. Det gjøres bare når Theodor godkjenner det.
+- Med `LLM_MODUS=ekte` for Preview gjør alle forhåndsvisninger, også for andre grener, betalte kall. Avgjør om Preview skal settes tilbake til `test` etter gjennomgangen.
