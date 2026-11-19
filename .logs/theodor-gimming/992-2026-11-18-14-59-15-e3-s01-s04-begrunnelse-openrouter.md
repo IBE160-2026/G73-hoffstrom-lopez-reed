@@ -234,3 +234,23 @@ Avslutte dagen uten å merge PR #11:
 ### Åpne punkter
 - Det er ikke gjort et røykkall med `begrunnelse-v6`. Det gjøres bare når Theodor godkjenner det.
 - Med `LLM_MODUS=ekte` for Preview gjør alle forhåndsvisninger, også for andre grener, betalte kall. Avgjør om Preview skal settes tilbake til `test` etter gjennomgangen.
+
+## 2026-11-19 kl. 15:34 — Theodor Gimming (røykkall 5 og Preview i ekte modus)
+
+### Oppgave
+Kjøre røykkallet med `begrunnelse-v6` med de samme 3 tilfellene, lokalt og med `LLM_MODUS=ekte` bare for kjøringen. Theodor ville se tekstene, om kontrollen godtok dem, og kostnaden. Avgjørelsen om Preview skulle føres inn, og grenen pushes uten merge.
+
+### Plan
+- Kjørte et engangsskript fra scratchpad, ikke i repoet. Det kaller `hent_begrunnelse` én gang per tilfelle, fanger rått svar og `usage`, og stopper hvis nøkkelen havner i utskriften.
+- Modellradene kom fra valideringsvinduet 15.08.2025 08:00, som før. Det var BERGEN ENERGY (varsel), ISLAND CLIPPER (uten varsel) og NORMAND SIGMA (baseline).
+
+### Resultat
+- **Røykkall 5** (Particle AI, `finish_reason` = `stop`, ingen resonneringstokens). Alle tre ble godtatt (KI-GENERERT), og ingen kontrollregel slo inn. Til sammen kostet de USD 0,000139.
+  1. BERGEN ENERGY (243 tegn, 1028/90 tokens, USD 0,0000533): «Ventes inn i havneområdet kl. 17:44, 74 min etter rapportert ETA (16:30). Det er 2 t 18 min senere enn vanlig for skipsgruppen. Skipet var på vei bort fra havna ved siste posisjon, og avgang fra Ågotnes var ikke registrert per tor 14.08 16:30.»
+  2. ISLAND CLIPPER (228 tegn, 1008/81 tokens, USD 0,0000505): «Ventes inn i havneområdet kl. 18:16, 74 min før rapportert ETA (19:30). Skipet er på vei mot havna og rekker fram til rapportert ETA med farten ved siste posisjon. Avgang fra Mongstadbase var ikke registrert per tor 14.08 19:30.»
+  3. NORMAND SIGMA (109 tegn, 838/41 tokens, USD 0,0000354): «Ventes inn i havneområdet kl. 06:56, 64 min før rapportert ETA (08:00). Det er vanlig for denne skipsgruppen.»
+- Tekstene var de samme som i røykkall 4. Faktaene hadde «ca. 6 timer» og «ca. 16 timer», men ingen av svarene brukte timetallet. Derfor er «ca.» i et svar bare dekket av testen. Det er ført i beslutning 13 (røykkall 5). Summen for alle fem røykkallene er USD 0,001222.
+- **Preview:** Theodor avgjorde at Preview beholder `LLM_MODUS=ekte` til E3 er ferdig. Punktet er lukket, og det er lagt inn et nytt punkt om å vurdere det igjen etter S07.
+
+### Åpne punkter
+- Vurder på nytt om Preview skal beholde `LLM_MODUS=ekte` når E3 er ferdig (står i `issues.md`).
