@@ -365,33 +365,34 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Mål:** begrunnelser sensor kan se uten nøkkel. **Ferdig når:** appen kjører med `LLM_MODUS=test` uten nett, og ekte modus er vist og logget minst én gang.
 
-### E3-S01 — Adapter og testmodus ☐
+### E3-S01 — Adapter og testmodus ✅
 **Krav:** FR13, A8, NFR6 · **Avhenger av:** E2-S07 (eller E1-S04 hvis E2 glipper)
-- `hent_begrunnelse(prediksjon, anlop)` og `hent_brief(vindu)`. `LLM_MODUS=test` er standard og gir en deterministisk mal-tekst merket «Testmodus».
-- Ingen nettkall i testmodus.
+- `hent_begrunnelse(inp, prediksjon, prediktor_navn)` og `cachet(...)` i `app/begrunnelse/`. Adapteren tar `PrediksjonsInput` + `Prediksjon`, aldri et `Anlop`. `hent_brief(vindu)` kommer i E3-S05. `LLM_MODUS=test` er standard og gir en deterministisk mal-tekst merket «Testmodus».
+- Ingen nettkall i testmodus. All konfigurasjon leses i `app/begrunnelse/konfig.py`. Cache og kallgrense per prosess (FR11b slik den er endret 18.11.2026).
 
-**Test:** `tests/test_begrunnelse.py::test_testmodus_uten_nett` (nettkall blokkert i testen)
+**Test:** `tests/test_begrunnelse.py::test_testmodus_uten_nett` (nettkall blokkert i testen), `::test_kallgrense_20`, `::test_feil_caches_i_300_s`, `::test_cache_gir_null_nye_kall` (FR11b)
 
-### E3-S02 — Input bygd fra modellens faktiske data ☐
+### E3-S02 — Input bygd fra modellens faktiske data ✅
 **Krav:** FR11 · **Avhenger av:** E3-S01
-- Input til AI-laget bygges bare fra `Prediksjon.forklaring` og `Anlop`. Fasit sendes aldri med, siden vakta ikke kjenner den.
+- Input til AI-laget bygges bare fra `PrediksjonsInput` og `Prediksjon.forklaring` (`app/begrunnelse/input.py`, `lag_fakta`), med norske etiketter og tider formatert som på skjermen. Fasit sendes aldri med, siden vakta ikke kjenner den, og heller ikke MMSI eller seilas-ID (beslutning 13).
 
 **Test:** `tests/test_begrunnelse.py::test_input_uten_fasit`
 
-### E3-S03 — Ekte klient og versjonert prompt ☐
+### E3-S03 — Ekte klient og versjonert prompt ✅
 **Krav:** FR11, A8 · **Avhenger av:** E3-S02
-- `anthropic_klient.py` leser `ANTHROPIC_API_KEY` og `LLM_MODELL`, og prompten ligger i `app/begrunnelse/prompt.md`.
+- `openrouter_klient.py` kaller OpenRouter med `urllib.request`. Nøkkelen leses fra `OPENROUTER_API_KEY`, og modellstrengen bygges i `konfig.py` fra `LLM_MODELL` og `LLM_ROUTING` (beslutning 13). Prompten ligger i `app/begrunnelse/prompt.md`, og svaret kontrolleres i `kontroll.py` før det vises.
 - Ved tidsavbrudd eller feil faller den tilbake til testmodus med merket fra UX §5.
 - Den første ekte prompten og et svar logges i sesjonsloggen (`.logs/<bruker>/`).
 
 **Test:** `tests/test_begrunnelse.py::test_ekte_med_mock`, `::test_fallback_ved_feil`
 
-### E3-S04 — Begrunnelse på detaljsiden ☐
+### E3-S04 — Begrunnelse på detaljsiden ✅
 **Krav:** FR11 · **Avhenger av:** E3-S03
 - Skjerm C viser begrunnelsen merket «KI-GENERERT» (eller «Testmodus»): høyst 3 setninger og ≤ 400 tegn (PRD FR11).
 - Alle tall og skipsnavn i teksten finnes i inputen. På baseline påstår teksten aldri at et avvik er ventet.
+- Siden venter aldri på språkmodellen: et cachet svar er server-rendret, ellers står «Henter forklaring …» i en `aria-live`-region, og svaret hentes med `POST /anlop/<voyageid>/begrunnelse`. Uten JavaScript vises mal-teksten merket «Testmodus». Skjerm C er bygd minimalt her (kjernen i E1-S11).
 
-**Test:** `tests/test_ruter.py::test_detalj_begrunnelse`, `tests/test_begrunnelse.py::test_tall_finnes_i_input`
+**Test:** `tests/test_ruter.py::test_detalj_begrunnelse`, `::test_detalj_venter_ikke_paa_spraakmodellen`, `::test_cachet_svar_vises_server_rendret` (FR11a), `tests/test_begrunnelse.py::test_tall_finnes_i_input`
 
 ### E3-S05 — Forstyrrelsesbrief på hovedskjermen ☐
 **Krav:** FR12 · **Avhenger av:** E3-S04
@@ -487,3 +488,5 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-17** — E0-S21: `pyproject.toml` er fjernet etter at avhengighetene ikke ble installert på Vercel, og `requirements.txt` er eneste kilde. Vercel finner `wsgi.py` selv (Theodor Gimming).
 - **2026-11-17** — E0-S21 er ferdig. Theodor åpnet forhåndsvisningen og så at siden virker, og PR #7 er merget (`f6da1d7`). Produksjonsadressen er åpen uten innlogging og står i README (Theodor Gimming).
 - **2026-11-18** — E0-S22 er ferdig. Faglærer svarte at `technology.md` var en rest og ikke skal brukes, så den er fjernet. Han deler ut en OpenRouter-nøkkel med bruksgrense til testing. Navnet `OPENROUTER_API_KEY` står i `.env.example`, og nøkkelen legges bare i den lokale `.env`. Hvilken leverandør E3 bruker (arkitekturen sier fortsatt Anthropic), er ikke avgjort her (Theodor Gimming).
+- **2026-11-18** — E3-S01–S03 er ferdige på `epic/e3-ai-lag`: adapter med testmodus, input fra modellens egne data og ekte klient mot OpenRouter (beslutning 13). E3-S03 sier nå `openrouter_klient.py` og `OPENROUTER_API_KEY` i stedet for `anthropic_klient.py` og `ANTHROPIC_API_KEY` (Theodor Gimming).
+- **2026-11-18** — E3-S04 er ferdig på `epic/e3-ai-lag`: skjerm C med begrunnelsen, JSON-endepunktet og UU-radene i UX §6 (☐ til manuell sjekk). Kjernen i E1-S11 er levert her (Theodor Gimming).

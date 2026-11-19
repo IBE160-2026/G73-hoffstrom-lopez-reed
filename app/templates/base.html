@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block tittel %}Ankomstprediksjon · Bergen Havn{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block hode %}{% endblock %}
 </head>
 <body>
   <a class="hopp" href="#{% block hoppmaal %}innhold{% endblock %}">{% block hopptekst %}Hopp til innhold{% endblock %}</a>

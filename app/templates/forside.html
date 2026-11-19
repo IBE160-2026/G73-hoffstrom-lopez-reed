@@ -41,7 +41,7 @@
     <tbody role="rowgroup">
       {% for r in rader %}
       <tr role="row">
-        <td role="cell" data-label="Skip" class="skip">{{ r.skip }}</td>
+        <td role="cell" data-label="Skip" class="skip"><a href="{{ url_for('anlop', voyageid=r.voyageid) }}">{{ r.skip }}</a></td>
         <td role="cell" data-label="Gruppe">{{ r.gruppe }}</td>
         <td role="cell" data-label="Rapportert" class="tid">{{ r.rapportert }}</td>
         <td role="cell" data-label="Predikert" class="tid">{{ r.predikert }}

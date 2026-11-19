@@ -19,4 +19,4 @@ Følge opp faglærers svar på de to spørsmålene fra 17.11: (a) kurset deler u
 
 ### Åpne punkter
 - E3 må avgjøre leverandøren. Arkitekturen (`docs/arkitektur.md`), `.env.example` og E3-S03 i `docs/epics.md` sier Anthropic (`ANTHROPIC_API_KEY`, `anthropic_klient.py`), mens kursnøkkelen er til OpenRouter.
-- Theodor legger nøkkelen inn i `.env` selv. Den er ikke testet før han sier fra.
+- Theodor legger nøkkelen inn i `.env` selv. Den er ikke testet før Theodor sier fra.

@@ -29,3 +29,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-e2-s10-resultatnotat.md`
   summary: Tester av sperrene i `scripts/mcnemar.py` (låste filer endret, summer ulike → `Avvik` og ingenting skrevet), med syntetiske data.
   evidence: review av E2-S10 etter kjøringen. Ingen test når `sjekk_uendret` eller sammenligningen av summene. Analysen er kjørt én gang, utdataene er festet av `test_committet_mcnemar_i_notatet`, og `main` stopper nå hvis `mcnemar.json` finnes. Testene trengs bare hvis skriptet noen gang skal kjøres igjen.
+- source_spec: `_bmad-output/implementation-artifacts/spec-e3-s01-s04-begrunnelse-via-openrouter.md`
+  summary: begrunnelse.js (POST, swapping the aria-live content, fallback on error or abort) is checked only as source text, not run.
+  evidence: The repo has no JS harness. The manual UU check of screen C (UX §6) must explicitly cover a failed fetch (for example with the network turned off in the browser) and show «Testmodus (ekte kall feilet)».
+- source_spec: `_bmad-output/implementation-artifacts/spec-e3-s01-s04-begrunnelse-via-openrouter.md`
+  summary: OpenRouter's `reasoning` parameter is not set, so reasoning tokens may use up max_tokens = 300 (unverified, medium if true).
+  evidence: Settled by the smoke call: check `finish_reason`, `usage` and whether the content is empty. If so, set `reasoning` (exclude/effort) in openrouter_klient.kall.
