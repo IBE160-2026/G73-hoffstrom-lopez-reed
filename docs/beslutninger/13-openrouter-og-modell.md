@@ -69,6 +69,15 @@ Det ble gjort 2 kall lokalt, med `LLM_MODUS=ekte` bare for kjøringen. Begge vin
 - **3 varsler (24.06.2025 08:00, NYKSUND, BERGEN LNG og NORMAND SAPPHIRE):** avvist som `kontroll_lengde`. Innledningen appen skriver, er alene om lag 340 tegn, og modellen la til tre setninger, én per skip. Til sammen ble det over 700 tegn, så mal-briefen ble vist. Kallet brukte 2 313 input-tokens og 266 output-tokens, og kostet USD 0,00018.
 - **`max_tokens` 300:** holdt i begge kallene, men med bare 34 tokens margin med 3 varsler. Et svar som holder seg innenfor 700 tegn, trenger om lag 250 tokens, så grensen holder for et svar som ville blitt godtatt. Med mindre margin blir svaret kuttet og vist som `avkortet`.
 
+### Røykkall brief-v2 og begrunnelse-v7, 23.11.2026
+
+Det ble gjort 3 kall med de samme vinduene. Alle gikk til Particle AI, stoppet av seg selv og brukte ingen resonnering. Til sammen kostet de USD 0,00034. Endringen fra brief-v1: modellen får legge til 1–2 setninger, avhengig av hvor lang innledningen er, og «rekker fram» sendes bare når skipet er på vei mot havna.
+
+- **Brief med 3 varsler (24.06.2025 08:00):** avvist igjen, nå som `kontroll_setninger`. Faktaene sa 1 setning, men modellen la til 3, én per skip, og skrev 248 output-tokens. Mal-briefen ble vist. Kallet brukte 2 305/248 tokens og kostet USD 0,00017.
+- **Brief med 1 varsel (13.08.2025 08:00):** godtatt, med 430 tegn og 4 setninger (2 lagt til). «Rekker fram» er ikke lenger med. Kallet brukte 1 263/162 tokens og kostet USD 0,00010.
+- **Skjerm C, BERGEN ENERGY (13.08.2025 08:00, varslet rad):** godtatt, med 233 tegn og 3 setninger. Faktaene har «på vei bort fra havna» og ikke lenger «rekker fram». Kallet brukte 997/87 tokens og kostet USD 0,00006.
+- **`max_tokens` 300:** holdt i alle tre kallene. Det høyeste var 248, i kallet som ble avvist.
+
 ## Begrunnelse
 
 Nøkkelen med hard bruksgrense er det eneste som faktisk setter et tak på forbruket når appen kjører på flere instanser. Adapteren gjør leverandøren byttbar (A8), så valget koster lite å endre: modellen og routingen er miljøvariabler, og klienten er én fil.
