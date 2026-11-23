@@ -1,12 +1,16 @@
 """Flask-appen for ankomstprediksjon i Bergen Havn (arkitektur A1, §5)."""
 import datetime as dt
+import logging
 
-from flask import Flask, current_app, render_template
+from flask import Flask, abort, current_app, jsonify, render_template
 
+from app import begrunnelse
+from app.begrunnelse.testmodus import GRUPPE_TEKST, MERKE_FEILET, VARSEL_GRENSE_MIN
 from app.data import anlop_i_vindu
 from app.panel import lag_panel
 from app.prediksjon import VINDU_TIMER, i_testperioden, lag_input, velg_prediktor_med_merknad
-from app.visning import OSLO, gruppe_visning, horisont_etikett, ukedag_dato_klokke, ukedag_klokke
+from app.visning import (DELEGERT_TEKST, OSLO, gruppe_visning, horisont_etikett, tall, ukedag_dato_klokke,
+                         ukedag_klokke)
 
 # Standard «nå» (UX §2): ons 08.10.2025 08:00 norsk tid.
 STANDARD_NAA = dt.datetime(2025, 10, 8, 8, 0, tzinfo=OSLO)
@@ -18,14 +22,6 @@ PREDIKTOR_BESKRIVELSE = {
                  "Anløp modellen ikke dekker, får kalibrert baseline.",
 }
 
-# Synlig grunn i Varsel når modellen har delegert raden til baselinen (beslutning 3 i E2-S08-specen).
-# «ankomstsone» er gruppens interne ord; på skjermen står «havneområdet».
-DELEGERT_TEKST = {
-    "passasjer": "rutegående: bare baseline",
-    "ingen_tilstand": "ingen AIS-tilstand",
-    "i_sonen_ved_kutt": "allerede i havneområdet",
-    "ingen_featurerad": "ingen modelldata ved kuttet",
-}
 
 
 def _rader(naa):
@@ -43,6 +39,7 @@ def _rader(naa):
     )
     rader = [
         {
+            "voyageid": inp.voyageid,
             "skip": inp.shipname,
             "gruppe": gruppe_visning(inp.ship_group),
             "rapportert": ukedag_klokke(inp.eta_reported),
@@ -55,6 +52,45 @@ def _rader(naa):
         for inp, p in par
     ]
     return prediktor, merknad, rader
+
+
+def _ett_anlop(voyageid, naa):
+    """(prediktor, input, prediksjon) for seilasen i vinduet, eller None. Anløpet blir aldri med videre: rutene og
+    AI-laget får bare ``PrediksjonsInput`` og ``Prediksjon``."""
+    for a in anlop_i_vindu(naa, timer=VINDU_TIMER):
+        if a.voyageid == voyageid:
+            prediktor, _ = velg_prediktor_med_merknad(naa=naa)
+            inp = lag_input(a, naa)
+            return prediktor, inp, prediktor.prediker([inp], naa)[0]
+    return None
+
+
+def _minutter(verdi, desimaler=0, fortegn=False):
+    """«64,2», «+152» eller «−12» (ekte minustegn), samme format som inputen til AI-laget."""
+    tekst = tall(verdi, desimaler)
+    return f"+{tekst}" if fortegn and not tekst.startswith("\u2212") and tekst != "0" else tekst
+
+
+def metode_tekst(inp, p):
+    """«Slik ble prediksjonen laget» på skjerm C (FR7), per gruppe og metode."""
+    f = p.forklaring
+    if f.get("metode") == "modell":
+        offset = _minutter(f["offset_ovrige_min"], 1)
+        return [
+            f"Modell v1 ({horisont_etikett(inp.horisont_timer)}): kalibrert baseline (rapportert ETA − {offset} min) "
+            f"justert med modellens predikerte avvik på {_minutter(f['predikert_avvik_min'], fortegn=True)} min.",
+            f"Modellen varsler når predikert avvik er over {VARSEL_GRENSE_MIN} min.",
+        ]
+    linjer = []
+    if f.get("offset_minutter") is not None:
+        offset = _minutter(f["offset_minutter"], 1)
+        linjer += [f"Kalibrert baseline: rapportert ETA − {offset} min.",
+                   f"{offset} min er median tid fra sonegrense til kai for "
+                   f"{GRUPPE_TEKST.get(f.get('gruppe'), 'gruppen')} i treningsdata."]
+    grunn = DELEGERT_TEKST.get(f.get("delegert"))
+    if grunn:
+        linjer.append(f"Modell v1 vurderer ikke dette anløpet ({grunn}), så det får kalibrert baseline.")
+    return linjer
 
 
 def create_app(config=None):
@@ -84,5 +120,48 @@ def create_app(config=None):
             # E2-S09: modell mot baseline, lest fra metrikker.json. Uavhengig av vinduet og prediktoren.
             panel=lag_panel(),
         )
+
+    @app.get("/anlop/<int:voyageid>")
+    def anlop(voyageid):
+        """Skjerm C (UX §4, FR7, FR11). Rendres uten å kalle språkmodellen (FR11a): et cachet svar vises med en
+        gang, ellers står «Henter forklaring …» og nettleseren henter svaret med POST."""
+        naa = current_app.config["STANDARD_NAA"]
+        treff = _ett_anlop(voyageid, naa)
+        if treff is None:
+            return render_template("anlop.html", ukjent=True, voyageid=voyageid), 404
+        prediktor, inp, p = treff
+        return render_template(
+            "anlop.html",
+            ukjent=False,
+            inp=inp,
+            gruppe=gruppe_visning(inp.ship_group),
+            rapportert=ukedag_dato_klokke(inp.eta_reported),
+            predikert=ukedag_dato_klokke(p.predikert_ankomst),
+            horisont=horisont_etikett(inp.horisont_timer),
+            kuttpunkt=ukedag_dato_klokke(inp.t_kutt),
+            kan_varsle=prediktor.kan_varsle,
+            varsel=p.forventet_forsinket,
+            varsel_grunn=DELEGERT_TEKST.get(p.forklaring.get("delegert")),
+            metode=metode_tekst(inp, p),
+            prediktor_navn=prediktor.navn,
+            begrunnelse=begrunnelse.cachet(inp, p, prediktor.navn),
+            mal=begrunnelse.testtekst(inp, p).tekst,
+        )
+
+    @app.post("/anlop/<int:voyageid>/begrunnelse")
+    def begrunnelse_json(voyageid):
+        """Begrunnelsen som JSON ``{tekst, merke}``. Alltid 200 for en kjent seilas, også når kallet feiler.
+        POST, så søkeroboter ikke utløser betalte kall."""
+        treff = _ett_anlop(voyageid, current_app.config["STANDARD_NAA"])
+        if treff is None:
+            abort(404)
+        prediktor, inp, p = treff
+        try:
+            svar = begrunnelse.hent_begrunnelse(inp, p, prediktor.navn)
+        except Exception as feil:  # aldri HTTP 500 for begrunnelsen; meldingen logges ikke
+            logging.getLogger("app.begrunnelse").warning(
+                "begrunnelse: uventet_%s voyageid=%s prediktor=%s", type(feil).__name__, voyageid, prediktor.navn)
+            svar = begrunnelse.testtekst(inp, p, MERKE_FEILET)
+        return jsonify(svar.som_dict())
 
     return app

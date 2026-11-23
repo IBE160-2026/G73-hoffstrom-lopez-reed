@@ -15,11 +15,29 @@ UKEDAGER = ("man", "tir", "ons", "tor", "fre", "lør", "søn")
 
 HORISONT_ETIKETT = {6: "≤ 6 t", 24: "6–24 t"}
 
+# Synlig grunn i Varsel når modellen har delegert raden til baselinen (beslutning 3 i E2-S08-specen).
+# «ankomstsone» er gruppens interne ord; på skjermen står «havneområdet». Flyttet hit fra ``app/__init__.py`` i
+# E3-S01, så AI-laget kan bruke samme tekst uten å importere appen.
+DELEGERT_TEKST = {
+    "passasjer": "rutegående: bare baseline",
+    "ingen_tilstand": "ingen AIS-tilstand",
+    "i_sonen_ved_kutt": "allerede i havneområdet",
+    "ingen_featurerad": "ingen modelldata ved kuttet",
+}
+
 # Norske visningsnavn for skipsgrupper der kilden bruker et engelsk navn (E1-S19, Felipe 05.11.2026).
 # Bare visningen: ``ship_group`` i utdraget og gruppering i Passasjer/Øvrige er uendret.
 # «Spesialfartøy» har en myk bindestrek (U+00AD) etter «Spesial»: ordet kan brytes der bare når det er for lite plass.
 # Uten den ble tabellen 9 px for bred ved 640 px (200 % zoom, UU6) med modellen i standardvinduet (E2-S10).
 GRUPPE_VISNINGSNAVN = {"Auxiliary": "Spesial\u00adfartøy"}
+
+
+def tall(verdi: float, desimaler: int) -> str:
+    """Norsk tallformat: desimalkomma og ekte minustegn (U+2212), f.eks. «−12,5» og «64,2»."""
+    tekst = f"{verdi:.{desimaler}f}".replace(".", ",")
+    if tekst.startswith("-") and tekst.strip("-0,"):
+        return "\u2212" + tekst[1:]
+    return tekst.lstrip("-")  # avrundet til null: «0», aldri «−0»
 
 
 def gruppe_visning(ship_group: str) -> str:

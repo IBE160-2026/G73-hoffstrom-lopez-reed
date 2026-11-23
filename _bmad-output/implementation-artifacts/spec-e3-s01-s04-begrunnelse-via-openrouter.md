@@ -1,0 +1,154 @@
+---
+title: 'E3-S01–S04 — Begrunnelse per anløp via OpenRouter, uten å vente på språkmodellen'
+type: 'feature'
+created: '2026-11-18'
+status: 'done'
+baseline_commit: 'cfb460912a21edd5f8033a70ddd296f3364db1a9'
+route: 'dispatch'
+review_loop_iteration: 0
+context:
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-3-context.md'
+  - '{project-root}/docs/ux/dashbord.md'
+---
+
+<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
+
+## Intent
+
+**Problem:** The app has no AI layer. FR11 (a short justification per call), FR11a (the page never waits on the LLM) and FR11b (cache and call cap) are unbuilt. The plan still says Anthropic, but the lecturer has provided an OpenRouter key (USD 20 hard limit) and chosen the model.
+
+**Approach:** An adapter `app/begrunnelse/` with test mode as the default (A8). It builds the input only from numbers the app already has, calls OpenRouter in real mode, checks every answer, and falls back to labelled test-mode text on any problem. The page renders without the justification and fetches it afterwards. `docs/beslutninger/13-openrouter-og-modell.md` records the provider, model and routing for the whole project.
+
+## Spec choices S1–S7 (Theodor, 2026-11-18)
+
+S1–S7 are this spec's own choices. They are not the project decisions in `docs/beslutninger/`. Project-wide decisions are referred to as `docs/beslutninger/NN`.
+
+- **S1 — Screen C is built here, minimal:** `/anlop/<voyageid>` with ship data, times in a `<dl>`, «Slik ble prediksjonen laget» (the FR7 template per group), the section «Hvorfor avvik er ventet» with the justification, a back link to the list, and 404 with a back link for an unknown ID. It uses `STANDARD_NAA` and has no `naa`/fasit query yet. The ship name on the main screen links to it. This also delivers the core of E1-S11.
+- **S2 — Routing is the `:floor` suffix:** the model string is `deepseek/deepseek-v4.1-flash-1017:floor`, built in `konfig.py` from `LLM_MODELL` + `LLM_ROUTING`. Flex endpoints may be used, and capacity errors go to the fallback.
+- **S3 — Production:** the code defaults to `LLM_MODUS=test`. Theodor sets `LLM_MODUS=ekte` in Vercel after the smoke call. Claude changes no Vercel settings.
+- **S4 — Size:** the full spec is kept (about 2,700 tokens), with one commit per story S01–S04.
+- **S5 — Cache lifetime:** a successful (checked) answer is cached for the life of the process. Every failure (call error, timeout, 402, failed check) is cached for only `LLM_FEIL_TTL_S` = 300 s. After that, the next visit makes a new attempt, which counts against the cap. A temporary timeout therefore does not give test mode for the rest of the instance's life. A missing key makes no call and counts nothing.
+- **S6 — Deliberate deviation from FR11b, recorded in the PRD:** FR11b says «høyst 20 ekte kall per økt (appens levetid)» and «En demo koster dermed høyst 20 kall». On Vercel every function instance is its own process with its own memory, and there can be several at once and new ones over time. The cap is therefore per process (per instance), not per demo or overall. A shared counter would need external storage (a database or KV), which the app does not have and which architecture §11 rules out on disk. The total spend is stopped by the USD 20 limit on the key at OpenRouter, not by the app. When the limit is reached, OpenRouter answers 402, and the app shows «Testmodus (ekte kall feilet)» and logs `kvote_402`. Failures that are cached for 5 min instead of «for the app's lifetime» are also a deviation from FR11b, and they are recorded in the same update.
+- **S7 — Accessibility on screen C:** when the justification arrives, it is announced through an `aria-live="polite"` region (the region exists in the HTML from the start, and only its content changes). The whole page can be used with the keyboard only: back link, ship-name link from the list, visible focus and no focus trap. The page works without JavaScript. A cached answer is server-rendered as usual. Otherwise `<noscript>` shows the test-mode template text labelled «Testmodus». Screen C is added to the UU checklist in `docs/ux/dashbord.md` §6 (UU2 keyboard, UU-aria-live, no-JS), and the manual run is an open item.
+
+## Boundaries & Constraints
+
+**Always:**
+- **`docs/beslutninger/13`:** OpenRouter, model `deepseek/deepseek-v4.1-flash-1017`, price-floor routing, chosen on the lecturer's recommendation (2026-11-18). Only numbers and public ship data are sent: ship name, ship group, times, horizon, method, offset or predicted deviation, alert state, delegation reason and the model's feature values. No personal data, no MMSI, no ground truth.
+- **Config in one place:** model ID, routing, mode, call cap, failure cache time and timeout are read only in `app/begrunnelse/konfig.py` (`LLM_MODUS`=`test`, `LLM_MODELL`, `LLM_ROUTING`=`floor`, `LLM_MAKS_KALL`=`20`, `LLM_FEIL_TTL_S`=`300`, `LLM_TIMEOUT_S`=`8`). The model string sent to OpenRouter is built there and nowhere else.
+- **FR11a:** the page that shows the justification renders without calling the LLM. A cached answer is rendered server-side, so a cache hit is visible in < 1 s. Otherwise the page shows «Henter forklaring …» in an `aria-live="polite"` region and fetches it with `POST /anlop/<voyageid>/begrunnelse` (JSON). Error, timeout, missing key, exhausted quota (HTTP 402) or a failed check → mock text labelled «Testmodus (ekte kall feilet)». The endpoint always answers 200 with `{tekst, merke}`.
+- **Answer check (before showing):** non-empty; ≤ 3 sentences and ≤ 400 characters; every number in the text occurs in the input; no other ship name from the extract; no cause words from a fixed list (weather, strike, engine, crew, …). When there is no alert (`forventet_forsinket` is not `True`), the text must not contain `forsink`. The prompt forbids inventing causes. The check is a guard, not proof, and the spec says so.
+- **FR11b (as amended, S5–S6):** in-memory cache per (voyageid, predictor name). Success is kept for the life of the process, and failures for `LLM_FEIL_TTL_S` (300 s). At most `LLM_MAKS_KALL` real calls per process, counted per attempt and guarded by a lock. Over the cap → «Testmodus (kallgrensen er nådd)». On Vercel the cache and the cap are per function instance. The total is stopped by the key's USD 20 limit (402). That is written in FR11b, architecture §11 and `docs/beslutninger/13`.
+- **Secrets:** the key is read from `OPENROUTER_API_KEY` in `os.environ`, never from a file. It is never written to a log, an exception message, a response or a template. Failures are logged as a reason code with voyageid and predictor only.
+- **Tests:** an autouse fixture removes `OPENROUTER_API_KEY`, sets `LLM_MODUS=test` and blocks sockets. The real client is tested only with an injected fake transport and the fake key `sk-or-TEST-IKKE-EKTE`. No test makes a real call. Model rows in route tests use `VALIDERING_NAA` (test-row rule).
+- No new dependency: HTTP goes through `urllib.request`.
+
+**Never:**
+- Make a real call, read `.env` or print the key, except one manual smoke call when Theodor asks for it.
+- Send ground truth (`faktisk_ankomst`, `status_in_area`, `split`) or let the adapter take an `Anlop`. It takes `PrediksjonsInput` + `Prediksjon`.
+- Merge the PR before the group has seen it and the Vercel preview (Theodor, 2026-11-18).
+- Build the brief (E3-S05), the recordings (E3-S06) or the README section (E3-S07). Write to disk at runtime.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | State | Shown | Logged |
+|---|---|---|---|
+| Test mode (default) | `LLM_MODUS=test` | template text, «Testmodus» | nothing |
+| Real, OK | key, valid answer | answer, «KI-GENERERT» | nothing |
+| Real, cache hit | success cached for (voyageid, predictor) | same text, server-rendered, 0 new calls | nothing |
+| Failure, < 300 s ago | failure cached | «Testmodus (ekte kall feilet)», 0 new calls | nothing new |
+| Failure, ≥ 300 s ago | failure expired | new attempt (counts against the cap) | as the outcome |
+| No key | `ekte`, no key | template, «Testmodus (ekte kall feilet)», no call, not counted | `mangler_nokkel` |
+| Timeout / network / 5xx / 429 / 401 | — | same | `timeout` / `nett` / `http_<kode>` |
+| Quota exhausted (USD 20 used) | HTTP 402 | same | `kvote_402` (tell the lecturer) |
+| Check fails | too long, unknown number or name, cause word | same, cached for 300 s | `kontroll_<regel>` |
+| Over the cap | 20 attempts done in this process | template, «Testmodus (kallgrensen er nådd)» | `kallgrense` |
+| No JavaScript | no cached answer | `<noscript>` template, «Testmodus» | nothing |
+
+</frozen-after-approval>
+
+## Code Map
+
+- `app/prediksjon/__init__.py:38-58` -- `PrediksjonsInput` (no ground truth) and `Prediksjon.forklaring`. The AI layer's only input. Do not change.
+- `app/prediksjon/baseline.py:48`, `app/prediksjon/modell.py:108` -- `forklaring` keys: `metode`, `gruppe`, `offset_minutter` | `predikert_avvik_min`, `horisont`, `featurer`, `delegert`.
+- `app/__init__.py:31-84` -- `_rader`, `create_app`, `DELEGERT_TEKST`. Reuse `velg_prediktor_med_merknad`, `lag_input`, `anlop_i_vindu` for the new routes. `create_app` reads no `.env` and keeps it that way.
+- `app/visning.py` -- `ukedag_klokke`, `til_oslo_minutt`. Times in the prompt use the same format as on screen, so the number check matches.
+- `app/templates/forside.html:44` -- the ship-name cell, which becomes a link to screen C (S1).
+- `tests/conftest.py` -- `VALIDERING_NAA`, `TESTRADER_TILLATT`, the autouse guards. Add the AI guards next to them.
+- `docs/arkitektur.md:46,185-187,207,232` -- A8, the config block, dependencies, §11. Change Anthropic to OpenRouter.
+- `docs/epics.md:368-394` -- E3-S01–S04. Change the S03 text (`anthropic_klient.py` → `openrouter_klient.py`) and mark them ✅ in each story's commit.
+
+## Tasks & Acceptance
+
+**Execution:**
+- [x] `app/begrunnelse/konfig.py`, `testmodus.py`, `__init__.py` -- config, template text, `hent_begrunnelse(inp, prediksjon, prediktor_navn)` and `cachet(...)`, cache and cap -- E3-S01
+- [x] `tests/conftest.py` -- autouse: no key, test mode, sockets blocked, cache reset -- E3-S01
+- [x] `app/begrunnelse/input.py` -- `lag_fakta(inp, prediksjon)` → dict with Norwegian labels and screen-formatted values -- E3-S02
+- [x] `app/begrunnelse/prompt.md`, `openrouter_klient.py`, `kontroll.py` -- versioned prompt, client with injectable transport, `max_tokens` 300, error → reason code, answer check -- E3-S03
+- [x] `docs/prd.md` -- FR11b and its test: the cap is per process (per Vercel instance), failures are cached for 300 s, the total is stopped by the key's USD 20 limit (402), and a changelog line -- E3-S01
+- [x] `docs/beslutninger/13-openrouter-og-modell.md`, `docs/arkitektur.md`, `.env.example` -- `docs/beslutninger/13` with the cost estimate and the FR11b deviation, A8 and §11, remove `ANTHROPIC_API_KEY` and `claude-haiku-5-5`, add `LLM_FEIL_TTL_S` -- E3-S03
+- [x] `app/__init__.py`, `app/templates/anlop.html`, `app/static/begrunnelse.js`, `forside.html` -- screen C (S1), the JSON endpoint, `aria-live` and `<noscript>` (S7) -- E3-S04
+- [x] `docs/ux/dashbord.md` §6 -- screen C rows in the UU checklist (keyboard, aria-live, no-JS), marked ☐ until the manual run -- E3-S04
+- [x] `tests/test_begrunnelse.py`, `tests/test_ruter.py` -- every row in the matrix (with an injected clock for the 300 s), the aria-live region and `<noscript>` in the HTML of screen C, key-leak test (fake key absent from caplog, response and exception text), input without ground truth, cache gives 0 new calls, cap at 20, model rows only at `VALIDERING_NAA` -- S01–S04
+
+**Acceptance Criteria:**
+- Given `LLM_MODUS=test` and no network, when `pytest` runs, then all tests pass in < 1 min and no socket is opened.
+- Given a fake transport that sleeps 30 s, when screen C is requested, then the page answers 200 in < 1 s and contains «Henter forklaring …».
+- Given an answer cached for (voyageid, predictor), when screen C is requested again, then the text is in the HTML and the transport is not called.
+- Given `grep -rn "deepseek" app/`, then the model ID occurs only in `konfig.py`.
+- Given a failure cached at time t, when the same call is requested at t + 299 s, then no call is made. At t + 300 s one new call is made.
+- Given screen C with no cached answer, then the HTML has the aria-live region with «Henter forklaring …» and a `<noscript>` with the template text and «Testmodus», and every link can be reached with Tab.
+
+## Review Triage Log
+
+Pass 1 (2026-11-18). Layers: blind-hunter (BH), edge-case-hunter (EC), verification-gap (VG).
+
+| # | Finding | Verdict | Evidence | Route |
+|---|---|---|---|---|
+| 1 | VG: two of five Varsel branches on screen C are not asserted (baseline, model `False`) | low | `test_detalj_begrunnelse` never checks `Varsel`; `_modellrad` only with `True`/`None`. | patch |
+| 2 | VG: the sign of the model deviation in the method text is not pinned | low | The only assertion is a substring that matches both «+152» and «152». | patch |
+| 3 | VG/EC/BH: `begrunnelse.js` is checked only as source text | low | The repo has no JS harness. The browser side is checked manually (UX §6). | defer |
+| 4 | VG/BH/EC: the number check ignores signs | medium | `_TALL` has no sign, so «+12» passes against «−12». | patch (an explicitly signed number must match the sign in the input) |
+| 5 | VG/EC: label numbers widen the allowed numbers | low | `input_tekst` joins keys and values, so «1» and «−1» from the course label are always allowed. | patch (values only) |
+| 6 | BH/VG/EC: concurrent requests can make duplicate calls | low | Needs two simultaneous first-time requests for the same call. The cap still holds, and the cost is about USD 0.0002 per extra call. The fix adds in-flight state. | reject (low, rare, the fix adds complexity) |
+| 7 | BH/EC: the cache key has no `naa` | false | `STANDARD_NAA` is fixed per app, and no route takes `naa` (S1). It becomes relevant with E1-S07. | reject |
+| 8 | BH: numbers written as words are not caught | low | Real, and not mentioned in the docstring. | patch (docstring + risk in decision 13) |
+| 9 | BH/EC: the no-alert rule catches only `forsink` | low | The frozen rule says `forsink`. Wider patterns would reject true statements on model rows without an alert. | reject (spec rule); smoke-call risk |
+| 10 | BH: no `reasoning` parameter | maybe-false | Only the smoke call can show whether the model reasons. Medium if true. | defer |
+| 11 | BH/EC: `inf` in the config is accepted | low | `int(inf)` gives `OverflowError`. The endpoint still answers 200, but real mode never works. | patch (`math.isfinite`) |
+| 12 | BH/EC: a missing key is never cached | low | Production has the key, and the fix adds a branch. | reject |
+| 13 | BH: the timeouts and Vercel `maxDuration` are not documented together | low | When the browser gives up at 20 s, the fallback is shown and the call is cached when it finishes. | reject |
+| 14 | BH/EC: `replaceChildren` is missing in old browsers | low | Supported since Safari 14 and Chrome 86. | reject |
+| 15 | BH: a literal soft hyphen in `input.py` | low | Invisible in the source. Direct fix: `"\u00ad"`. | patch |
+| 16 | BH: `epic-3-context.md` contradicts the implementation | low | It still says `Anlop` and that `anthropic` is future work. | patch |
+| 17 | BH: the test references in `docs/epics.md` for S01/S04 are incomplete | low | The FR11a/FR11b tests are missing from the lines. | patch |
+| 18 | BH: the wall-clock tests can be flaky | low | The first request loads data and the model. Warming up first is a direct fix. | patch |
+| 19 | BH: `issues.md` says `.env` was checked, and the log says it was not read | low | Claude checked with `grep -c` (count only, as Theodor allowed). The subagent's log is about its own session. | patch (orchestrator) |
+| 20 | EC: `_ett_anlop` can raise in the POST and give 500 | false | The same calls run in GET first. A failure there breaks the whole page. | reject |
+| 21 | EC: the fallback calls `testtekst` again after an exception | false | `mal()` already runs in GET (`mal=`). | reject |
+| 22 | EC: «64,20» or «9,0» against «64,2» or «9» is rejected | low | Real. Direct fix in `_normaliser`. | patch |
+| 23 | EC/VG: «−0» can appear | low | `tall(-0.4, 0)` gives «−0». Direct fix in `visning.tall`. | patch |
+| 24 | EC: the JS file fails to load and leaves «Henter …» | low | Same origin as the stylesheet, so it is unlikely. | reject |
+| 25 | EC: NaN feature values | false | Empty cells become `None` (`app/prediksjon/__init__.py:99`), and `lag_fakta` filters out `None`. | reject |
+| 26 | BH/EC: the heading «Hvorfor avvik er ventet» also shows on baseline rows | medium | Real and visible to users. The heading is set in UX §4 and the frozen S1, so the fix edits this build's spec. | reject here; raised with Theodor |
+
+## Design Notes
+
+**Known limitation of the answer check (Theodor, 2026-11-18):** «en», «ett» and «én» as numbers («en time», «ett anløp») get past the check. They cannot be told apart from the article, so they are not in the `tallord` list (`app/begrunnelse/kontroll.py`). The check also does not catch a false claim written with words and numbers that are all in the input. It is a guard, not proof.
+
+**Direction (added after the smoke call 2026-11-18):** the `retning` rule uses the sign of `predikert_avvik_min` for Modell v1, and the actual sign of the group's baseline offset for the baseline and delegated rows (`predikert = rapportert ETA − offset`). It does not assume the offset is positive. Both offsets are positive today (Passasjer 44.75, Øvrige 64.2 min, `data/baseline.json`), and `test_dagens_forskyvninger_er_positive` turns red if that changes.
+
+**Cost estimate** (OpenRouter's public price list, 2026-11-18, per 1M tokens). The cheapest endpoint for the model costs USD 0.036 input and 0.50 output. The most expensive one costs 0.60 and 2.40. One call is about 700 input tokens and at most 300 output tokens (`max_tokens`). That is about USD 0.00018 per call at the floor price, so USD 20 covers about 110,000 calls. Even at the most expensive endpoint it is about USD 0.0011, or about 17,500 calls. A demo with the cap of 20 costs under USD 0.01. Prices change (DeepSeek's own endpoint changes price by time of day), so the estimate is checked again before delivery. Risk: if the model spends output tokens on reasoning, the answer may be empty. The check then gives the fallback, and the smoke call shows whether this happens.
+
+**Why POST and no background thread:** on Vercel, work after the response may be stopped. The call runs inside its own request, which the browser starts after the page is shown. POST keeps crawlers from triggering paid calls.
+
+## Verification
+
+**Commands:**
+- `.venv/bin/python -m pytest -q` -- expected: all green, no network
+- `grep -rn "deepseek\|openrouter.ai" app/ | grep -v konfig.py` -- expected: only the client's URL constant
+
+- Mutation check (as in E2): the cap (`LLM_MAKS_KALL` off by one: 19/21 must turn a test red), the failure cache time (299/300/301 s, and a success that must never expire), and the length check (3 vs. 4 sentences, 400 vs. 401 characters). Each mutant must turn at least one test red, or a test is added.
+
+**Manual checks:**
+- Only when Theodor asks: one smoke call on screen C in real mode. Prompt and answer are logged in `.logs/theodor-gimming/` (E3-S03), without the key.

@@ -52,6 +52,59 @@ def _ingen_modell_paa_testrader(request, monkeypatch):
     monkeypatch.setattr(ModellPrediktor, "prediker", vaktet)
 
 
+class NettSperret(AssertionError):
+    """En test prøvde å åpne en socket. AI-testene bruker bare testmodus eller en falsk transport (E3-S01)."""
+
+
+@pytest.fixture(autouse=True)
+def _ai_vakter(monkeypatch):
+    """AI-laget (E3-S01): ingen nøkkel, testmodus, socketer sperret og tom cache i hver test.
+
+    Ingen test gjør et ekte kall. Ekte modus testes bare med en falsk transport og den falske nøkkelen
+    ``sk-or-TEST-IKKE-EKTE``."""
+    import socket
+
+    import app.begrunnelse as begrunnelse
+
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    for navn in ("LLM_MODELL", "LLM_ROUTING", "LLM_MAKS_KALL", "LLM_FEIL_TTL_S", "LLM_TIMEOUT_S", "LLM_RESONNERING"):
+        monkeypatch.delenv(navn, raising=False)
+    monkeypatch.setenv("LLM_MODUS", "test")
+
+    def sperret(*args, **kwargs):
+        raise NettSperret("nettkall i en test")
+
+    monkeypatch.setattr(socket.socket, "connect", sperret)
+    monkeypatch.setattr(socket.socket, "connect_ex", sperret)
+    monkeypatch.setattr(socket, "create_connection", sperret)
+    monkeypatch.setattr(socket, "getaddrinfo", sperret)
+    monkeypatch.setattr(begrunnelse, "transport", None)
+    begrunnelse.nullstill()
+    yield
+    begrunnelse.nullstill()
+
+
+class FalskTransport:
+    """Svarer som OpenRouter uten nett. ``svar`` er tekst (200), et heltall (HTTP-status) eller et unntak."""
+
+    def __init__(self, svar="", finish_reason="stop"):
+        self.svar = svar
+        self.finish_reason = finish_reason
+        self.kall = []
+
+    def __call__(self, url, headers, body, timeout):
+        self.kall.append({"url": url, "headers": dict(headers), "body": json.loads(body), "timeout": timeout})
+        if isinstance(self.svar, BaseException):
+            raise self.svar
+        if isinstance(self.svar, int):
+            return self.svar, b""
+        if isinstance(self.svar, bytes):
+            return 200, self.svar
+        kropp = {"choices": [{"message": {"role": "assistant", "content": self.svar},
+                              "finish_reason": self.finish_reason}]}
+        return 200, json.dumps(kropp).encode("utf-8")
+
+
 # Den ekte ``metrikker.json`` sett som før testkjøringen (E2-S10, beslutning 1A): ``testkjoringer = 0``, tom logg og uten
 # ``test``-blokken. Testene som leser den ekte fila og forventer valideringsvisningen, er da grønne både før og etter
 # den ene testkjøringen, og ingen test må endres etter den.

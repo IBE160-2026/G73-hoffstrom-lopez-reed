@@ -310,3 +310,54 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
   - Det dokumentasjonen *ikke* sier, er ikke en bekreftelse. «Avhengighetene kommer fra X fordi Y mangler» må stå som en antakelse til den er sett i en byggelogg.
   - En grønn deploy-sjekk betyr at bygget gikk, ikke at appen svarer. Si aldri at noe virker før siden faktisk er åpnet.
   - Samme mønster som tidligere i prosjektet («verified against live API» 22.10): en påstand om et eksternt system ble skrevet uten å være prøvd mot systemet.
+
+## 2026-11-18 — Mutasjonssjekken ga først gale svar på grunn av gamle `.pyc`-filer (E3-S01–S04)
+
+- **Hva:** Implementeringsagenten kjørte mutasjonssjekken på kallgrensen, cache-tiden og lengdekontrollen. Den første runden ga feil resultat. `sys.pycache_prefix` peker til `~/Library/Caches/com.apple.python`, og en endring av samme størrelse innenfor samme sekund ble ikke kompilert på nytt. Testene kjørte altså mot den gamle koden.
+- **Hvordan det ble oppdaget:** agenten selv, da resultatene ikke stemte med mutantene.
+- **Resultat:** cachen ble tømt, og alt ble kjørt på nytt med `PYTHONDONTWRITEBYTECODE=1`. 14 av 14 mutanter ble fanget, og en kontrollkjøring uten endring var grønn.
+- **Lærdom (råt):**
+  - En mutasjonssjekk som bare endrer ett tegn, kan gå under radaren til bytekode-cachen. Kjør mutasjonene med `PYTHONDONTWRITEBYTECODE=1`.
+  - En kontrollkjøring på uendret kode viser ikke denne feilen. Det gjør bare en mutant som *skal* gi rødt.
+
+## 2026-11-18 — Reviewen fant at tallkontrollen ikke ser fortegn (E3-S03)
+
+- **Hva:** Kontrollen av svaret fra språkmodellen sammenligner tallene i svaret med tallene i inputen, men regex-en tok ikke med fortegn. Et svar med «+12 min» der inputen sa «−12», ville bestått og blitt vist som «KI-GENERERT». Tallene i etikettene (for eksempel «1 = rett mot, −1 = rett bort») var også tillatt i svaret. Mutasjonssjekken dekket grensene den var bedt om (20 kall, 300 s, 400 tegn og 3 setninger), men ikke dette.
+- **Hvordan det ble oppdaget:** alle tre review-lagene (BH, EC og VG) meldte det hver for seg.
+- **Resultat:** se Review Triage Log i specen (`spec-e3-s01-s04-…`, rad 4 og 5) og `git log --grep E3-S03`.
+- **Lærdom (råt):**
+  - En kontroll som skal stoppe oppdiktede tall, må testes med feil *retning*, ikke bare med tall som mangler.
+  - Mutasjonssjekken finner bare hull i grensene den blir bedt om å sjekke. Den erstatter ikke reviewen.
+
+## 2026-11-18 — Claude skrev «han» om Theodor i loggen (E0-S16)
+
+- **Hva:** I sesjonsloggen og i `issues.md` skrev Claude «før han sier fra» om Theodor. Ingen i gruppa har oppgitt pronomen, og Claude skal da bruke navnet.
+- **Hvordan det ble oppdaget:** Claude selv, da `issues.md` ble lest igjen samme dag.
+- **Resultat:** rettet til «Theodor» i begge filene (`740a8a9`).
+- **Lærdom (råt):** bruk navnet. Et navn sier ingenting om hvilke pronomen personen bruker.
+
+## 2026-11-18 — Røykkallet ga ingen tekst: resonneringen brukte opp hele token-grensen (E3-S03)
+
+- **Hva:** Claude satte `max_tokens` = 300 i specen og klienten. Overslaget i beslutning 13 regnet med at hele grensen gikk til svaret. Modellen resonnerer likevel som standard (innsats `high`). Dermed brukte alle tre ekte kall alle 300 tokens på resonnering og ga `content` = null. Risikoen var nevnt i specen og i beslutning 13, og reviewen meldte den (utsatt som «maybe-false»). Claude sjekket likevel ikke modellens standard for resonnering i OpenRouters offentlige modellliste. Den lå i den samme fila som ble lastet ned for å sjekke modellnavnet.
+- **Hvordan det ble oppdaget:** røykkallet med 3 kall (Theodor ba om det). Utskriften viste `reasoning_tokens` = 300 og `finish_reason` = `length` for alle tre.
+- **Resultat:** kontrollen ga tilbakefallet (`avkortet`), så ingen feil tekst ble vist. Kostnaden var USD 0,0005 for alle tre. Klienten sender nå `reasoning: {"effort": "none"}`. Rettingen er ikke prøvd med et ekte kall ennå. Se `5b2f820` og beslutning 13.
+- **Lærdom (råt):**
+  - En risiko som er «nevnt», er ikke sjekket. Når svaret ligger i en fil som allerede er lastet ned, skal den leses før koden skrives.
+  - Røykkallet var verdt det: tre kall og en halv tiendedels cent fant en feil som ville gitt testmodus på hvert eneste kall i produksjon.
+  - Tilbakefallet virket som det skulle. Den ekte feilen ble stoppet av kontrollen, ikke av flaks.
+
+## 2026-11-18 — Claude ødela markøren i prompt.md, og ekte modus ville aldri virket (E3-S03, begrunnelse-v4)
+
+- **Hva:** Da Claude skrev prompten `begrunnelse-v4`, ble systemteksten satt inn etter den *første* forekomsten av `<!-- SYSTEM -->`. Den står i dokumentasjonslinjen, inne i backticks. Markøren havnet dermed ikke på en egen linje, og `openrouter_klient._prompt()` kastet `ValueError` på hvert ekte kall. Hvert kall ville falt tilbake til testmodus (`uventet_ValueError`).
+- **Hvordan det ble oppdaget:** implementeringsagenten oppdaterte testene for v4 og så at 38 tester i ekte modus feilet på samme sted. Den meldte feilen i stedet for å jobbe rundt den.
+- **Resultat:** markøren står igjen alene på en linje, og suiten er grønn (679). Rettingen ligger i `bb19734`.
+- **Lærdom (råt):**
+  - En tekstendring med `index()` på en markør som også står i dokumentasjonen, treffer feil sted. Søk etter markøren slik parseren gjør, alene på linja.
+  - Testene i ekte modus fanget det, fordi de går gjennom `bygg_prompt`. Det er grunnen til at de ikke skal mocke bort prompten.
+
+## 2026-11-18 — Kontrollen var testet, men ikke koblingen i adapteren (E3-S03, begrunnelse-v5)
+
+- **Hva:** Testene for v5 sjekket de nye reglene (`metode`, og at hele innledningen må stå først) ved å kalle `kontroller` direkte. Ingen test sjekket at adapteren faktisk sender `modellrad` og hele innledningen til kontrollen. Da Claude fjernet `modellrad` fra kallet, eller sendte bare konklusjonen, var hele suiten fortsatt grønn.
+- **Hvordan det ble oppdaget:** Claudes mutasjonssjekk av v5. 2 av 16 mutanter overlevde.
+- **Resultat:** to nye tester går gjennom `hent_begrunnelse` med en falsk transport. Etter det ble 16 av 16 fanget (`aeff198`).
+- **Lærdom (råt):** en regel som er testet alene, er ikke testet i bruk. Når en ny parameter skal føres gjennom adapteren, trengs minst én test gjennom adapteren for hver parameter.

@@ -832,3 +832,293 @@ def test_panel_uu_struktur(monkeypatch, valideringsvisning):
         for td in table.finn_alle("td"):
             assert _ren(td.skjermlesertekst()), "verdicelle uten tekst"
             assert "style" not in td.attrs
+
+
+# --- Skjerm C og begrunnelsen (E3-S04, UX §4, PRD FR7, FR11, FR11a; spec-valg S1 og S7) ------------------------
+# Baselinerader fra standardvinduet. Modellrader bare fra VALIDERING_NAA (regelen om testrader).
+
+import logging  # noqa: E402
+import time  # noqa: E402
+
+from conftest import FalskTransport  # noqa: E402
+
+import app.begrunnelse as begrunnelse  # noqa: E402
+from app.begrunnelse.klartekst import innledning  # noqa: E402
+
+FALSK_NOKKEL = "sk-or-TEST-IKKE-EKTE"
+HENTER = "Henter forklaring …"
+BERGEN_ENERGY = 3391094
+
+
+def _detalj(client, voyageid=BERGEN_ENERGY):
+    svar = client.get(f"/anlop/{voyageid}")
+    return svar, parse_html(svar.get_data(as_text=True))
+
+
+def _med_id(dokument, id_):
+    treff = [n for n in dokument.iter() if n.attrs.get("id") == id_]
+    return treff[0] if treff else None
+
+
+def _ekte(monkeypatch, transport):
+    monkeypatch.setenv("LLM_MODUS", "ekte")
+    monkeypatch.setenv("OPENROUTER_API_KEY", FALSK_NOKKEL)
+    monkeypatch.setattr(begrunnelse, "transport", transport)
+    return transport
+
+
+def _godt_svar(voyageid=BERGEN_ENERGY, naa=STANDARD_NAA):
+    anlop = next(a for a in anlop_i_vindu(naa) if a.voyageid == voyageid)
+    inp = lag_input(anlop, naa)
+    p = BaselinePrediktor().prediker([inp], naa)[0]
+    return f"{innledning(inp, p)} Beregningen kan ikke varsle avvik."
+
+
+def test_skipsnavn_lenker_til_detaljsiden(client, dokument):
+    for rad in _rader(dokument):
+        lenker = rad["Skip"].finn_alle("a")
+        assert len(lenker) == 1
+        href = lenker[0].attrs["href"]
+        assert re.fullmatch(r"/anlop/\d+", href)
+        assert client.get(href).status_code == 200
+
+
+def test_detalj_begrunnelse(client):
+    """Testmodus: hele skjerm C er server-rendret, med mal-teksten merket «Testmodus» og uten JavaScript."""
+    svar, d = _detalj(client)
+    assert svar.status_code == 200
+    assert _ren(d.finn_alle("h1")[0].tekst()) == "BERGEN ENERGY"
+    dl = d.finn_alle("dl")[0]
+    par = dict(zip([_ren(n.tekst()) for n in dl.finn_alle("dt")], [_ren(n.tekst()) for n in dl.finn_alle("dd")]))
+    assert par["Rapportert ETA"] == "ons 08.10 11:00"
+    assert par["Predikert ankomst"] == "ons 08.10 09:56"
+    assert par["Horisont"] == "≤ 6 t"
+    assert par["Prediktor"] == "Kalibrert baseline"
+    assert par["Varsel"] == "Ingen varsel: baselinen varsler ikke avvik"
+    tekst = _ren(d.tekst())
+    assert "Slik ble prediksjonen laget" in tekst
+    assert par["Kuttpunkt (data fram til)"] == "ons 08.10 05:00"
+    assert "Kalibrert baseline: rapportert ETA − 64,2 min." in tekst
+    assert "64,2 min er median tid fra sonegrense til kai for øvrige (ikke-rutegående) skip i treningsdata." in tekst
+    region = _med_id(d, "begrunnelse-svar")
+    assert region.attrs.get("aria-live") == "polite"
+    assert "data-url" not in region.attrs
+    assert _ren(region.tekst()) == _ren(f"Testmodus {begrunnelse.testtekst(*_inp_p()).tekst}")
+    assert _ren(region.tekst()).startswith(
+        "Testmodus Ventes inn i havneområdet kl. 09:56, 64 min før rapportert ETA (11:00). "
+        "Det er vanlig for denne skipsgruppen.")
+    assert HENTER not in tekst
+    assert d.finn_alle("script") == [] and d.finn_alle("noscript") == []
+    assert begrunnelse.antall_kall() == 0
+
+
+def test_detalj_ukjent_seilas_gir_404_med_lenke_tilbake(client):
+    svar, d = _detalj(client, 1)
+    assert svar.status_code == 404
+    lenker = [a.attrs.get("href") for a in d.finn_alle("a")]
+    assert "/" in lenker
+    assert "Tilbake til anløpslista" in _ren(d.tekst())
+    assert client.post("/anlop/1/begrunnelse").status_code == 404
+
+
+def test_detalj_venter_ikke_paa_spraakmodellen(client, monkeypatch):
+    """FR11a: en transport som sover 30 s, rører ikke GET. Siden svarer på under 1 s med «Henter forklaring …»."""
+    class Sover(FalskTransport):
+        def __call__(self, *a, **k):
+            self.kall.append(a)
+            time.sleep(30)
+
+    t = _ekte(monkeypatch, Sover())
+    _detalj(client)  # oppvarming: data og prediktor lastes før tidtakingen
+    start = time.perf_counter()
+    svar, d = _detalj(client)
+    assert time.perf_counter() - start < 1
+    assert svar.status_code == 200
+    assert t.kall == []
+    region = _med_id(d, "begrunnelse-svar")
+    assert region.attrs.get("aria-live") == "polite"
+    assert _ren(region.tekst()) == HENTER
+    assert region.attrs["data-url"] == f"/anlop/{BERGEN_ENERGY}/begrunnelse"
+    noscript = d.finn_alle("noscript")
+    body_noscript = [n for n in noscript if _med_id(n, "begrunnelse-henter") is None and "Testmodus" in n.tekst()]
+    assert len(body_noscript) == 1
+    mal = begrunnelse.testtekst(*_inp_p()).tekst
+    assert mal in _ren(body_noscript[0].tekst()) and region.attrs["data-mal"] == mal
+    # Uten JavaScript skjules «Henter forklaring …» av en <noscript><style> i <head>.
+    head = d.finn_alle("head")[0]
+    assert any("#begrunnelse-henter" in n.tekst() and "display: none" in n.tekst() for n in head.finn_alle("noscript"))
+    scripts = d.finn_alle("script")
+    assert [s.attrs.get("src") for s in scripts] == ["/static/begrunnelse.js"]
+
+
+def _inp_p(voyageid=BERGEN_ENERGY, naa=STANDARD_NAA):
+    anlop = next(a for a in anlop_i_vindu(naa) if a.voyageid == voyageid)
+    inp = lag_input(anlop, naa)
+    return inp, BaselinePrediktor().prediker([inp], naa)[0]
+
+
+def test_cachet_svar_vises_server_rendret(client, monkeypatch):
+    t = _ekte(monkeypatch, FalskTransport(_godt_svar()))
+    svar = client.post(f"/anlop/{BERGEN_ENERGY}/begrunnelse")
+    assert svar.status_code == 200
+    assert svar.get_json() == {"tekst": _godt_svar(), "merke": "KI-GENERERT"}
+    assert len(t.kall) == 1
+    _detalj(client)  # oppvarming: data og prediktor lastes før tidtakingen
+    start = time.perf_counter()
+    _, d = _detalj(client)
+    assert time.perf_counter() - start < 1
+    region = _med_id(d, "begrunnelse-svar")
+    assert _ren(region.tekst()) == f"KI-GENERERT {_godt_svar()}"
+    assert d.finn_alle("script") == []
+    # Nye visninger og nye POST gir ingen nye kall.
+    client.post(f"/anlop/{BERGEN_ENERGY}/begrunnelse")
+    _detalj(client)
+    assert len(t.kall) == 1
+
+
+@pytest.mark.parametrize("utfall, kode", [
+    (TimeoutError(), "timeout"), (500, "http_500"), (402, "kvote_402"), (401, "http_401"),
+    ("{innledning} Været er dårlig.", "kontroll_aarsak"), ("Været er dårlig.", "kontroll_konklusjon"),
+    ("{innledning} Ifølge baselinen er det slik.", "kontroll_begrep"), ("", "kontroll_tom"),
+])
+def test_begrunnelse_endepunkt_alltid_200(client, monkeypatch, caplog, utfall, kode):
+    if isinstance(utfall, str):
+        utfall = utfall.replace("{innledning}", innledning(*_inp_p()))
+    _ekte(monkeypatch, FalskTransport(utfall))
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        svar = client.post(f"/anlop/{BERGEN_ENERGY}/begrunnelse")
+    assert svar.status_code == 200
+    data = svar.get_json()
+    assert data == {"tekst": begrunnelse.testtekst(*_inp_p()).tekst, "merke": "Testmodus (ekte kall feilet)"}
+    assert kode in caplog.text
+    assert FALSK_NOKKEL not in svar.get_data(as_text=True) + caplog.text
+    # Feilen er cachet: siden viser den med en gang.
+    _, d = _detalj(client)
+    assert _ren(_med_id(d, "begrunnelse-svar").tekst()).startswith("Testmodus (ekte kall feilet)")
+
+
+def test_begrunnelse_endepunkt_uten_nokkel(client, monkeypatch):
+    monkeypatch.setenv("LLM_MODUS", "ekte")
+    svar = client.post(f"/anlop/{BERGEN_ENERGY}/begrunnelse")
+    assert svar.status_code == 200 and svar.get_json()["merke"] == "Testmodus (ekte kall feilet)"
+    assert begrunnelse.antall_kall() == 0
+
+
+def test_begrunnelse_endepunkt_uventet_feil_gir_200(client, monkeypatch):
+    def feiler(*a, **k):
+        raise RuntimeError(FALSK_NOKKEL)
+
+    monkeypatch.setattr(begrunnelse, "hent_begrunnelse", feiler)
+    svar = client.post(f"/anlop/{BERGEN_ENERGY}/begrunnelse")
+    assert svar.status_code == 200 and svar.get_json()["merke"] == "Testmodus (ekte kall feilet)"
+    assert FALSK_NOKKEL not in svar.get_data(as_text=True)
+
+
+def test_begrunnelse_kreves_med_post(client):
+    assert client.get(f"/anlop/{BERGEN_ENERGY}/begrunnelse").status_code == 405
+
+
+@pytest.mark.parametrize("modus", ["test", "ekte"])
+def test_detalj_kan_brukes_med_tastatur(client, monkeypatch, modus):
+    """UU2 på skjerm C: alle lenker har href, ingen tabindex > 0, ingen JS-handlere, synlig tilbakelenke.
+    Opplevelsen (fokusrekkefølge, synlig fokus) sjekkes manuelt (UX §6)."""
+    if modus == "ekte":
+        _ekte(monkeypatch, FalskTransport(_godt_svar()))
+    _, d = _detalj(client)
+    assert d.finn_alle("html")[0].attrs.get("lang") == "nb"
+    assert len(d.finn_alle("h1")) == 1
+    lenker = d.finn_alle("a")
+    assert lenker and all(a.attrs.get("href") for a in lenker)
+    assert lenker[0].attrs["href"].startswith("#")  # hopp-lenka først
+    assert any(a.attrs["href"] == "/" for a in lenker)
+    for n in d.iter():
+        assert not any(k.startswith("on") for k in n.attrs)
+        assert n.attrs.get("tabindex") in (None, "0", "-1")
+
+
+@pytest.fixture
+def modell_validering(monkeypatch):
+    monkeypatch.setenv("PREDIKTOR", "modell")
+    return create_app({"TESTING": True, "STANDARD_NAA": VALIDERING_NAA}).test_client()
+
+
+def _modellrad(varsel):
+    inputs = [lag_input(a, VALIDERING_NAA) for a in anlop_i_vindu(VALIDERING_NAA)]
+    for inp, p in zip(inputs, ModellPrediktor(prediksjon.MODELL_DIR).prediker(inputs, VALIDERING_NAA)):
+        if p.forventet_forsinket is varsel:
+            return inp, p
+    raise AssertionError(varsel)
+
+
+def test_detalj_med_modellen_varsel(modell_validering):
+    inp, p = _modellrad(True)
+    svar, d = _detalj(modell_validering, inp.voyageid)
+    assert svar.status_code == 200
+    tekst = _ren(d.tekst())
+    assert "▲ VARSEL" in tekst
+    assert "Modell v1 (" in tekst and "Modellen varsler når predikert avvik er over 120 min." in tekst
+    assert f"justert med modellens predikerte avvik på +{p.forklaring['predikert_avvik_min']:.0f} min." in tekst
+    region = _ren(_med_id(d, "begrunnelse-svar").tekst())
+    assert region.startswith(f"Testmodus {innledning(inp, p)}") and "over varselgrensen på 120 min" in region
+
+
+def test_detalj_med_modellen_uten_varsel(modell_validering):
+    inp, p = _modellrad(False)
+    _, d = _detalj(modell_validering, inp.voyageid)
+    dl = d.finn_alle("dl")[0]
+    par = dict(zip([_ren(n.tekst()) for n in dl.finn_alle("dt")], [_ren(n.tekst()) for n in dl.finn_alle("dd")]))
+    assert par["Varsel"] == "Ingen varsel"
+    assert "VARSEL" not in _ren(dl.tekst())
+
+
+@pytest.mark.parametrize("avvik, vist", [(152.0, "+152"), (-12.4, "\u221212"), (0.0, "0"), (-0.4, "0")])
+def test_metode_tekst_fortegn(avvik, vist):
+    from app import _minutter, metode_tekst
+    from app.prediksjon import Prediksjon
+
+    assert _minutter(avvik, fortegn=True) == vist
+    inp, b = _inp_p()
+    p = Prediksjon(inp.voyageid, inp.horisont_timer, b.predikert_ankomst, avvik > 120,
+                   {"metode": "modell", "gruppe": "Øvrige", "predikert_avvik_min": avvik, "offset_ovrige_min": 64.2})
+    assert metode_tekst(inp, p)[0] == (
+        f"Modell v1 (≤ 6 t): kalibrert baseline (rapportert ETA − 64,2 min) justert med modellens predikerte avvik "
+        f"på {vist} min.")
+
+
+def test_detalj_med_modellen_delegert(modell_validering):
+    inp, p = _modellrad(None)
+    _, d = _detalj(modell_validering, inp.voyageid)
+    grunn = DELEGERT_TEKST[p.forklaring["delegert"]]
+    assert f"Ingen varsel ({grunn})" in _ren(d.tekst())
+    assert f"Modell v1 vurderer ikke dette anløpet ({grunn})" in _ren(d.tekst())
+    assert "forsink" not in _ren(_med_id(d, "begrunnelse-svar").tekst()).lower()
+
+
+def test_begrunnelse_js_finnes_og_bruker_post():
+    from pathlib import Path
+
+    js = (Path(__file__).resolve().parent.parent / "app" / "static" / "begrunnelse.js").read_text(encoding="utf-8")
+    assert 'method: "POST"' in js and "begrunnelse-svar" in js
+    assert "Testmodus (ekte kall feilet)" in js
+    assert "innerHTML" not in js  # svaret settes som tekst, aldri som HTML
+
+
+def _begrunnelse_overskrift(d):
+    return _ren(_med_id(d, "begrunnelse-tittel").tekst())
+
+
+@pytest.mark.parametrize("varsel, overskrift", [
+    (True, "Hvorfor avvik er ventet"),
+    (False, "Om prediksjonen"),
+    (None, "Om prediksjonen"),
+])
+def test_overskrift_paa_begrunnelsen_bare_ved_varsel(modell_validering, varsel, overskrift):
+    """«Hvorfor avvik er ventet» bare når modellen varsler, ellers «Om prediksjonen» (UX §4, 18.11.2026)."""
+    inp, _ = _modellrad(varsel)
+    _, d = _detalj(modell_validering, inp.voyageid)
+    assert _begrunnelse_overskrift(d) == overskrift
+
+
+def test_overskrift_paa_baselinen(client):
+    _, d = _detalj(client)
+    assert _begrunnelse_overskrift(d) == "Om prediksjonen"
