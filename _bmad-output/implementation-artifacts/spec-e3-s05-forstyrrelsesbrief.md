@@ -101,6 +101,7 @@ context:
   - With 1 alert nothing changes (1–2 sentences by length). The 700-character limit is unchanged.
   - Mutation check: 11 mutants, all red.
 - `brief-v4`/`begrunnelse-v8` (Theodor, 2026-11-23): distance, speed and direction are written in the past tense, at the last position, with its time when the facts have it. With 2–3 alerts, «Siste AIS-posisjon» is also sent per ship. The new check rule `presens` rejects «er … km», «går med … knop» and «er på vei» for both the brief and screen C. Mutation check: 5 mutants, all red.
+- Finding #1 (deferred: `begrunnelse.js` only checked as source text) is now covered: `tests/test_begrunnelse_js.py` runs the script in Node against a fake DOM (`tests/js/begrunnelse_harness.js`). It covers the failure branch (network error, HTTP 500, invalid text, invalid label) and the success branch for screen C and the brief, and it is skipped when `node` is missing. Mutation check: 10 mutants in the JS, all red (2026-11-23).
 
 ## Review Triage Log
 
