@@ -154,27 +154,34 @@ def lag_fakta(inp: PrediksjonsInput, prediksjon: Prediksjon) -> Dict[str, str]:
     return fakta
 
 
-# Feltene fra ``lag_fakta`` som ikke gjelder briefen (briefen har sin egen innledning og sitt eget antall setninger).
-# Briefen: hvor mange setninger modellen får legge til etter innledningen (``brief-v2``). Antallet avhenger av hvor
-# lang innledningen er, så briefen holder seg under 700 tegn: om lag 200 tegn per setning, minst 1 og høyst 2.
-# Med 1 varsel blir det 2, med 3 varsler 1 (røykkall brief-v1, 23.11.2026).
+# Briefen: hvor mange setninger modellen får legge til etter innledningen (``brief-v3``).
+# - 1 varsel: etter hvor lang innledningen er, om lag 200 tegn per setning, minst 1 og høyst 2 (``brief-v2``).
+# - 2–3 varsler: én kort setning per skip, og per skip sendes bare avstand, retning og fart (Theodor 23.11.2026,
+#   etter røykkallet med ``brief-v2``, der modellen skrev én setning per skip uansett).
+# Aldri over 5 setninger til sammen, og grensen på 700 tegn står.
 BRIEF_TEGN_PER_SETNING = 200
 BRIEF_MAKS_TILLEGG = 2
+BRIEF_FLERE_FRA = 2  # fra så mange anløp i briefen gjelder én setning per skip
+BRIEF_FELT_FLERE = ("Skip", "Avstand til havna", "Retning", "Fart")
 
 
-def brief_setninger_igjen(start: str) -> int:
-    """Setningene modellen kan legge til etter innledningen ``start``: 1 eller 2, og aldri over 5 til sammen."""
-    etter_lengde = (BRIEF_MAKS_TEGN - len(start)) // BRIEF_TEGN_PER_SETNING
+def brief_setninger_igjen(start: str, antall_valgte: int = 1) -> int:
+    """Setningene modellen kan legge til etter innledningen ``start``. Med ``antall_valgte`` ≥ 2 er det én per skip,
+    ellers 1 eller 2 etter lengden. Aldri over 5 til sammen."""
     etter_antall = BRIEF_MAKS_SETNINGER - antall_setninger(start)
+    if antall_valgte >= BRIEF_FLERE_FRA:
+        return max(1, min(antall_valgte, etter_antall))
+    etter_lengde = (BRIEF_MAKS_TEGN - len(start)) // BRIEF_TEGN_PER_SETNING
     return max(1, min(BRIEF_MAKS_TILLEGG, etter_lengde, etter_antall))
 
 
+# Feltene fra ``lag_fakta`` som ikke gjelder briefen (briefen har sin egen innledning og sitt eget antall setninger).
 _BARE_BEGRUNNELSE = ("Innledning (skriv ordrett først)", "Setninger du kan legge til")
 
 
 def lag_brief_fakta(par, naa: dt.datetime, valgte, antall_varsler: int) -> Dict[str, str]:
-    """Faktaene til briefen (``brief-v2``, E3-S05): et hode for vinduet og ``lag_fakta`` for hvert anløp som er tatt
-    med, med nummerert prefiks («Anløp 1 – Skip»). ``par`` er alle (``PrediksjonsInput``, ``Prediksjon``) i vinduet,
+    """Faktaene til briefen (``brief-v3``, E3-S05): et hode for vinduet og ``lag_fakta`` for hvert anløp som er tatt
+    med (med 2–3 anløp bare skip, avstand, retning og fart), med nummerert prefiks («Anløp 1 – Skip»). ``par`` er alle (``PrediksjonsInput``, ``Prediksjon``) i vinduet,
     og ``valgte`` er de varslede anløpene briefen tar med (``klartekst.velg_varslede``). Ingen fasit, MMSI eller
     seilas-ID, og ingen andre skip enn de som er tatt med."""
     for inp, p in par:
@@ -184,15 +191,18 @@ def lag_brief_fakta(par, naa: dt.datetime, valgte, antall_varsler: int) -> Dict[
     slutt = naa.astimezone(dt.timezone.utc) + dt.timedelta(hours=VINDU_TIMER)
     fakta = {
         "Innledning (skriv ordrett først)": start,
-        "Setninger du kan legge til": str(brief_setninger_igjen(start)),
+        "Setninger du kan legge til": str(brief_setninger_igjen(start, len(valgte))),
         "Vindu": f"{ukedag_dato_klokke(naa)} – {ukedag_dato_klokke(slutt)}",
         "Anløp i vinduet": str(len(par)),
         "Vurdert av modellen": str(sum(1 for _, p in par if p.forklaring.get("metode") == "modell")),
         "Anløp med varsel": str(antall_varsler),
     }
+    flere = len(valgte) >= BRIEF_FLERE_FRA
     for nr, (inp, p) in enumerate(valgte, 1):
-        fakta[f"Anløp {nr} – Konklusjon"] = innledning(inp, p)
+        if not flere:
+            fakta[f"Anløp {nr} – Konklusjon"] = innledning(inp, p)
         for k, v in lag_fakta(inp, p).items():
-            if k not in _BARE_BEGRUNNELSE:
-                fakta[f"Anløp {nr} – {k}"] = v
+            if k in _BARE_BEGRUNNELSE or (flere and k not in BRIEF_FELT_FLERE):
+                continue
+            fakta[f"Anløp {nr} – {k}"] = v
     return fakta

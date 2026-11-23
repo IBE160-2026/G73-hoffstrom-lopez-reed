@@ -95,6 +95,11 @@ context:
   - With 3 alerts, `brief-v1` went over 700 characters. The model may now add 1–2 sentences after the opening (`input.brief_setninger_igjen`: about 200 characters per sentence, at least 1 and at most 2), and the check rejects more than that. This gives 2 with 1 alert and 1 with 3 alerts. The 700-character limit is unchanged.
   - «Rekker fram til rapportert ETA» is sent only when the ship is heading toward the harbour (`kurs_mot_havn` > 0) in the shared `lag_fakta`. This applies to both the brief and screen C.
   - Mutation check: 8 mutants, all red.
+- `brief-v3` (Theodor, 2026-11-23, after the `brief-v2` smoke call, where the model wrote one sentence per ship although the facts allowed 1):
+  - With 2–3 alerts, the model may add one short sentence per ship, and the check allows the opening plus that many, never over 5 in total.
+  - For each of those ships only ship, distance, direction and speed are sent.
+  - With 1 alert nothing changes (1–2 sentences by length). The 700-character limit is unchanged.
+  - Mutation check: 11 mutants, all red.
 
 ## Review Triage Log
 

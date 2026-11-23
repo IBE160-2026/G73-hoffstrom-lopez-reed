@@ -1132,7 +1132,7 @@ def navn(n):
     return f"SKIP {chr(ord('A') + n)}"
 
 
-def syntetisk_par(n, avvik, navn_=None, varsel=None, delegert=None):
+def syntetisk_par(n, avvik, navn_=None, varsel=None, delegert=None, featurer=None):
     """(input, prediksjon) med Modell v1-form. ``varsel`` None gir ``avvik > 120``. ``delegert`` gir en delegert rad.
     Seilas-ID er ``ID0 + n``, og skipet heter ``navn(n)``."""
     voyageid = ID0 + n
@@ -1148,7 +1148,7 @@ def syntetisk_par(n, avvik, navn_=None, varsel=None, delegert=None):
                            predikert_ankomst=ETA + dt.timedelta(minutes=avvik - 64),
                            forventet_forsinket=(avvik > 120) if varsel is None else varsel,
                            forklaring={"metode": "modell", "gruppe": "Øvrige", "predikert_avvik_min": float(avvik),
-                                       "offset_ovrige_min": 64.2, "eta_reported": ETA, "featurer": {}})
+                                       "offset_ovrige_min": 64.2, "eta_reported": ETA, "featurer": featurer or {}})
 
 
 def fem_varsler():
@@ -1254,7 +1254,7 @@ def test_brief_fakta_bare_modellens_data_og_valgte_skip():
     assert fakta["Anløp i vinduet"] == "7" and fakta["Vurdert av modellen"] == "6"
     assert fakta["Anløp med varsel"] == "5"
     assert fakta["Vindu"] == "fre 15.08 10:00 – lør 16.08 10:00"
-    assert fakta["Setninger du kan legge til"] == "1"  # 3 anløp i innledningen: lang start (brief-v2)
+    assert fakta["Setninger du kan legge til"] == "3"  # 3 anløp i briefen: én setning per skip (brief-v3)
     assert [fakta[f"Anløp {i} – Skip"] for i in (1, 2, 3)] == [navn(11), navn(13), navn(14)]
     assert "Anløp 4 – Skip" not in fakta
     tekst = json.dumps(fakta, ensure_ascii=False)
@@ -1407,9 +1407,9 @@ def test_brief_adapteren_tar_ikke_anlop():
 
 def test_prompt_brief_er_versjonert():
     tekst = openrouter_klient.PROMPT_BRIEF_FIL.read_text(encoding="utf-8")
-    assert "brief-v2" in tekst
+    assert "brief-v3" in tekst
     system, bruker = openrouter_klient.bygg_prompt({"Skip": "X"}, openrouter_klient.PROMPT_BRIEF_FIL)
-    assert "Ikke finn på årsaker" in system and "- Skip: X" in bruker and "brief-v2" not in system + bruker
+    assert "Ikke finn på årsaker" in system and "- Skip: X" in bruker and "brief-v3" not in system + bruker
     # Standardfila er uendret.
     assert openrouter_klient.bygg_prompt({"Skip": "X"})[0] != system
 
@@ -1478,13 +1478,13 @@ def test_app_brief_alle_rader_delegert():
 from app.begrunnelse.input import BRIEF_MAKS_TILLEGG, brief_setninger_igjen  # noqa: E402
 
 
-@pytest.mark.parametrize("antall_skip, forventet", [(1, 2), (2, 2), (3, 1)])
+@pytest.mark.parametrize("antall_skip, forventet", [(1, 2), (2, 2), (3, 3)])
 def test_brief_setninger_igjen_etter_innledningen(antall_skip, forventet):
-    """1 varsel gir 2 setninger fra modellen, 3 varsler gir 1 (røykkall brief-v1: 3 la til 3 og gikk over 700 tegn)."""
+    """1 varsel gir 2 setninger etter lengden (brief-v2). 2–3 varsler gir én per skip (brief-v3)."""
     par = [syntetisk_par(i, 300 - 10 * i, navn_=f"SKIP MED LANGT NAVN {i}") for i in range(1, antall_skip + 1)]
     valgte, antall = velg_varslede(par)
     start = brief_innledning(valgte, antall)
-    assert brief_setninger_igjen(start) == forventet
+    assert brief_setninger_igjen(start, len(valgte)) == forventet
     assert lag_brief_fakta(par, NAA_SYNT, valgte, antall)["Setninger du kan legge til"] == str(forventet)
 
 
@@ -1492,19 +1492,29 @@ def test_brief_setninger_igjen_grensene():
     assert brief_setninger_igjen("Kort. Start.") == BRIEF_MAKS_TILLEGG == 2
     assert brief_setninger_igjen("x" * 690) == 1  # alltid minst 1, så briefen når 3 setninger
     assert brief_setninger_igjen("En. To. Tre. Fire.") == 1  # aldri over 5 til sammen
+    assert brief_setninger_igjen("En. To.", 3) == 3  # én per skip
+    assert brief_setninger_igjen("En. To. Tre.", 3) == 2  # men aldri over 5 til sammen
+    assert brief_setninger_igjen("x" * 690, 2) == 2  # med flere skip styrer antallet, ikke lengden
 
 
 def test_brief_kontrollen_godtar_ikke_flere_setninger_enn_lovet(monkeypatch):
     ekte(monkeypatch)
-    par = fem_varsler()  # 3 anløp i innledningen: modellen får legge til 1 setning
+    par = fem_varsler()  # 3 anløp i briefen: modellen får legge til 3 setninger, én per skip
     valgte, antall = velg_varslede(par)
     start = brief_innledning(valgte, antall)
-    t = FalskTransport(f"{start} Alle kommer senere enn vanlig. Følg med på dem.")
+    t = FalskTransport(f"{start} Den første er nær. Den andre er nær. Den tredje er nær. Følg med.")
     monkeypatch.setattr(begrunnelse, "transport", t)
     assert hent_brief(par, NAA_SYNT, MODELL).merke == MERKE_FEILET
     begrunnelse.nullstill()
-    t.svar = f"{start} Alle kommer senere enn vanlig."
+    t.svar = f"{start} Den første er nær. Den andre er nær. Den tredje er nær."
     assert hent_brief(par, NAA_SYNT, MODELL).merke == MERKE_KI
+    begrunnelse.nullstill()
+    par1 = par[:1] + [ip for ip in par if ip[1].forventet_forsinket is not True]  # 1 varsel: høyst 2 setninger
+    valgte1, antall1 = velg_varslede(par1)
+    assert antall1 == 1
+    start1 = brief_innledning(valgte1, antall1)
+    t.svar = f"{start1} Den er nær. Den er rask. Følg med."
+    assert hent_brief(par1, NAA_SYNT, MODELL).merke == MERKE_FEILET
 
 
 @pytest.mark.parametrize("kurs, med", [(0.9, True), (1e-9, True), (0.0, False), (-0.3, False), (None, False)])
@@ -1514,3 +1524,27 @@ def test_rekker_fram_bare_paa_vei_mot_havna(kurs, med):
     p = modellprediksjon(74, featurer=_featurer(kurs_mot_havn=kurs, slakk_timer=3.8))
     fakta = lag_fakta(syntetisk_inp(), p)
     assert (REKKER in fakta) is med
+
+
+
+@pytest.mark.parametrize("antall_skip", [2, 3])
+def test_brief_fakta_med_flere_skip_bare_avstand_retning_og_fart(antall_skip):
+    """Med 2–3 varsler sendes bare skip, avstand, retning og fart per skip (brief-v3), så setningene blir korte."""
+    par = [syntetisk_par(i, 300 - 10 * i, featurer=_featurer(avgangshavn="ÅGOTNES", avgatt_for_kutt=1.0,
+                                                             timer_siden_avgang=2.0, fartoy_antall_tidligere=5.0,
+                                                             fartoy_snittavvik_min=20.0))
+           for i in range(1, antall_skip + 1)]
+    valgte, antall = velg_varslede(par)
+    fakta = lag_brief_fakta(par, NAA_SYNT, valgte, antall)
+    for nr in range(1, antall_skip + 1):
+        felt = {k.split(" – ", 1)[1] for k in fakta if k.startswith(f"Anløp {nr} – ")}
+        assert felt == {"Skip", "Avstand til havna", "Retning", "Fart"}, felt
+
+
+def test_brief_fakta_med_ett_skip_er_som_foer():
+    par = [syntetisk_par(1, 200, featurer=_featurer(avgangshavn="ÅGOTNES", avgatt_for_kutt=1.0,
+                                                    timer_siden_avgang=2.0))]
+    valgte, antall = velg_varslede(par)
+    fakta = lag_brief_fakta(par, NAA_SYNT, valgte, antall)
+    for felt in ("Konklusjon", "Avgang", "Avstand til havna", "Retning", "Fart", REKKER):
+        assert f"Anløp 1 – {felt}" in fakta, felt
