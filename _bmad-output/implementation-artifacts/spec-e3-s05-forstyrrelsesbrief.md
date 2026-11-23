@@ -91,6 +91,10 @@ context:
 - The shared cache/cap path is factored into `_hent_med_cache` and `_kall_og_kontroller`, and the justification keeps its cache key. Screen C's data attributes were renamed to `data-ki-url`/`data-ki-mal` for the shared JS, and the four screen C test assertions were updated to match (attribute names only).
 - Mutation check (orchestrator, after the review patches, 2026-11-23): `BRIEF_MAKS_TEGN` 699/701, `BRIEF_MIN_SETNINGER` 2/4, `BRIEF_MAKS_SETNINGER` 4/6, `BRIEF_MAKS_ANLOP` 2/4 and the sort direction. All 9 mutants turned a test red. The implementer's own run (11 mutants, including the tie-break and the lower sentence limit) was also all red.
 - Review patches: ship initials («G. M.», «LT.») no longer end a sentence (`_SETNINGSSLUTT`), the all-delegated wording in `app_brief`, the prompt rule on model-assessed calls, the JS source test, the `kontroll.py` docstring, and `begrunnelse.js` plus both POST routes in `docs/arkitektur.md`. Suite: 781 passed.
+- After the smoke call (Theodor, 2026-11-23, `brief-v2` and `begrunnelse-v7`):
+  - With 3 alerts, `brief-v1` went over 700 characters. The model may now add 1–2 sentences after the opening (`input.brief_setninger_igjen`: about 200 characters per sentence, at least 1 and at most 2), and the check rejects more than that. This gives 2 with 1 alert and 1 with 3 alerts. The 700-character limit is unchanged.
+  - «Rekker fram til rapportert ETA» is sent only when the ship is heading toward the harbour (`kurs_mot_havn` > 0) in the shared `lag_fakta`. This applies to both the brief and screen C.
+  - Mutation check: 8 mutants, all red.
 
 ## Review Triage Log
 

@@ -240,15 +240,18 @@ def hent_brief(par, naa, prediktor_navn: str) -> Begrunnelse:
 
     def ekte_kall(api_nokkel):
         from app.begrunnelse import openrouter_klient
-        from app.begrunnelse.input import lag_brief_fakta
+        from app.begrunnelse.input import brief_setninger_igjen, lag_brief_fakta
         from app.begrunnelse.klartekst import brief_innledning, velg_varslede
-        from app.begrunnelse.kontroll import BRIEF_MAKS_SETNINGER, BRIEF_MAKS_TEGN, BRIEF_MIN_SETNINGER
+        from app.begrunnelse.kontroll import BRIEF_MAKS_TEGN, BRIEF_MIN_SETNINGER, antall_setninger
 
         valgte, antall = velg_varslede(par)
+        start = brief_innledning(valgte, antall)
+        # Høyst innledningen pluss setningene modellen får legge til (``brief-v2``), og innenfor 3–5 (spec).
         return _kall_og_kontroller(
             lag_brief_fakta(par, naa, valgte, antall), api_nokkel, openrouter_klient.PROMPT_BRIEF_FIL,
-            forventet_forsinket=True, retning=0, konklusjon=brief_innledning(valgte, antall), modellrad=True,
-            maks_tegn=BRIEF_MAKS_TEGN, min_setninger=BRIEF_MIN_SETNINGER, maks_setninger=BRIEF_MAKS_SETNINGER)
+            forventet_forsinket=True, retning=0, konklusjon=start, modellrad=True,
+            maks_tegn=BRIEF_MAKS_TEGN, min_setninger=BRIEF_MIN_SETNINGER,
+            maks_setninger=antall_setninger(start) + brief_setninger_igjen(start))
 
     return _hent_med_cache(
         _brief_nokkel(naa, prediktor_navn),

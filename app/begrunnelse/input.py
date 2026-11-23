@@ -18,7 +18,7 @@ import math
 from typing import Dict, Optional
 
 from app.begrunnelse.klartekst import DELEGERT_KLARTEKST, brief_innledning, innledning
-from app.begrunnelse.kontroll import BRIEF_MAKS_SETNINGER, MAKS_SETNINGER, antall_setninger
+from app.begrunnelse.kontroll import BRIEF_MAKS_SETNINGER, BRIEF_MAKS_TEGN, MAKS_SETNINGER, antall_setninger
 from app.begrunnelse.testmodus import VARSEL_GRENSE_MIN
 from app.prediksjon import VINDU_TIMER, Prediksjon, PrediksjonsInput
 from app.prediksjon.features import MIN_FART_KN, SLAKK_MIN_TIMER
@@ -91,7 +91,10 @@ def _tilstand(inp: PrediksjonsInput, featurer: dict) -> Dict[str, str]:
         ut["Fart"] = "nesten stille (under 1 knop)" if fart < MIN_FART_KN else f"{tall(fart, 1)} knop"
     if featurer.get("kurs_mot_havn") is not None:
         ut["Retning"] = _retning_mot_havna(featurer["kurs_mot_havn"])
-    if featurer.get("slakk_timer") is not None and fart is not None and fart >= MIN_FART_KN:
+    # «Rekker fram» regnes bare ut fra avstand og fart. For et skip som går bort fra havna, eller på tvers, leses
+    # det som en selvmotsigelse, så feltet sendes bare når skipet er på vei mot havna (``begrunnelse-v7``, ``brief-v2``).
+    mot_havna = featurer.get("kurs_mot_havn") is not None and featurer["kurs_mot_havn"] > 0
+    if featurer.get("slakk_timer") is not None and fart is not None and fart >= MIN_FART_KN and mot_havna:
         h_eff = (inp.eta_reported - inp.t_kutt).total_seconds() / 3600
         rekker = _rekker_fram(featurer["slakk_timer"], h_eff)
         if rekker:
@@ -152,11 +155,25 @@ def lag_fakta(inp: PrediksjonsInput, prediksjon: Prediksjon) -> Dict[str, str]:
 
 
 # Feltene fra ``lag_fakta`` som ikke gjelder briefen (briefen har sin egen innledning og sitt eget antall setninger).
+# Briefen: hvor mange setninger modellen får legge til etter innledningen (``brief-v2``). Antallet avhenger av hvor
+# lang innledningen er, så briefen holder seg under 700 tegn: om lag 200 tegn per setning, minst 1 og høyst 2.
+# Med 1 varsel blir det 2, med 3 varsler 1 (røykkall brief-v1, 23.11.2026).
+BRIEF_TEGN_PER_SETNING = 200
+BRIEF_MAKS_TILLEGG = 2
+
+
+def brief_setninger_igjen(start: str) -> int:
+    """Setningene modellen kan legge til etter innledningen ``start``: 1 eller 2, og aldri over 5 til sammen."""
+    etter_lengde = (BRIEF_MAKS_TEGN - len(start)) // BRIEF_TEGN_PER_SETNING
+    etter_antall = BRIEF_MAKS_SETNINGER - antall_setninger(start)
+    return max(1, min(BRIEF_MAKS_TILLEGG, etter_lengde, etter_antall))
+
+
 _BARE_BEGRUNNELSE = ("Innledning (skriv ordrett først)", "Setninger du kan legge til")
 
 
 def lag_brief_fakta(par, naa: dt.datetime, valgte, antall_varsler: int) -> Dict[str, str]:
-    """Faktaene til briefen (``brief-v1``, E3-S05): et hode for vinduet og ``lag_fakta`` for hvert anløp som er tatt
+    """Faktaene til briefen (``brief-v2``, E3-S05): et hode for vinduet og ``lag_fakta`` for hvert anløp som er tatt
     med, med nummerert prefiks («Anløp 1 – Skip»). ``par`` er alle (``PrediksjonsInput``, ``Prediksjon``) i vinduet,
     og ``valgte`` er de varslede anløpene briefen tar med (``klartekst.velg_varslede``). Ingen fasit, MMSI eller
     seilas-ID, og ingen andre skip enn de som er tatt med."""
@@ -167,7 +184,7 @@ def lag_brief_fakta(par, naa: dt.datetime, valgte, antall_varsler: int) -> Dict[
     slutt = naa.astimezone(dt.timezone.utc) + dt.timedelta(hours=VINDU_TIMER)
     fakta = {
         "Innledning (skriv ordrett først)": start,
-        "Setninger du kan legge til": str(max(BRIEF_MAKS_SETNINGER - antall_setninger(start), 0)),
+        "Setninger du kan legge til": str(brief_setninger_igjen(start)),
         "Vindu": f"{ukedag_dato_klokke(naa)} – {ukedag_dato_klokke(slutt)}",
         "Anløp i vinduet": str(len(par)),
         "Vurdert av modellen": str(sum(1 for _, p in par if p.forklaring.get("metode") == "modell")),

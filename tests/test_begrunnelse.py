@@ -235,7 +235,7 @@ def test_ekte_med_mock(monkeypatch):
 
 def test_prompt_er_versjonert():
     tekst = openrouter_klient.PROMPT_FIL.read_text(encoding="utf-8")
-    assert "begrunnelse-v6" in tekst
+    assert "begrunnelse-v7" in tekst
     assert "utenom slik de står i innledningen eller faktaene" in tekst
     system, bruker = openrouter_klient.bygg_prompt({"Skip": "X"})
     assert "<!--" not in system + bruker and "{fakta}" not in bruker
@@ -1254,7 +1254,7 @@ def test_brief_fakta_bare_modellens_data_og_valgte_skip():
     assert fakta["Anløp i vinduet"] == "7" and fakta["Vurdert av modellen"] == "6"
     assert fakta["Anløp med varsel"] == "5"
     assert fakta["Vindu"] == "fre 15.08 10:00 – lør 16.08 10:00"
-    assert fakta["Setninger du kan legge til"] == "3"
+    assert fakta["Setninger du kan legge til"] == "1"  # 3 anløp i innledningen: lang start (brief-v2)
     assert [fakta[f"Anløp {i} – Skip"] for i in (1, 2, 3)] == [navn(11), navn(13), navn(14)]
     assert "Anløp 4 – Skip" not in fakta
     tekst = json.dumps(fakta, ensure_ascii=False)
@@ -1312,7 +1312,7 @@ def test_brief_uten_varsler_er_laget_av_appen_uten_kall(monkeypatch, modus):
 
 def godt_brief_svar(par):
     valgte, antall = velg_varslede(par)
-    return f"{brief_innledning(valgte, antall)} Modellen venter at alle tre kommer senere enn vanlig. Følg med på dem."
+    return f"{brief_innledning(valgte, antall)} Modellen venter at alle tre kommer senere enn vanlig, så følg med på dem."
 
 
 def test_brief_ekte_med_mock_og_cache(monkeypatch):
@@ -1407,9 +1407,9 @@ def test_brief_adapteren_tar_ikke_anlop():
 
 def test_prompt_brief_er_versjonert():
     tekst = openrouter_klient.PROMPT_BRIEF_FIL.read_text(encoding="utf-8")
-    assert "brief-v1" in tekst
+    assert "brief-v2" in tekst
     system, bruker = openrouter_klient.bygg_prompt({"Skip": "X"}, openrouter_klient.PROMPT_BRIEF_FIL)
-    assert "Ikke finn på årsaker" in system and "- Skip: X" in bruker and "brief-v1" not in system + bruker
+    assert "Ikke finn på årsaker" in system and "- Skip: X" in bruker and "brief-v2" not in system + bruker
     # Standardfila er uendret.
     assert openrouter_klient.bygg_prompt({"Skip": "X"})[0] != system
 
@@ -1455,7 +1455,7 @@ def test_brief_med_initialer_i_skipsnavnet():
     assert antall_setninger(start) == 2
     assert antall_setninger(brief_mal(valgte, antall)) == 3
     fakta = lag_brief_fakta(par, NAA_SYNT, valgte, antall)
-    assert fakta["Setninger du kan legge til"] == "3"
+    assert fakta["Setninger du kan legge til"] == "2"
     navn_i_utdraget = ["G. M. DANNEVIG", "LT. PETE MAVERICK MITCHELL", "ANNET SKIP"]
     regler = dict(forventet_forsinket=True, retning=0, konklusjon=start, modellrad=True, maks_tegn=BRIEF_MAKS_TEGN,
                   min_setninger=BRIEF_MIN_SETNINGER, maks_setninger=BRIEF_MAKS_SETNINGER, skipsnavn=navn_i_utdraget)
@@ -1471,3 +1471,46 @@ def test_app_brief_alle_rader_delegert():
                      "varsel. Grunnene er: rutegående skip vurderes ikke av modellen (2 anløp) og ingen AIS-posisjon "
                      "å vurdere (1 anløp).")
     assert antall_setninger(tekst) == 3 and "andre" not in tekst and "vurdert 0" not in tekst
+
+
+# ---------- brief-v2 og begrunnelse-v7: setninger etter innledningens lengde, «rekker fram» bare mot havna ----------
+
+from app.begrunnelse.input import BRIEF_MAKS_TILLEGG, brief_setninger_igjen  # noqa: E402
+
+
+@pytest.mark.parametrize("antall_skip, forventet", [(1, 2), (2, 2), (3, 1)])
+def test_brief_setninger_igjen_etter_innledningen(antall_skip, forventet):
+    """1 varsel gir 2 setninger fra modellen, 3 varsler gir 1 (røykkall brief-v1: 3 la til 3 og gikk over 700 tegn)."""
+    par = [syntetisk_par(i, 300 - 10 * i, navn_=f"SKIP MED LANGT NAVN {i}") for i in range(1, antall_skip + 1)]
+    valgte, antall = velg_varslede(par)
+    start = brief_innledning(valgte, antall)
+    assert brief_setninger_igjen(start) == forventet
+    assert lag_brief_fakta(par, NAA_SYNT, valgte, antall)["Setninger du kan legge til"] == str(forventet)
+
+
+def test_brief_setninger_igjen_grensene():
+    assert brief_setninger_igjen("Kort. Start.") == BRIEF_MAKS_TILLEGG == 2
+    assert brief_setninger_igjen("x" * 690) == 1  # alltid minst 1, så briefen når 3 setninger
+    assert brief_setninger_igjen("En. To. Tre. Fire.") == 1  # aldri over 5 til sammen
+
+
+def test_brief_kontrollen_godtar_ikke_flere_setninger_enn_lovet(monkeypatch):
+    ekte(monkeypatch)
+    par = fem_varsler()  # 3 anløp i innledningen: modellen får legge til 1 setning
+    valgte, antall = velg_varslede(par)
+    start = brief_innledning(valgte, antall)
+    t = FalskTransport(f"{start} Alle kommer senere enn vanlig. Følg med på dem.")
+    monkeypatch.setattr(begrunnelse, "transport", t)
+    assert hent_brief(par, NAA_SYNT, MODELL).merke == MERKE_FEILET
+    begrunnelse.nullstill()
+    t.svar = f"{start} Alle kommer senere enn vanlig."
+    assert hent_brief(par, NAA_SYNT, MODELL).merke == MERKE_KI
+
+
+@pytest.mark.parametrize("kurs, med", [(0.9, True), (1e-9, True), (0.0, False), (-0.3, False), (None, False)])
+def test_rekker_fram_bare_paa_vei_mot_havna(kurs, med):
+    """«Rekker fram» er regnet bare ut fra avstand og fart. På vei bort fra havna (eller på tvers) leses det som en
+    selvmotsigelse, så feltet sendes ikke (begrunnelse-v7, brief-v2). Gjelder begrunnelsen og briefen."""
+    p = modellprediksjon(74, featurer=_featurer(kurs_mot_havn=kurs, slakk_timer=3.8))
+    fakta = lag_fakta(syntetisk_inp(), p)
+    assert (REKKER in fakta) is med
