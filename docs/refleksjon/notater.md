@@ -368,3 +368,12 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Hvordan det ble oppdaget:** Theodor leste teksten fra røykkallet med `brief-v1` og så at den leste som en selvmotsigelse.
 - **Resultat:** feltet sendes nå bare når skipet er på vei mot havna. Det gjelder både briefen og skjerm C. Endringen har tester og 2 mutanter (`0ee596e`), og i røykkallet med `begrunnelse-v7` var feltet borte.
 - **Lærdom (råt):** kontrollen sjekker at hvert faktum finnes i inputen, ikke at faktaene henger sammen. En avledet verdi (her slakk) trenger de samme forutsetningene som tallet bygger på, før den sendes som et faktum i vanlig språk.
+
+## 2026-11-23 — Blokkeringsmønsteret `*begrunnelse*` stoppet selve skriptet og ga et falskt negativt resultat i UU-sjekken (E3-S05)
+
+- **Hva:** I UU-sjekken av PR #12 blokkerte Theodor hentingen på skjerm C med `*begrunnelse*` (og `*/begrunnelse`). Mønsteret treffer også `/static/begrunnelse.js`, så skriptet ble aldri kjørt, og «Henter forklaring …» ble stående. Det så ut som en feil i feilgrenen, men koden var riktig. Ifølge Theodor var mønsteret et forslag fra KI. I loggen for denne økten foreslo Claude `*/begrunnelse` (19.11) og `*/brief` (23.11). Da `begrunnelse.js` ble felles for skjerm A og C i E3-S05, og Claude ba om en ny sjekk av skjerm C, ga Claude ikke noe mønster som var trygt mot navnet på skriptet. Det burde Claude ha gjort.
+- **Hvordan det ble oppdaget:** Theodor meldte at blokkert henting på skjerm C ikke virket og ba om årsaken før noe ble endret. Claude sjekket `data-ki-url` (`/anlop/<id>/begrunnelse`) og kjørte skriptet i Node med en henting som feiler. Feilgrenen virket.
+- **Resultat:** riktig mønster er `*/anlop/*/begrunnelse`, og med det besto sjekken. Det står i UX §6. Skriptet kjøres nå i en test (`tests/test_begrunnelse_js.py`, 10 mutanter fanget), så feilgrenen ikke lenger bare sjekkes for hånd.
+- **Lærdom (råt):**
+  - Et testoppsett som gir rødt, er ikke det samme som en feil i koden. Finn årsaken før noe endres, slik Theodor ba om.
+  - Et blokkeringsmønster må sjekkes mot alle URL-ene siden laster, ikke bare den som skal treffes. Et skript som heter det samme som endepunktet, er en felle.
