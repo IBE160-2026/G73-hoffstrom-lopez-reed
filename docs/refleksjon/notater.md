@@ -361,3 +361,10 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Hvordan det ble oppdaget:** Claudes mutasjonssjekk av v5. 2 av 16 mutanter overlevde.
 - **Resultat:** to nye tester går gjennom `hent_begrunnelse` med en falsk transport. Etter det ble 16 av 16 fanget (`aeff198`).
 - **Lærdom (råt):** en regel som er testet alene, er ikke testet i bruk. Når en ny parameter skal føres gjennom adapteren, trengs minst én test gjennom adapteren for hver parameter.
+
+## 2026-11-23 — «Rekker fram» ble sendt for et skip på vei bort fra havna (E3-S03/S05, begrunnelse-v7)
+
+- **Hva:** Claude laget faktafeltet «Rekker fram til rapportert ETA med farten ved siste posisjon» i v4 (`lag_fakta`). Det regnes bare ut fra avstand og fart (slakk), ikke fra retningen. For BERGEN ENERGY 13.08 sendte appen både «på vei bort fra havna» og «rekker fram», og modellen satte dem i samme setning, på et anløp som var varslet 2 t 56 min senere enn vanlig. Kontrollen godtok svaret, fordi alt sto i faktaene.
+- **Hvordan det ble oppdaget:** Theodor leste teksten fra røykkallet med `brief-v1` og så at den leste som en selvmotsigelse.
+- **Resultat:** feltet sendes nå bare når skipet er på vei mot havna. Det gjelder både briefen og skjerm C. Endringen har tester og 2 mutanter (`0ee596e`), og i røykkallet med `begrunnelse-v7` var feltet borte.
+- **Lærdom (råt):** kontrollen sjekker at hvert faktum finnes i inputen, ikke at faktaene henger sammen. En avledet verdi (her slakk) trenger de samme forutsetningene som tallet bygger på, før den sendes som et faktum i vanlig språk.
