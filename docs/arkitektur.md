@@ -154,15 +154,19 @@ app/
     modell.py          ModellPrediktor                                        (E2)
     koding.py          matrise(): F1–F16 til modellens input, delt med scripts/tren.py (E2)
   begrunnelse/                                                                (E3)
-    __init__.py        hent_begrunnelse(), cachet(), hent_brief() (E3-S05) — velger modus, cache og kallgrense
+    __init__.py        hent_begrunnelse(), cachet(), hent_brief(par, naa, prediktor_navn), cachet_brief(...) (E3-S05)
+                       — velger modus, felles cache og kallgrense for begrunnelse og brief
     konfig.py          all LLM-konfigurasjon; modellstrengen bygges bare her
     testmodus.py       opptak (E3-S06) + deterministisk mal, merkene
     input.py           lag_fakta(): input bygd fra PrediksjonsInput + Prediksjon
     openrouter_klient.py  ekte klient (urllib), injiserbar transport
     kontroll.py        kontroll av svaret før det vises
-    prompt.md          versjonert prompt
+    prompt.md          versjonert prompt (begrunnelse)
+    prompt_brief.md    versjonert prompt for forstyrrelsesbriefen (brief-v1, E3-S05)
   templates/  base.html, dashbord.html, anlop.html, metode.html, _feil.html
-  static/     style.css
+  static/     style.css,
+              begrunnelse.js  henter KI-tekst etter at siden er vist, for hver [data-ki-url]-region
+                              (briefen på skjerm A og begrunnelsen på skjerm C, E3-S04/S05)
 data/         utdrag/anlop.csv, baseline.json, modell/ (E2), begrunnelser_opptak.json (E3)
 scripts/      lag_utdrag.py (E1), lag_tilstand.py + tren.py + evaluer.py (E2), ta_opp_begrunnelser.py (E3)
 tests/        fixtures/anlop_mini.csv + én testfil per modul
@@ -178,6 +182,8 @@ wsgi.py       app = create_app(), inngangspunktet lokalt og på Vercel (§11)
 |---|---|---|
 | `GET /` | `naa` (ISO, norsk tid), `vis` (`alle`/`passasjer`/`ovrige`), `fasit` (`0`/`1`), `sorter` (`predikert`/`avvik`) | Skjerm A. Ugyldige parametre gir 200 med feilmelding i skjemaet (UX §5), ikke 400. |
 | `GET /anlop/<voyageid>` | samme som over, så «Tilbake» virker | Skjerm C, eller 404 med lenke tilbake |
+| `POST /anlop/<voyageid>/begrunnelse` | — | Begrunnelsen som JSON `{tekst, merke}`, alltid 200 for en kjent seilas (E3-S04) |
+| `POST /brief` | — | Forstyrrelsesbriefen for vinduet som JSON `{tekst, merke}`, alltid 200 (E3-S05) |
 | `GET /metode` | — | Statisk forklaring av baseline, metrikk og testperiode |
 
 ## 7. Konfigurasjon (`.env.example`)

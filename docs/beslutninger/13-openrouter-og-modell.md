@@ -36,6 +36,8 @@ OpenRouters offentlige prisliste, 18.11.2026, per million tokens. Det billigste 
 
 Prisene endres (DeepSeeks eget endepunkt endrer pris etter tid på døgnet), så overslaget sjekkes på nytt før levering.
 
+- **Forstyrrelsesbriefen (E3-S05):** ett kall per («nå», prediktor), bare når vinduet har varsler. Faktaene for høyst 3 anløp gir omtrent 1 500–2 500 input-tokens og høyst 300 output-tokens (700 tegn er om lag 200–250 tokens), altså under USD 0,0003 per kall med prisgulv. Briefen deler grensen `LLM_MAKS_KALL` med begrunnelsene. Uten varsler, eller på baseline, skriver appen briefen selv og gjør ingen kall. Ikke prøvd med et ekte kall ennå.
+
 ### Røykkallet 18.11.2026
 
 Det ble gjort 3 kall, lokalt med `LLM_MODUS=ekte`, mot valideringsvinduet 15.08.2025 08:00. Det var ett kall av hver: modell med varsel, modell uten varsel og baseline. Alle gikk til Wafer (billigste endepunkt) og svarte HTTP 200.

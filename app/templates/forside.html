@@ -2,7 +2,34 @@
 {% block hoppmaal %}anlopslista{% endblock %}
 {% block hopptekst %}Hopp til anløpslista{% endblock %}
 {% block h1 %}Anløp de neste 24 timene{% endblock %}
+{% block hode %}
+{%- if rader and not brief %}
+  <noscript><style>#brief-henter { display: none; }</style></noscript>
+{%- endif %}
+{% endblock %}
 {% block innhold %}
+{% if rader %}
+<section id="brief" class="brief" aria-labelledby="brief-tittel">
+  <h2 id="brief-tittel">Oversikt over vinduet</h2>
+  <div id="brief-svar" aria-live="polite" aria-atomic="true"
+    {%- if not brief %} data-ki-url="{{ url_for('brief_json') }}" data-ki-mal="{{ brief_mal }}" data-ki-klasse="brief-tekst"{% endif %}>
+    {%- if brief %}
+    <p class="ki-merke">{{ brief.merke }}</p>
+    <p class="brief-tekst">{{ brief.tekst }}</p>
+    {%- else %}
+    <p id="brief-henter" class="begrunnelse-henter">Henter oversikt …</p>
+    {%- endif %}
+  </div>
+  {% if not brief %}
+  <noscript>
+    <p class="ki-merke">Testmodus</p>
+    <p class="brief-tekst">{{ brief_mal }}</p>
+  </noscript>
+  <script src="{{ url_for('static', filename='begrunnelse.js') }}" defer></script>
+  {% endif %}
+</section>
+{% endif %}
+
 <section class="prediktor" aria-label="Prediktor">
   <p>
     Prediktor: <span class="merke" aria-hidden="true">■</span>

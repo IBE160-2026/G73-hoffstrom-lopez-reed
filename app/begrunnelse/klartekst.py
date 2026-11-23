@@ -101,3 +101,39 @@ def innledning(inp, prediksjon) -> str:
         ord_ = "senere" if avvik > 0 else "tidligere"
         deler.append(f"Det er {varighet(avvik)} {ord_} enn vanlig for skipsgruppen.")
     return " ".join(deler)
+
+
+# --- Forstyrrelsesbriefen (E3-S05, PRD FR12) -------------------------------------------------------------------
+
+BRIEF_MAKS_ANLOP = 3  # briefen tar med høyst så mange varslede anløp
+
+
+def velg_varslede(par):
+    """(valgte, antall_varsler) for briefen. ``par`` er (``PrediksjonsInput``, ``Prediksjon``) for vinduet.
+
+    Bare anløp med ``forventet_forsinket is True``, sortert etter ``forklaring["predikert_avvik_min"]`` synkende
+    (likt avvik: lavest seilas-ID først), og høyst ``BRIEF_MAKS_ANLOP``. ``antall_varsler`` er alle varslene."""
+    varslede = [(inp, p) for inp, p in par if p.forventet_forsinket is True]
+    varslede.sort(key=lambda ip: (-ip[1].forklaring.get("predikert_avvik_min", 0.0), ip[1].voyageid))
+    return varslede[:BRIEF_MAKS_ANLOP], len(varslede)
+
+
+def _brief_linje(inp, prediksjon) -> str:
+    """«ODIN VIKING ventes inn i havneområdet fre kl. 12:31, 3 t 25 min senere enn vanlig for skipsgruppen»."""
+    avvik = round(prediksjon.forklaring.get("predikert_avvik_min", 0.0))
+    dag, klokkeslett = ukedag_klokke(prediksjon.predikert_ankomst).split(" ")
+    if avvik == 0:
+        sammenlignet = "omtrent som vanlig for skipsgruppen"
+    else:
+        sammenlignet = f"{varighet(avvik)} {'senere' if avvik > 0 else 'tidligere'} enn vanlig for skipsgruppen"
+    return f"{inp.shipname} ventes inn i havneområdet {dag} kl. {klokkeslett}, {sammenlignet}"
+
+
+def brief_innledning(valgte, antall_varsler: int) -> str:
+    """Innledningen appen skriver i briefen (spec-valg B2), og som svaret må starte med ordrett. To setninger:
+    antall varsler, og så navn, tid inn i havneområdet og avvik fra det vanlige for hvert anløp som er tatt med."""
+    if antall_varsler > len(valgte):
+        forste = f"{antall_varsler} anløp har varsel, og her er de {len(valgte)} med størst avvik."
+    else:
+        forste = f"{antall_varsler} anløp har varsel."
+    return f"{forste} {'; '.join(_brief_linje(inp, p) for inp, p in valgte)}."

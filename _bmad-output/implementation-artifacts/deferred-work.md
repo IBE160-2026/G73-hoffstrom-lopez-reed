@@ -35,3 +35,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-e3-s01-s04-begrunnelse-via-openrouter.md`
   summary: OpenRouter's `reasoning` parameter is not set, so reasoning tokens may use up max_tokens = 300 (unverified, medium if true).
   evidence: Settled by the smoke call: check `finish_reason`, `usage` and whether the content is empty. If so, set `reasoning` (exclude/effort) in openrouter_klient.kall.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-e3-s05-forstyrrelsesbrief.md`
+  summary: The shared `app/static/begrunnelse.js` (screen A brief and screen C justification) is never executed by an automated test; only its source text is checked.
+  evidence: The repo has no JS harness (no package.json, jsdom or browser runner). A misspelled `data-ki-*` attribute or a thrown error would pass every test. The manual UU rows for the brief in `docs/ux/dashbord.md` §6 cover it until a harness exists.

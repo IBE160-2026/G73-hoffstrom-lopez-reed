@@ -3,10 +3,15 @@
 ``kontroller`` gir None når svaret godtas, ellers navnet på den første regelen som brytes. Adapteren logger det
 som ``kontroll_<regel>`` og viser testmodus-teksten.
 
-Reglene: ikke tomt (``tom``), høyst 400 tegn (``lengde``), høyst 3 setninger (``setninger``), hvert tall i teksten
-finnes i inputen (``tall``), ingen tall skrevet med ord (``tallord``), ingen andre skipsnavn fra utdraget
-(``skipsnavn``), ingen årsaksord fra en fast liste (``aarsak``), uten varsel (``forventet_forsinket`` er ikke True)
-ingen «forsink» (``forsink``), og retningsord som stemmer med fortegnet på avviket (``retning``, se ``retning``).
+Reglene:
+
+- ikke tomt (``tom``);
+- lengde (``lengde``): høyst 400 tegn for begrunnelsen, høyst 700 tegn for briefen (E3-S05);
+- setninger (``setninger``): 1–3 setninger for begrunnelsen, 3–5 setninger for briefen;
+- hvert tall i teksten finnes i inputen (``tall``), og ingen tall er skrevet med ord (``tallord``);
+- ingen andre skipsnavn fra utdraget (``skipsnavn``) og ingen årsaksord fra en fast liste (``aarsak``);
+- uten varsel (``forventet_forsinket`` er ikke True) ingen «forsink» (``forsink``);
+- retningsord som stemmer med fortegnet på avviket (``retning``, se ``retning``).
 
 Kontrollen er et vern, ikke et bevis. Den fanger oppdiktede tall, andre skip og de vanligste oppdiktede årsakene,
 men ikke en feil påstand skrevet med tall og ord som finnes i inputen. Tall skrevet med ord avvises fra en fast liste
@@ -24,11 +29,16 @@ from app.begrunnelse.klartekst import retning as _klartekst_retning
 
 MAKS_TEGN = 400
 MAKS_SETNINGER = 3
+# Briefen (E3-S05, PRD FR12): 3–5 setninger og høyst 700 tegn.
+BRIEF_MAKS_TEGN = 700
+BRIEF_MIN_SETNINGER = 3
+BRIEF_MAKS_SETNINGER = 5
 
 # Et fortegn (+, - eller −) teller bare når det ikke står rett etter et ord eller tall («v1», «6–24» har ikke fortegn).
 _TALL = re.compile(r"(?:(?<![\w])([+\-\u2212]))?(\d+(?:[.,]\d+)?)")
-# «kl.» og «ca.» avslutter ikke en setning (konklusjonen bruker «kl. 17:44»).
-_SETNINGSSLUTT = re.compile(r"(?<![Kk]l\.)(?<![Cc]a\.)(?<=[.!?…])\s+")
+# «kl.» og «ca.» avslutter ikke en setning (konklusjonen bruker «kl. 17:44»). Det gjør heller ikke punktum etter et
+# frittstående ord på 1–2 store bokstaver: initialer i skipsnavn («G. M. DANNEVIG», «LT. PETE MAVERICK MITCHELL»).
+_SETNINGSSLUTT = re.compile(r"(?<![Kk]l\.)(?<![Cc]a\.)(?<!(?<!\w)[A-ZÆØÅ]\.)(?<!(?<!\w)[A-ZÆØÅ]{2}\.)(?<=[.!?…])\s+")
 
 # Årsaker prompten forbyr. Hele ord (med vanlige bøyninger), så «vindu» og «motorvei» ikke gir falske treff for
 # «vind», men «motoren» og «motorfeil» gjør det.
@@ -119,6 +129,9 @@ def kontroller(
     retning: Optional[int] = None,
     konklusjon: Optional[str] = None,
     modellrad: bool = False,
+    maks_tegn: int = MAKS_TEGN,
+    min_setninger: int = 1,
+    maks_setninger: int = MAKS_SETNINGER,
 ) -> Optional[str]:
     """None når svaret godtas, ellers regelen som brytes. ``skipsnavn`` er standard alle navn i utdraget.
 
@@ -130,15 +143,18 @@ def kontroller(
     varselrader én setning til). Svaret må starte med den ordrett (``konklusjon``).
 
     ``modellrad`` er True når Modell v1 har vurdert raden selv. Da avvises «vanlig avvik for skipsgruppen» som
-    forklaring (``metode``), fordi det er baselinens metode, ikke modellens."""
+    forklaring (``metode``), fordi det er baselinens metode, ikke modellens.
+
+    ``maks_tegn``, ``min_setninger`` og ``maks_setninger`` er grensene for lengden. Standard er begrunnelsens
+    (høyst 400 tegn og 3 setninger). Briefen (E3-S05) bruker 700 tegn og 3–5 setninger."""
     tekst = (tekst or "").strip()
     if not tekst:
         return "tom"
     if konklusjon is not None and not re.sub(r"\s+", " ", tekst).startswith(re.sub(r"\s+", " ", konklusjon.strip())):
         return "konklusjon"
-    if len(tekst) > MAKS_TEGN:
+    if len(tekst) > maks_tegn:
         return "lengde"
-    if antall_setninger(tekst) > MAKS_SETNINGER:
+    if not min_setninger <= antall_setninger(tekst) <= maks_setninger:
         return "setninger"
     input_tekst = "\n".join(f"{k}: {v}" for k, v in fakta.items())
     # Tillatte tall kommer bare fra verdiene, ikke fra etikettene. Et tall uten fortegn må finnes i inputen uansett

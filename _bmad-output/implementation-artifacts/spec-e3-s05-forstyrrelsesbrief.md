@@ -2,7 +2,8 @@
 title: 'E3-S05 — Disruption brief at the top of the main screen'
 type: 'feature'
 created: '2026-11-19'
-status: 'draft'
+status: 'done'
+baseline_commit: 'fb6d17a9d4270e38170c38be644010c41adf4f3e'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -71,12 +72,12 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `app/begrunnelse/kontroll.py`, `openrouter_klient.py` -- limit and prompt-file parameters with unchanged defaults
-- [ ] `app/begrunnelse/klartekst.py`, `testmodus.py`, `input.py` -- selection, B2 opening, test-mode template, B1 app brief, brief facts
-- [ ] `app/begrunnelse/prompt_brief.md`, `__init__.py` -- `brief-v1`, `cachet_brief`, `hent_brief`, shared cache/cap
-- [ ] `app/__init__.py`, `forside.html`, `begrunnelse.js` -- section, `POST /brief`, generalised JS
-- [ ] `tests/test_begrunnelse.py`, `tests/test_ruter.py` -- every matrix row, selection and sorting, > 3 alerts, the 3/5-sentence and 700-character limits, the shared cap, screen C unchanged, key-leak test
-- [ ] `docs/…` -- as in the Code Map, and `docs/beslutninger/13` gets a line on the brief cost
+- [x] `app/begrunnelse/kontroll.py`, `openrouter_klient.py` -- limit and prompt-file parameters with unchanged defaults
+- [x] `app/begrunnelse/klartekst.py`, `testmodus.py`, `input.py` -- selection, B2 opening, test-mode template, B1 app brief, brief facts
+- [x] `app/begrunnelse/prompt_brief.md`, `__init__.py` -- `brief-v1`, `cachet_brief`, `hent_brief`, shared cache/cap
+- [x] `app/__init__.py`, `forside.html`, `begrunnelse.js` -- section, `POST /brief`, generalised JS
+- [x] `tests/test_begrunnelse.py`, `tests/test_ruter.py` -- every matrix row, selection and sorting, > 3 alerts, the 3/5-sentence and 700-character limits, the shared cap, screen C unchanged, key-leak test
+- [x] `docs/…` -- as in the Code Map, and `docs/beslutninger/13` gets a line on the brief cost
 
 **Acceptance Criteria:**
 - Given test mode and no network, when `pytest` runs, then everything is green and no socket is opened.
@@ -84,6 +85,40 @@ context:
 - Given a window with no alerts, or `PREDIKTOR=baseline`, in real mode with a fake transport, when `GET /` and `POST /brief` are requested, then the transport is not called and the brief is labelled «Laget av appen».
 - Given the validation window with Modell v1, then the brief names the alerted calls in deviation order and no other ship.
 - Given screen C, when it is opened after the JS change, then all E3-S04 route tests are still green.
+
+## Implementation Notes
+
+- The shared cache/cap path is factored into `_hent_med_cache` and `_kall_og_kontroller`, and the justification keeps its cache key. Screen C's data attributes were renamed to `data-ki-url`/`data-ki-mal` for the shared JS, and the four screen C test assertions were updated to match (attribute names only).
+- Mutation check (orchestrator, after the review patches, 2026-11-23): `BRIEF_MAKS_TEGN` 699/701, `BRIEF_MIN_SETNINGER` 2/4, `BRIEF_MAKS_SETNINGER` 4/6, `BRIEF_MAKS_ANLOP` 2/4 and the sort direction. All 9 mutants turned a test red. The implementer's own run (11 mutants, including the tie-break and the lower sentence limit) was also all red.
+- Review patches: ship initials («G. M.», «LT.») no longer end a sentence (`_SETNINGSSLUTT`), the all-delegated wording in `app_brief`, the prompt rule on model-assessed calls, the JS source test, the `kontroll.py` docstring, and `begrunnelse.js` plus both POST routes in `docs/arkitektur.md`. Suite: 781 passed.
+
+## Review Triage Log
+
+Pass 1 (2026-11-23). Layers: blind-hunter (BH), edge-case-hunter (EC), verification-gap (VG).
+
+| # | Finding | Verdict | Evidence | Route |
+|---|---|---|---|---|
+| 1 | VG: `begrunnelse.js` is never executed by a test, only its source text | low | No JS harness in the repo (same as E3-S04 #3). The brief's aria-live and no-JS rows in UX §6 are ☐. | defer |
+| 2 | VG: `test_begrunnelse_js_finnes_og_bruker_post` asserts `begrunnelse-svar`, which is now only in a comment | low | Confirmed in the diff. Direct test correction. | patch |
+| 3 | EC: ship names with initials («G. M. DANNEVIG», «LT. PETE MAVERICK MITCHELL») count as extra sentences in the brief opening | medium | Both names are in the extract (717 names checked). `_SETNINGSSLUTT` splits after «G.». The template breaks its 3-sentence contract, and model replies fail `setninger`. | patch |
+| 4 | EC/BH: `POST /brief` can 500 if `_par` or the fallback `testbrief` raises | false | Both run in `GET /` first (`_par`, `brief_mal`), so a failure there already breaks the page before the JS ever posts. Same as E3-S04 #20. | reject |
+| 5 | EC: `GET /` 500s if `cachet_brief`/`testbrief` raises | maybe-false | No input shown that makes them raise; alerted rows always carry `predikert_avvik_min` (`modell.py:113`). A guard would add a branch. | reject |
+| 6 | EC: `POST /brief` on an empty window returns a «0 anløp» text | low | The section and the JS are not rendered for an empty window, so only a hand-made POST reaches it. | reject |
+| 7 | EC/BH: `app_brief` infers «baseline active» from row data | false | Under Modell v1 every row has `metode == "modell"` or `delegert` (`modell.py`). Only the baseline produces neither. | reject |
+| 8 | EC/BH: all rows delegated gives «Modellen har vurdert 0 av dem … De N andre» | low | Real: a window with only passenger or in-zone calls. Direct text correction. | patch |
+| 9 | EC: «Alle anløpene er vurdert» when some rows are neither model nor delegated | false | Same as #7: that mix does not occur under Modell v1. | reject |
+| 10 | EC: `predikert_avvik_min` missing or None on an alerted row | false | `forventet_forsinket is True` is only set by `ModellPrediktor`, which always writes the key (`modell.py:113`). | reject |
+| 11 | EC/BH: the brief cache key does not cover `par` | false | `STANDARD_NAA` is fixed per app, and the extract and model are read-only per process. Same as E3-S04 #7. | reject |
+| 12 | EC/BH: `retning=0` rejects «tidligere» or allows it globally | low | This is the frozen rule (directions only as they appear in the facts), the same as for the justification. | reject (spec rule) |
+| 13 | BH: the prompt says 600 characters and the check 700 | false | Deliberate margin, as in `begrunnelse-v4` (prompt 300, check 400). | reject |
+| 14 | BH: E3-S05 is ✅ in `docs/epics.md` while manual checks are open | low | Same practice as E3-S04 (✅ with UU rows ☐). The open checks are in `issues.md`. | reject |
+| 15 | BH: `MAKS_TOKENS` = 300 may truncate the brief | maybe-false | A truncated reply is caught as `avkortet` by the client and logged. Only the smoke call shows whether 300 is enough. | reject (smoke call settles it) |
+| 16 | BH: the prompt refers to «Metode», but the keys are «Anløp N – Metode» | low | Confirmed. Direct prompt wording fix (`brief-v1`, never smoke-called). | patch |
+| 17 | BH: dead or redundant code (`_antall` with the same forms, unreachable branches in `_brief_linje`, `testbrief` called twice) | low | Cosmetic, no harm to users. | reject |
+| 18 | BH: the JS 20 s timeout is not tuned for the brief | false | The server call times out at `LLM_TIMEOUT_S` = 8 s, well inside 20 s. | reject |
+| 19 | BH: arkitektur does not list `begrunnelse.js` or `POST /brief` | low | Confirmed. Direct doc fix. | patch |
+| 20 | BH: the UX §2 sketch is not redrawn | low | The note says so explicitly. Redrawing is cosmetic. | reject |
+| 21 | BH: the `kontroll.py` docstring is badly reflowed, and `lengde` reads «400 tegn» only | low | Confirmed. Direct docstring fix. | patch |
 
 ## Verification
 

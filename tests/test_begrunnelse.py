@@ -1108,3 +1108,366 @@ def test_kontrollen_med_hele_timer_fra_faktaene():
     assert sjekk("Avgang fra Ågotnes var registrert ca. 42 timer før. Skipet rekker ca. 4 timer før.") is None
     assert antall_setninger(f"{K74} Avgang var registrert ca. 42 timer før. Skipet er 40 km unna.") == 3
     assert sjekk("Avgang fra Ågotnes var registrert 41,7 timer før.") == "tall"
+
+
+# --- E3-S05: forstyrrelsesbriefen (spec-e3-s05-forstyrrelsesbrief) ---------------------------------------------
+# Syntetiske prediksjoner for utvalg, sortering og grenser. Ekte modellrader bare fra VALIDERING_NAA (regelen om
+# testrader). Ekte modus bare med falsk transport.
+
+from app.begrunnelse import cachet_brief, hent_brief  # noqa: E402
+from app.begrunnelse.input import lag_brief_fakta  # noqa: E402
+from app.begrunnelse.klartekst import brief_innledning, velg_varslede  # noqa: E402
+from app.begrunnelse.kontroll import BRIEF_MAKS_SETNINGER, BRIEF_MAKS_TEGN, BRIEF_MIN_SETNINGER  # noqa: E402
+from app.begrunnelse.testmodus import BRIEF_MAL_SLUTT, MERKE_APP, app_brief, brief_mal  # noqa: E402
+
+MODELL = "Modell v1"
+NAA_SYNT = dt.datetime(2025, 8, 15, 8, 0, tzinfo=dt.timezone.utc)
+
+
+ID0 = 3_000_000  # seilas-ID-ene er store, så de ikke finnes som deltall i tider og navn
+
+
+def navn(n):
+    """«SKIP L» for n = 11: skipsnavn uten tall, så tallkontrollen ikke slår til før navnekontrollen."""
+    return f"SKIP {chr(ord('A') + n)}"
+
+
+def syntetisk_par(n, avvik, navn_=None, varsel=None, delegert=None):
+    """(input, prediksjon) med Modell v1-form. ``varsel`` None gir ``avvik > 120``. ``delegert`` gir en delegert rad.
+    Seilas-ID er ``ID0 + n``, og skipet heter ``navn(n)``."""
+    voyageid = ID0 + n
+    inp = PrediksjonsInput(voyageid=voyageid, mmsino=900000000 + n, shipname=navn_ or navn(n),
+                           ship_group="Last", gruppe="Øvrige", eta_reported=ETA, horisont_timer=6,
+                           t_kutt=ETA - dt.timedelta(hours=6))
+    if delegert:
+        return inp, Prediksjon(voyageid=voyageid, horisont_timer=6, predikert_ankomst=ETA - dt.timedelta(minutes=64),
+                               forventet_forsinket=None,
+                               forklaring={"metode": "kalibrert_baseline", "gruppe": "Øvrige", "offset_minutter": 64.2,
+                                           "eta_reported": ETA, "delegert": delegert})
+    return inp, Prediksjon(voyageid=voyageid, horisont_timer=6,
+                           predikert_ankomst=ETA + dt.timedelta(minutes=avvik - 64),
+                           forventet_forsinket=(avvik > 120) if varsel is None else varsel,
+                           forklaring={"metode": "modell", "gruppe": "Øvrige", "predikert_avvik_min": float(avvik),
+                                       "offset_ovrige_min": 64.2, "eta_reported": ETA, "featurer": {}})
+
+
+def fem_varsler():
+    """5 varsler, 1 uten varsel og 1 delegert. Rekkefølgen er blandet med vilje."""
+    return [syntetisk_par(15, 150), syntetisk_par(11, 300), syntetisk_par(12, 130), syntetisk_par(13, 250),
+            syntetisk_par(14, 250), syntetisk_par(16, 30), syntetisk_par(17, 0, delegert="passasjer")]
+
+
+def kb(tekst, fakta, konklusjon=None):
+    """Kontrollen med briefens regler."""
+    return kontroller(tekst, fakta, forventet_forsinket=True, retning=0, konklusjon=konklusjon, modellrad=True,
+                      maks_tegn=BRIEF_MAKS_TEGN, min_setninger=BRIEF_MIN_SETNINGER,
+                      maks_setninger=BRIEF_MAKS_SETNINGER, skipsnavn=[])
+
+
+def test_brief_velger_varslede_sortert_etter_avvik():
+    valgte, antall = velg_varslede(fem_varsler())
+    assert antall == 5
+    # Synkende avvik, likt avvik (250) gir lavest seilas-ID først, og høyst 3.
+    assert [p.voyageid - ID0 for _, p in valgte] == [11, 13, 14]
+    assert all(p.forventet_forsinket is True for _, p in valgte)
+
+
+def test_brief_tar_bare_forventet_forsinket_true():
+    par = [syntetisk_par(1, 500, varsel=False), syntetisk_par(2, 0, delegert="ingen_tilstand"), syntetisk_par(3, 121)]
+    valgte, antall = velg_varslede(par)
+    assert antall == 1 and [p.voyageid - ID0 for _, p in valgte] == [3]
+
+
+@pytest.mark.parametrize("n", [1, 2, 3])
+def test_brief_med_tre_eller_faerre_varsler(n):
+    par = [syntetisk_par(i, 200 + i) for i in range(1, n + 1)]
+    valgte, antall = velg_varslede(par)
+    assert len(valgte) == antall == n
+    start = brief_innledning(valgte, antall)
+    assert start.startswith(f"{n} anløp har varsel. ") and "størst avvik" not in start
+
+
+def test_brief_over_tre_varsler_sier_hvor_mange():
+    valgte, antall = velg_varslede(fem_varsler())
+    start = brief_innledning(valgte, antall)
+    assert start.startswith("5 anløp har varsel, og her er de 3 med størst avvik. ")
+    assert [n for n in (navn(11), navn(13), navn(14), navn(12), navn(15)) if n in start] == [
+        navn(11), navn(13), navn(14)]
+    assert start.index(navn(11)) < start.index(navn(13)) < start.index(navn(14))
+    assert f"{navn(11)} ventes inn i havneområdet fre kl. 20:26, 5 t senere enn vanlig for skipsgruppen;" in start
+    assert antall_setninger(start) == 2
+
+
+def test_brief_mal_er_3_setninger_og_bestaar_kontrollen():
+    par = fem_varsler()
+    valgte, antall = velg_varslede(par)
+    tekst = brief_mal(valgte, antall)
+    assert tekst == f"{brief_innledning(valgte, antall)} {BRIEF_MAL_SLUTT}"
+    assert antall_setninger(tekst) == 3 and len(tekst) <= BRIEF_MAKS_TEGN
+    fakta = lag_brief_fakta(par, NAA_SYNT, valgte, antall)
+    assert kb(tekst, fakta, brief_innledning(valgte, antall)) is None
+
+
+def test_brief_kontroll_setninger_3_til_5():
+    fakta = {"Innledning": "Anløpet har varsel."}
+    tre = "Anløpet har varsel. Det er sent. Det er alt."
+    assert kb(tre, fakta) is None
+    assert kb("Anløpet har varsel. Det er sent.", fakta) == "setninger"  # 2 < 3
+    assert kb(tre + " Mer. Enda mer.", fakta) is None  # 5
+    assert kb(tre + " Mer. Enda mer. For mye.", fakta) == "setninger"  # 6 > 5
+
+
+def test_brief_kontroll_lengde_700_mot_701():
+    fakta = {"Innledning": "Anløpet har varsel."}
+    start = "Anløpet har varsel. Det er sent. "
+    tekst = start + "a" * (700 - len(start) - 1) + "."
+    assert len(tekst) == 700 and kb(tekst, fakta) is None
+    assert kb(tekst[:-1] + "a.", fakta) == "lengde"
+
+
+def test_kontroll_standardgrensene_er_uendret():
+    """Begrunnelsen beholder 400 tegn og høyst 3 setninger, uten nedre grense ut over at teksten ikke er tom."""
+    fakta = {"Skip": "X"}
+    assert kontroller("Én setning.", fakta, forventet_forsinket=None, skipsnavn=[]) is None
+    assert kontroller("Ja. Nei. Kanskje. Aldri.", fakta, forventet_forsinket=None, skipsnavn=[]) == "setninger"
+    assert kontroller("a" * 401, fakta, forventet_forsinket=None, skipsnavn=[]) == "lengde"
+
+
+def test_brief_kontroll_andre_skip_og_konklusjon():
+    par = fem_varsler()
+    valgte, antall = velg_varslede(par)
+    fakta = lag_brief_fakta(par, NAA_SYNT, valgte, antall)
+    start = brief_innledning(valgte, antall)
+    regler = dict(forventet_forsinket=True, retning=0, konklusjon=start, modellrad=True, maks_tegn=BRIEF_MAKS_TEGN,
+                  min_setninger=BRIEF_MIN_SETNINGER, maks_setninger=BRIEF_MAKS_SETNINGER,
+                  skipsnavn=[navn(i) for i in range(11, 18)])
+    assert kontroller(f"{start} {navn(11)} er sent ute.", fakta, **regler) is None
+    assert kontroller(f"{start} {navn(15)} er også sent ute.", fakta, **regler) == "skipsnavn"  # ikke tatt med
+    assert kontroller(f"Oversikt. {start} Mer.", fakta, **regler) == "konklusjon"
+    assert kontroller(f"{start} Det kommer tidligere.", fakta, **regler) == "retning"
+
+
+def test_brief_fakta_bare_modellens_data_og_valgte_skip():
+    par = fem_varsler()
+    valgte, antall = velg_varslede(par)
+    fakta = lag_brief_fakta(par, NAA_SYNT, valgte, antall)
+    assert fakta["Anløp i vinduet"] == "7" and fakta["Vurdert av modellen"] == "6"
+    assert fakta["Anløp med varsel"] == "5"
+    assert fakta["Vindu"] == "fre 15.08 10:00 – lør 16.08 10:00"
+    assert fakta["Setninger du kan legge til"] == "3"
+    assert [fakta[f"Anløp {i} – Skip"] for i in (1, 2, 3)] == [navn(11), navn(13), navn(14)]
+    assert "Anløp 4 – Skip" not in fakta
+    tekst = json.dumps(fakta, ensure_ascii=False)
+    for inp, _ in par:
+        assert str(inp.mmsino) not in tekst
+    for inp, p in par:
+        assert str(p.voyageid) not in tekst
+    for annet in (navn(12), navn(15), navn(16), navn(17)):
+        assert annet not in tekst
+    assert not any(f in tekst for f in FASITFELT)
+    assert not any(k.endswith("Innledning (skriv ordrett først)") and k != "Innledning (skriv ordrett først)"
+                   for k in fakta)
+
+
+def test_app_brief_paa_baselinen():
+    inp, p, _ = baselinepar()
+    par = [(inp, p)] * 3
+    tekst = app_brief(par)
+    assert tekst == ("3 anløp har rapportert ETA i vinduet. Modellen har ikke vurdert noen av dem, og ingen har "
+                     "varsel. Tidene bygger bare på vanlig avvik for skipsgruppen, og den beregningen kan ikke varsle.")
+    assert antall_setninger(tekst) == 3
+
+
+def test_app_brief_med_modellen_uten_varsler():
+    par = [syntetisk_par(1, 30), syntetisk_par(2, -10), syntetisk_par(3, 0, delegert="passasjer"),
+           syntetisk_par(4, 0, delegert="passasjer"), syntetisk_par(5, 0, delegert="i_sonen_ved_kutt")]
+    tekst = app_brief(par)
+    assert tekst == ("5 anløp har rapportert ETA i vinduet. Modellen har vurdert 2 av dem, og ingen har varsel. "
+                     "De 3 andre er ikke vurdert: rutegående skip vurderes ikke av modellen (2 anløp) og skipet var "
+                     "allerede i havneområdet (1 anløp).")
+    assert antall_setninger(tekst) == 3
+    assert app_brief(par[:2]).endswith("Alle anløpene er vurdert av modellen.")
+    assert "Det andre anløpet er ikke vurdert: ingen AIS-posisjon å vurdere (1 anløp)." in app_brief(
+        [syntetisk_par(1, 30), syntetisk_par(2, 0, delegert="ingen_tilstand")])
+
+
+def test_hent_brief_testmodus():
+    par = fem_varsler()
+    svar = hent_brief(par, NAA_SYNT, MODELL)
+    valgte, antall = velg_varslede(par)
+    assert svar == Begrunnelse(brief_mal(valgte, antall), MERKE_TEST) == cachet_brief(par, NAA_SYNT, MODELL)
+    assert begrunnelse.antall_kall() == 0
+
+
+@pytest.mark.parametrize("modus", ["test", "ekte"])
+def test_brief_uten_varsler_er_laget_av_appen_uten_kall(monkeypatch, modus):
+    if modus == "ekte":
+        ekte(monkeypatch)
+    t = sett_transport(monkeypatch, FalskTransport("skal ikke brukes"))
+    for par in ([syntetisk_par(1, 30), syntetisk_par(2, 0, delegert="passasjer")], [baselinepar()[:2]]):
+        assert cachet_brief(par, NAA_SYNT, MODELL) == hent_brief(par, NAA_SYNT, MODELL) == Begrunnelse(
+            app_brief(par), MERKE_APP)
+    assert t.kall == [] and begrunnelse.antall_kall() == 0 and begrunnelse._cache == {}
+
+
+def godt_brief_svar(par):
+    valgte, antall = velg_varslede(par)
+    return f"{brief_innledning(valgte, antall)} Modellen venter at alle tre kommer senere enn vanlig. Følg med på dem."
+
+
+def test_brief_ekte_med_mock_og_cache(monkeypatch):
+    ekte(monkeypatch)
+    par = fem_varsler()
+    svaret = godt_brief_svar(par).replace("alle tre", "alle")
+    t = sett_transport(monkeypatch, FalskTransport(svaret))
+    assert cachet_brief(par, NAA_SYNT, MODELL) is None
+    svar = hent_brief(par, NAA_SYNT, MODELL)
+    assert svar == Begrunnelse(svaret, MERKE_KI)
+    assert len(t.kall) == 1
+    body = t.kall[0]["body"]
+    system, bruker = body["messages"][0]["content"], body["messages"][1]["content"]
+    assert "oversikt til havnevakta" in system and "Skriv oversikten." in bruker
+    assert f"- Anløp 1 – Skip: {navn(11)}" in bruker and navn(15) not in bruker
+    assert body["max_tokens"] == 300
+    # Cachetreff: server-rendret, 0 nye kall. Nytt «nå» eller ny prediktor er en ny nøkkel.
+    assert cachet_brief(par, NAA_SYNT, MODELL) == svar == hent_brief(par, NAA_SYNT, MODELL)
+    assert len(t.kall) == 1
+    hent_brief(par, NAA_SYNT + dt.timedelta(hours=1), MODELL)
+    hent_brief(par, NAA_SYNT, "Annen prediktor")
+    assert len(t.kall) == 3
+
+
+@pytest.mark.parametrize("utfall, kode", [
+    (500, "http_500"), (402, "kvote_402"), (TimeoutError(), "timeout"), ("", "kontroll_tom"),
+    ("{start}", "kontroll_setninger"),  # bare innledningen: 2 setninger, under nedre grense på 3
+    ("{start} En. To. Tre. Fire.", "kontroll_setninger"),  # 6 setninger, over øvre grense på 5
+    ("{start} " + "x" * 700 + ".", "kontroll_lengde"),
+    ("{start} Været er dårlig. Det er alt.", "kontroll_aarsak"),
+    ("Oversikt. {start} Det er alt.", "kontroll_konklusjon"),
+])
+def test_brief_feil_gir_mal_og_logges(monkeypatch, caplog, utfall, kode):
+    ekte(monkeypatch)
+    par = [syntetisk_par(1, 200, navn_="ALFA")]  # én varsel: innledningen er 2 setninger
+    valgte, antall = velg_varslede(par)
+    start = brief_innledning(valgte, antall)
+    if isinstance(utfall, str):
+        utfall = utfall.replace("{start}", start)
+    sett_transport(monkeypatch, FalskTransport(utfall))
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        svar = hent_brief(par, NAA_SYNT, MODELL)
+    assert svar == Begrunnelse(brief_mal(valgte, antall), MERKE_FEILET)
+    assert f"brief: {kode} naa={NAA_SYNT.isoformat()} prediktor={MODELL}" in caplog.text
+    assert cachet_brief(par, NAA_SYNT, MODELL) == svar  # feilen er cachet i 300 s
+
+
+def test_brief_uten_nokkel(monkeypatch, caplog):
+    ekte(monkeypatch, nokkel=None)
+    par = fem_varsler()
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        assert hent_brief(par, NAA_SYNT, MODELL).merke == MERKE_FEILET
+    assert begrunnelse.antall_kall() == 0 and "brief: mangler_nokkel" in caplog.text
+
+
+def test_brief_deler_kallgrensen_med_begrunnelsene(monkeypatch, caplog):
+    ekte(monkeypatch)
+    monkeypatch.setenv("LLM_MAKS_KALL", "2")
+    inp, p, _ = baselinepar()
+    par = fem_varsler()
+    t = sett_transport(monkeypatch, FalskTransport(godt_svar(inp, p)))
+    assert hent_begrunnelse(inp, p, BASELINE).merke == MERKE_KI
+    t.svar = godt_brief_svar(par).replace("alle tre", "alle")
+    assert hent_brief(par, NAA_SYNT, MODELL).merke == MERKE_KI
+    assert begrunnelse.antall_kall() == 2
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        assert hent_brief(par, NAA_SYNT, "Annen prediktor") == begrunnelse.testbrief(par, MERKE_GRENSE)
+        assert hent_begrunnelse(inp, p, "Annen prediktor").merke == MERKE_GRENSE
+    assert "brief: kallgrense" in caplog.text and len(t.kall) == 2
+    # Cachede svar vises fortsatt over grensen.
+    assert hent_brief(par, NAA_SYNT, MODELL).merke == MERKE_KI
+
+
+def test_brief_nokkelen_lekker_ikke(monkeypatch, caplog):
+    ekte(monkeypatch)
+    par = fem_varsler()
+    tekster = []
+    with caplog.at_level(logging.DEBUG):
+        for i, utfall in enumerate([godt_brief_svar(par), 401, 402, TimeoutError("timed out"), "tull 99999."]):
+            sett_transport(monkeypatch, FalskTransport(utfall))
+            tekster.append(json.dumps(hent_brief(par, NAA_SYNT, f"P{i}").som_dict()))
+    assert FALSK_NOKKEL not in caplog.text and all(FALSK_NOKKEL not in t for t in tekster)
+
+
+def test_brief_adapteren_tar_ikke_anlop():
+    inp, p, anlop = baselinepar()
+    with pytest.raises(TypeError):
+        hent_brief([(anlop, p)], NAA_SYNT, BASELINE)
+    with pytest.raises(TypeError):
+        cachet_brief([(anlop, p)], NAA_SYNT, BASELINE)
+
+
+def test_prompt_brief_er_versjonert():
+    tekst = openrouter_klient.PROMPT_BRIEF_FIL.read_text(encoding="utf-8")
+    assert "brief-v1" in tekst
+    system, bruker = openrouter_klient.bygg_prompt({"Skip": "X"}, openrouter_klient.PROMPT_BRIEF_FIL)
+    assert "Ikke finn på årsaker" in system and "- Skip: X" in bruker and "brief-v1" not in system + bruker
+    # Standardfila er uendret.
+    assert openrouter_klient.bygg_prompt({"Skip": "X"})[0] != system
+
+
+def test_brief_i_valideringsvinduet_med_modellen():
+    """Modell v1 i valideringsvinduet: varslene i avviksrekkefølge, ingen andre skip, og malen består kontrollen."""
+    from conftest import VALIDERING_NAA
+
+    from app.prediksjon import MODELL_DIR
+    from app.prediksjon.modell import ModellPrediktor
+
+    inputs = [lag_input(a, VALIDERING_NAA) for a in anlop_i_vindu(VALIDERING_NAA)]
+    par = list(zip(inputs, ModellPrediktor(MODELL_DIR).prediker(inputs, VALIDERING_NAA)))
+    valgte, antall = velg_varslede(par)
+    forventet = sorted([(inp, p) for inp, p in par if p.forventet_forsinket is True],
+                       key=lambda ip: -ip[1].forklaring["predikert_avvik_min"])
+    assert antall >= 2 and [i.shipname for i, _ in valgte] == [i.shipname for i, _ in forventet][:3]
+    tekst = begrunnelse.testbrief(par).tekst
+    fakta = lag_brief_fakta(par, VALIDERING_NAA, valgte, antall)
+    assert kontroller(tekst, fakta, forventet_forsinket=True, retning=0, konklusjon=brief_innledning(valgte, antall),
+                      modellrad=True, maks_tegn=BRIEF_MAKS_TEGN, min_setninger=BRIEF_MIN_SETNINGER,
+                      maks_setninger=BRIEF_MAKS_SETNINGER) is None
+    andre = {i.shipname for i, _ in par} - {i.shipname for i, _ in valgte}
+    assert not any(n in tekst or n in json.dumps(fakta, ensure_ascii=False) for n in andre)
+
+
+# Initialer i skipsnavn deler ikke setninger (gjennomgang av E3-S05) --------------------------------------------
+
+@pytest.mark.parametrize("tekst, antall", [
+    ("G. M. DANNEVIG ventes inn. Det er sent.", 2),
+    ("LT. PETE MAVERICK MITCHELL ventes inn. Det er sent.", 2),
+    ("Det er kl. 17:44. Det er ca. 6 timer igjen.", 2),
+    ("Det er sent. Det er alt.", 2),
+])
+def test_initialer_avslutter_ikke_setningen(tekst, antall):
+    assert antall_setninger(tekst) == antall
+
+
+def test_brief_med_initialer_i_skipsnavnet():
+    par = [syntetisk_par(1, 200, navn_="G. M. DANNEVIG"), syntetisk_par(2, 150, navn_="LT. PETE MAVERICK MITCHELL")]
+    valgte, antall = velg_varslede(par)
+    start = brief_innledning(valgte, antall)
+    assert antall_setninger(start) == 2
+    assert antall_setninger(brief_mal(valgte, antall)) == 3
+    fakta = lag_brief_fakta(par, NAA_SYNT, valgte, antall)
+    assert fakta["Setninger du kan legge til"] == "3"
+    navn_i_utdraget = ["G. M. DANNEVIG", "LT. PETE MAVERICK MITCHELL", "ANNET SKIP"]
+    regler = dict(forventet_forsinket=True, retning=0, konklusjon=start, modellrad=True, maks_tegn=BRIEF_MAKS_TEGN,
+                  min_setninger=BRIEF_MIN_SETNINGER, maks_setninger=BRIEF_MAKS_SETNINGER, skipsnavn=navn_i_utdraget)
+    assert kontroller(brief_mal(valgte, antall), fakta, **regler) is None
+    assert kontroller(f"{start} G. M. DANNEVIG kommer senere enn vanlig. Følg med på det.", fakta, **regler) is None
+
+
+def test_app_brief_alle_rader_delegert():
+    par = [syntetisk_par(1, 0, delegert="passasjer"), syntetisk_par(2, 0, delegert="passasjer"),
+           syntetisk_par(3, 0, delegert="ingen_tilstand")]
+    tekst = app_brief(par)
+    assert tekst == ("3 anløp har rapportert ETA i vinduet. Modellen har ikke vurdert noen av dem, og ingen har "
+                     "varsel. Grunnene er: rutegående skip vurderes ikke av modellen (2 anløp) og ingen AIS-posisjon "
+                     "å vurdere (1 anløp).")
+    assert antall_setninger(tekst) == 3 and "andre" not in tekst and "vurdert 0" not in tekst

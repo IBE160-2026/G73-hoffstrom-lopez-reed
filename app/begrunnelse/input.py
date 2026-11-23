@@ -17,10 +17,10 @@ import datetime as dt
 import math
 from typing import Dict, Optional
 
-from app.begrunnelse.klartekst import DELEGERT_KLARTEKST, innledning
-from app.begrunnelse.kontroll import MAKS_SETNINGER, antall_setninger
+from app.begrunnelse.klartekst import DELEGERT_KLARTEKST, brief_innledning, innledning
+from app.begrunnelse.kontroll import BRIEF_MAKS_SETNINGER, MAKS_SETNINGER, antall_setninger
 from app.begrunnelse.testmodus import VARSEL_GRENSE_MIN
-from app.prediksjon import Prediksjon, PrediksjonsInput
+from app.prediksjon import VINDU_TIMER, Prediksjon, PrediksjonsInput
 from app.prediksjon.features import MIN_FART_KN, SLAKK_MIN_TIMER
 from app.visning import gruppe_visning, tall, ukedag_dato_klokke
 
@@ -148,4 +148,34 @@ def lag_fakta(inp: PrediksjonsInput, prediksjon: Prediksjon) -> Dict[str, str]:
     if f.get("delegert"):
         fakta["Hvorfor modellen ikke vurderer anløpet"] = DELEGERT_KLARTEKST.get(f["delegert"], "ukjent grunn")
     fakta.update(_tilstand(inp, f.get("featurer") or {}))
+    return fakta
+
+
+# Feltene fra ``lag_fakta`` som ikke gjelder briefen (briefen har sin egen innledning og sitt eget antall setninger).
+_BARE_BEGRUNNELSE = ("Innledning (skriv ordrett først)", "Setninger du kan legge til")
+
+
+def lag_brief_fakta(par, naa: dt.datetime, valgte, antall_varsler: int) -> Dict[str, str]:
+    """Faktaene til briefen (``brief-v1``, E3-S05): et hode for vinduet og ``lag_fakta`` for hvert anløp som er tatt
+    med, med nummerert prefiks («Anløp 1 – Skip»). ``par`` er alle (``PrediksjonsInput``, ``Prediksjon``) i vinduet,
+    og ``valgte`` er de varslede anløpene briefen tar med (``klartekst.velg_varslede``). Ingen fasit, MMSI eller
+    seilas-ID, og ingen andre skip enn de som er tatt med."""
+    for inp, p in par:
+        if not isinstance(inp, PrediksjonsInput) or not isinstance(p, Prediksjon):
+            raise TypeError("lag_brief_fakta() tar par av PrediksjonsInput og Prediksjon")
+    start = brief_innledning(valgte, antall_varsler)
+    slutt = naa.astimezone(dt.timezone.utc) + dt.timedelta(hours=VINDU_TIMER)
+    fakta = {
+        "Innledning (skriv ordrett først)": start,
+        "Setninger du kan legge til": str(max(BRIEF_MAKS_SETNINGER - antall_setninger(start), 0)),
+        "Vindu": f"{ukedag_dato_klokke(naa)} – {ukedag_dato_klokke(slutt)}",
+        "Anløp i vinduet": str(len(par)),
+        "Vurdert av modellen": str(sum(1 for _, p in par if p.forklaring.get("metode") == "modell")),
+        "Anløp med varsel": str(antall_varsler),
+    }
+    for nr, (inp, p) in enumerate(valgte, 1):
+        fakta[f"Anløp {nr} – Konklusjon"] = innledning(inp, p)
+        for k, v in lag_fakta(inp, p).items():
+            if k not in _BARE_BEGRUNNELSE:
+                fakta[f"Anløp {nr} – {k}"] = v
     return fakta

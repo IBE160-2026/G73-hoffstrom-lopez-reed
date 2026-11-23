@@ -18,9 +18,11 @@ from pathlib import Path
 from typing import Mapping, Tuple
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+# 300 dekker også briefen: høyst 700 tegn norsk tekst er om lag 200–250 tokens uten resonnering (E3-S05).
 MAKS_TOKENS = 300
 TEMPERATUR = 0.2
 PROMPT_FIL = Path(__file__).with_name("prompt.md")
+PROMPT_BRIEF_FIL = Path(__file__).with_name("prompt_brief.md")  # forstyrrelsesbriefen (E3-S05)
 
 
 class KlientFeil(Exception):
@@ -32,16 +34,17 @@ class KlientFeil(Exception):
 
 
 @lru_cache(maxsize=None)
-def _prompt() -> Tuple[str, str]:
+def _prompt(fil: Path = PROMPT_FIL) -> Tuple[str, str]:
     """Markørene står alene på en linje. Teksten før ``<!-- SYSTEM -->`` er dokumentasjon og sendes ikke."""
-    tekst = PROMPT_FIL.read_text(encoding="utf-8")
+    tekst = Path(fil).read_text(encoding="utf-8")
     _, system, bruker = re.split(r"^<!-- (?:SYSTEM|BRUKER) -->$", tekst, flags=re.MULTILINE)
     return system.strip(), bruker.strip()
 
 
-def bygg_prompt(fakta: Mapping[str, str]) -> Tuple[str, str]:
-    """(systemmelding, brukermelding) fra ``prompt.md`` og faktaene."""
-    system, bruker = _prompt()
+def bygg_prompt(fakta: Mapping[str, str], fil: Path = PROMPT_FIL) -> Tuple[str, str]:
+    """(systemmelding, brukermelding) fra prompt-fila (standard ``prompt.md``, briefen ``prompt_brief.md``) og
+    faktaene."""
+    system, bruker = _prompt(fil)
     linjer = "\n".join(f"- {k}: {v}" for k, v in fakta.items())
     return system, bruker.replace("{fakta}", linjer)
 

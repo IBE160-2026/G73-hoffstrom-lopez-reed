@@ -394,12 +394,14 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_ruter.py::test_detalj_begrunnelse`, `::test_detalj_venter_ikke_paa_spraakmodellen`, `::test_cachet_svar_vises_server_rendret` (FR11a), `tests/test_begrunnelse.py::test_tall_finnes_i_input`
 
-### E3-S05 — Forstyrrelsesbrief på hovedskjermen ☐
+### E3-S05 — Forstyrrelsesbrief på hovedskjermen ✅
 **Krav:** FR12 · **Avhenger av:** E3-S04
 - 3–5 setninger øverst på skjerm A om høyst 3 varslede anløp, sortert etter predikert avvik. Uten varsler, eller på baseline, sier briefen det rett ut (PRD FR12).
 - Manuell sjekk: en person utenfor gruppa leser briefen for standardvinduet. Resultatet logges i `docs/ux/dashbord.md` §6.
 
-**Test:** `tests/test_ruter.py::test_brief_nevner_varslede`, `::test_brief_uten_varsler`, og den manuelle sjekken
+- Bygd (spec `spec-e3-s05-forstyrrelsesbrief`): `hent_brief`/`cachet_brief` i `app/begrunnelse/` med samme cache og kallgrense som begrunnelsen, prompt `brief-v1` i `prompt_brief.md`, `POST /brief`, og `begrunnelse.js` henter alle `[data-ki-url]`-regioner. Uten varsler, eller på baseline, skriver appen briefen selv, merket «Laget av appen», uten kall (spec-valg B1). Med varsler skriver appen innledningen, og modellen legger til grunnene (B2).
+
+**Test:** `tests/test_ruter.py::test_brief_nevner_varslede`, `::test_brief_uten_varsler`, `::test_brief_venter_ikke_paa_spraakmodellen` (FR11a), `tests/test_begrunnelse.py::test_brief_velger_varslede_sortert_etter_avvik`, `::test_brief_deler_kallgrensen_med_begrunnelsene` (FR11b), og den manuelle sjekken (åpen)
 
 ### E3-S06 — Opptak av ekte svar for demodager ☐
 **Krav:** FR13 · **Avhenger av:** E3-S05
