@@ -78,6 +78,10 @@ Det ble gjort 3 kall med de samme vinduene. Alle gikk til Particle AI, stoppet a
 - **Skjerm C, BERGEN ENERGY (13.08.2025 08:00, varslet rad):** godtatt, med 233 tegn og 3 setninger. Faktaene har «på vei bort fra havna» og ikke lenger «rekker fram». Kallet brukte 997/87 tokens og kostet USD 0,00006.
 - **`max_tokens` 300:** holdt i alle tre kallene. Det høyeste var 248, i kallet som ble avvist.
 
+### Røykkall brief-v3, 23.11.2026
+
+Det ble gjort 1 kall: briefen med 3 varsler (24.06.2025 08:00). Med 2–3 varsler får modellen nå legge til én kort setning per skip, og per skip sendes bare skip, avstand, retning og fart. Svaret ble godtatt (KI-GENERERT), med 536 tegn og 5 setninger, og modellen skrev én setning per skip. Kallet gikk til Particle AI, stoppet av seg selv og brukte ingen resonnering. Det brukte 1 160 input-tokens og 207 output-tokens, og kostet USD 0,00012. Input-tokens falt fra 2 305 til 1 160, fordi det sendes færre fakta per skip. Modellen skrev «er 212 km fra havna» i presens, men tallet gjelder siste AIS-posisjon. Svaret hadde også linjeskift, som HTML viser som mellomrom.
+
 ## Begrunnelse
 
 Nøkkelen med hard bruksgrense er det eneste som faktisk setter et tak på forbruket når appen kjører på flere instanser. Adapteren gjør leverandøren byttbar (A8), så valget koster lite å endre: modellen og routingen er miljøvariabler, og klienten er én fil.
