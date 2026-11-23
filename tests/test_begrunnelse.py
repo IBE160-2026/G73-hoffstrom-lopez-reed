@@ -235,7 +235,7 @@ def test_ekte_med_mock(monkeypatch):
 
 def test_prompt_er_versjonert():
     tekst = openrouter_klient.PROMPT_FIL.read_text(encoding="utf-8")
-    assert "begrunnelse-v7" in tekst
+    assert "begrunnelse-v8" in tekst
     assert "utenom slik de står i innledningen eller faktaene" in tekst
     system, bruker = openrouter_klient.bygg_prompt({"Skip": "X"})
     assert "<!--" not in system + bruker and "{fakta}" not in bruker
@@ -1407,9 +1407,9 @@ def test_brief_adapteren_tar_ikke_anlop():
 
 def test_prompt_brief_er_versjonert():
     tekst = openrouter_klient.PROMPT_BRIEF_FIL.read_text(encoding="utf-8")
-    assert "brief-v3" in tekst
+    assert "brief-v4" in tekst
     system, bruker = openrouter_klient.bygg_prompt({"Skip": "X"}, openrouter_klient.PROMPT_BRIEF_FIL)
-    assert "Ikke finn på årsaker" in system and "- Skip: X" in bruker and "brief-v3" not in system + bruker
+    assert "Ikke finn på årsaker" in system and "- Skip: X" in bruker and "brief-v4" not in system + bruker
     # Standardfila er uendret.
     assert openrouter_klient.bygg_prompt({"Skip": "X"})[0] != system
 
@@ -1538,7 +1538,7 @@ def test_brief_fakta_med_flere_skip_bare_avstand_retning_og_fart(antall_skip):
     fakta = lag_brief_fakta(par, NAA_SYNT, valgte, antall)
     for nr in range(1, antall_skip + 1):
         felt = {k.split(" – ", 1)[1] for k in fakta if k.startswith(f"Anløp {nr} – ")}
-        assert felt == {"Skip", "Avstand til havna", "Retning", "Fart"}, felt
+        assert felt == {"Skip", "Siste AIS-posisjon", "Avstand til havna", "Retning", "Fart"}, felt
 
 
 def test_brief_fakta_med_ett_skip_er_som_foer():
@@ -1548,3 +1548,45 @@ def test_brief_fakta_med_ett_skip_er_som_foer():
     fakta = lag_brief_fakta(par, NAA_SYNT, valgte, antall)
     for felt in ("Konklusjon", "Avgang", "Avstand til havna", "Retning", "Fart", REKKER):
         assert f"Anløp 1 – {felt}" in fakta, felt
+
+
+# ---------- begrunnelse-v8 og brief-v4: avstand, fart og retning i fortid, ved siste posisjon ----------
+
+@pytest.mark.parametrize("setning", [
+    "NYKSUND er 212 km fra havna.",
+    "Skipet ligger 40 km unna.",
+    "Skipet er nå 16 km fra havna.",
+    "BERGEN LNG går med 8,1 knop.",
+    "Skipet går 10 kn mot havna.",
+    "Skipet er på vei mot havna.",
+    "Det er på vei bort fra havna.",
+])
+def test_kontrollen_avviser_presens_om_posisjonen(setning):
+    fakta = {"Skip": "NYKSUND", "Avstand til havna": "212 km", "Fart": "8,1 knop", "Retning": "på vei mot havna"}
+    assert kontroller(setning.replace("NYKSUND", "Skipet").replace("BERGEN LNG", "Skipet")
+                      .replace("40", "212").replace("16", "212").replace("10 kn", "8,1 kn"),
+                      fakta, forventet_forsinket=False, skipsnavn=[]) == "presens"
+
+
+@pytest.mark.parametrize("setning", [
+    "Skipet var 212 km fra havna med 8,1 knop og på vei mot havna ved siste posisjon.",
+    "Ved siste posisjon var det på vei mot havna.",
+    "Det er 212 km igjen etter siste posisjon, sier faktaene.",  # «er 212 km» uten «fra havna» er også presens
+])
+def test_kontrollen_godtar_fortid_om_posisjonen(setning):
+    fakta = {"Avstand til havna": "212 km", "Fart": "8,1 knop", "Retning": "på vei mot havna"}
+    regel = kontroller(setning, fakta, forventet_forsinket=False, skipsnavn=[])
+    if "er 212 km" in setning:
+        assert regel == "presens"
+    else:
+        assert regel is None
+
+
+def test_brief_med_presens_gir_mal(monkeypatch):
+    ekte(monkeypatch)
+    par = fem_varsler()
+    valgte, antall = velg_varslede(par)
+    start = brief_innledning(valgte, antall)
+    t = FalskTransport(f"{start} Den første er på vei mot havna. Den andre var nær. Den tredje var nær.")
+    monkeypatch.setattr(begrunnelse, "transport", t)
+    assert hent_brief(par, NAA_SYNT, MODELL).merke == MERKE_FEILET

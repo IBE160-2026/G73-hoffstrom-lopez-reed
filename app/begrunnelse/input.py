@@ -156,13 +156,14 @@ def lag_fakta(inp: PrediksjonsInput, prediksjon: Prediksjon) -> Dict[str, str]:
 
 # Briefen: hvor mange setninger modellen får legge til etter innledningen (``brief-v3``).
 # - 1 varsel: etter hvor lang innledningen er, om lag 200 tegn per setning, minst 1 og høyst 2 (``brief-v2``).
-# - 2–3 varsler: én kort setning per skip, og per skip sendes bare avstand, retning og fart (Theodor 23.11.2026,
+# - 2–3 varsler: én kort setning per skip, og per skip sendes bare avstand, retning, fart og tidspunktet for siste
+#   posisjon (``brief-v4``) (Theodor 23.11.2026,
 #   etter røykkallet med ``brief-v2``, der modellen skrev én setning per skip uansett).
 # Aldri over 5 setninger til sammen, og grensen på 700 tegn står.
 BRIEF_TEGN_PER_SETNING = 200
 BRIEF_MAKS_TILLEGG = 2
 BRIEF_FLERE_FRA = 2  # fra så mange anløp i briefen gjelder én setning per skip
-BRIEF_FELT_FLERE = ("Skip", "Avstand til havna", "Retning", "Fart")
+BRIEF_FELT_FLERE = ("Skip", "Siste AIS-posisjon", "Avstand til havna", "Retning", "Fart")
 
 
 def brief_setninger_igjen(start: str, antall_valgte: int = 1) -> int:

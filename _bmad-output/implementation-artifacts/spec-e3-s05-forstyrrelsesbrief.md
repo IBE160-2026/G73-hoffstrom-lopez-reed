@@ -100,6 +100,7 @@ context:
   - For each of those ships only ship, distance, direction and speed are sent.
   - With 1 alert nothing changes (1–2 sentences by length). The 700-character limit is unchanged.
   - Mutation check: 11 mutants, all red.
+- `brief-v4`/`begrunnelse-v8` (Theodor, 2026-11-23): distance, speed and direction are written in the past tense, at the last position, with its time when the facts have it. With 2–3 alerts, «Siste AIS-posisjon» is also sent per ship. The new check rule `presens` rejects «er … km», «går med … knop» and «er på vei» for both the brief and screen C. Mutation check: 5 mutants, all red.
 
 ## Review Triage Log
 

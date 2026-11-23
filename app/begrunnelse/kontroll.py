@@ -74,6 +74,13 @@ _BEGREP = re.compile(r"(?<!\w)(" + "|".join(BEGREPER) + r")(?!\w)", re.IGNORECAS
 _VANLIG_SOM_METODE = re.compile(
     r"(bygger|baserer|hviler)\s+(seg\s+)?på\s+(det\s+)?vanlig\w*\s+avvik|vanlig\w*\s+avvik\s+for\s+(denne\s+)?skipsgruppen",
     re.IGNORECASE)
+# Avstand, fart og retning gjelder siste AIS-posisjon, ikke nå (``begrunnelse-v8``, ``brief-v4``). Presens om dem
+# avvises (``presens``): «er 212 km fra havna», «ligger 40 km unna», «går med 13,7 knop», «er på vei mot havna».
+_PRESENS = re.compile(
+    r"(?<!\w)(er|ligger)\s+(nå\s+)?(omtrent\s+|ca\.\s+)?\d[\d,]*\s*km(?!\w)"
+    r"|(?<!\w)(går|seiler|holder)\s+(nå\s+)?(med\s+|i\s+)?\d[\d,]*\s*(knop|kn)(?!\w)"
+    r"|(?<!\w)er\s+(nå\s+)?på\s+vei\s+(mot|bort)",
+    re.IGNORECASE)
 _TIDLIGERE = re.compile(r"(?<!\w)(" + "|".join(TIDLIGERE_ORD) + r")(?!\w)", re.IGNORECASE)
 
 
@@ -174,6 +181,8 @@ def kontroller(
                 return "skipsnavn"
     if _BEGREP.search(tekst):
         return "begrep"
+    if _PRESENS.search(tekst):
+        return "presens"
     if modellrad and _VANLIG_SOM_METODE.search(tekst):
         return "metode"
     if _AARSAK.search(tekst):
