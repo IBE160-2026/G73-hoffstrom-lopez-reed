@@ -24,12 +24,9 @@ PREDIKTOR_BESKRIVELSE = {
 
 
 
-def _rader(naa):
-    """Anløp i vinduet med prediksjon, sortert på uavrundet predikert ankomst.
-
-    Radene bygges bare fra ``PrediksjonsInput`` og ``Prediksjon``, så ingen fasit
-    (``faktisk_ankomst``, ``status_in_area``) kan havne i malen.
-    """
+def _par(naa):
+    """(prediktor, merknad, par): (``PrediksjonsInput``, ``Prediksjon``) for anløpene i vinduet, sortert på
+    uavrundet predikert ankomst. Lista og briefen (E3-S05) bygges fra de samme parene."""
     prediktor, merknad = velg_prediktor_med_merknad(naa=naa)
     inputs = [lag_input(a, naa) for a in anlop_i_vindu(naa, timer=VINDU_TIMER)]
     prediksjoner = prediktor.prediker(inputs, naa)
@@ -37,6 +34,16 @@ def _rader(naa):
         zip(inputs, prediksjoner),
         key=lambda ip: (ip[1].predikert_ankomst, ip[0].eta_reported, ip[0].voyageid),
     )
+    return prediktor, merknad, par
+
+
+def _rader(naa, par_i_vindu=None):
+    """Anløp i vinduet med prediksjon, sortert på uavrundet predikert ankomst.
+
+    Radene bygges bare fra ``PrediksjonsInput`` og ``Prediksjon``, så ingen fasit
+    (``faktisk_ankomst``, ``status_in_area``) kan havne i malen.
+    """
+    prediktor, merknad, par = par_i_vindu or _par(naa)
     rader = [
         {
             "voyageid": inp.voyageid,
@@ -103,10 +110,15 @@ def create_app(config=None):
     @app.get("/")
     def forside():
         naa = current_app.config["STANDARD_NAA"]
-        prediktor, merknad, rader = _rader(naa)
+        prediktor, merknad, par = _par(naa)
+        _, _, rader = _rader(naa, (prediktor, merknad, par))
         return render_template(
             "forside.html",
             rader=rader,
+            # E3-S05 (FR12, FR11a): briefen vises med en gang når den finnes uten kall (appens egen brief, testmodus
+            # eller cache). Ellers står «Henter oversikt …», og nettleseren henter den med POST /brief.
+            brief=begrunnelse.cachet_brief(par, naa, prediktor.navn) if par else None,
+            brief_mal=begrunnelse.testbrief(par).tekst if par else None,
             prediktor_navn=prediktor.navn,
             prediktor_beskrivelse=PREDIKTOR_BESKRIVELSE.get(prediktor.navn),
             kan_varsle=prediktor.kan_varsle,
@@ -162,6 +174,20 @@ def create_app(config=None):
             logging.getLogger("app.begrunnelse").warning(
                 "begrunnelse: uventet_%s voyageid=%s prediktor=%s", type(feil).__name__, voyageid, prediktor.navn)
             svar = begrunnelse.testtekst(inp, p, MERKE_FEILET)
+        return jsonify(svar.som_dict())
+
+    @app.post("/brief")
+    def brief_json():
+        """Briefen for vinduet som JSON ``{tekst, merke}``. Alltid 200, også når kallet feiler (E3-S05, FR11a).
+        POST, så søkeroboter ikke utløser betalte kall."""
+        naa = current_app.config["STANDARD_NAA"]
+        prediktor, _, par = _par(naa)
+        try:
+            svar = begrunnelse.hent_brief(par, naa, prediktor.navn)
+        except Exception as feil:  # aldri HTTP 500 for briefen; meldingen logges ikke
+            logging.getLogger("app.begrunnelse").warning(
+                "brief: uventet_%s naa=%s prediktor=%s", type(feil).__name__, naa.isoformat(), prediktor.navn)
+            svar = begrunnelse.testbrief(par, MERKE_FEILET)
         return jsonify(svar.som_dict())
 
     return app

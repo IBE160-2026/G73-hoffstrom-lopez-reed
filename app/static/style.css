@@ -405,6 +405,21 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+/* Forstyrrelsesbriefen øverst på skjerm A (E3-S05, FR12). */
+.brief {
+  max-width: 48rem;
+  margin: 0 0 1.5rem;
+}
+
+.brief h2 {
+  margin-top: 0;
+}
+
+.brief-tekst {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .ki-merke {
   display: inline-block;
   margin: 0 0 0.5rem;

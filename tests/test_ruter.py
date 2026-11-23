@@ -902,7 +902,7 @@ def test_detalj_begrunnelse(client):
     assert "64,2 min er median tid fra sonegrense til kai for øvrige (ikke-rutegående) skip i treningsdata." in tekst
     region = _med_id(d, "begrunnelse-svar")
     assert region.attrs.get("aria-live") == "polite"
-    assert "data-url" not in region.attrs
+    assert "data-ki-url" not in region.attrs
     assert _ren(region.tekst()) == _ren(f"Testmodus {begrunnelse.testtekst(*_inp_p()).tekst}")
     assert _ren(region.tekst()).startswith(
         "Testmodus Ventes inn i havneområdet kl. 09:56, 64 min før rapportert ETA (11:00). "
@@ -938,12 +938,12 @@ def test_detalj_venter_ikke_paa_spraakmodellen(client, monkeypatch):
     region = _med_id(d, "begrunnelse-svar")
     assert region.attrs.get("aria-live") == "polite"
     assert _ren(region.tekst()) == HENTER
-    assert region.attrs["data-url"] == f"/anlop/{BERGEN_ENERGY}/begrunnelse"
+    assert region.attrs["data-ki-url"] == f"/anlop/{BERGEN_ENERGY}/begrunnelse"
     noscript = d.finn_alle("noscript")
     body_noscript = [n for n in noscript if _med_id(n, "begrunnelse-henter") is None and "Testmodus" in n.tekst()]
     assert len(body_noscript) == 1
     mal = begrunnelse.testtekst(*_inp_p()).tekst
-    assert mal in _ren(body_noscript[0].tekst()) and region.attrs["data-mal"] == mal
+    assert mal in _ren(body_noscript[0].tekst()) and region.attrs["data-ki-mal"] == mal
     # Uten JavaScript skjules «Henter forklaring …» av en <noscript><style> i <head>.
     head = d.finn_alle("head")[0]
     assert any("#begrunnelse-henter" in n.tekst() and "display: none" in n.tekst() for n in head.finn_alle("noscript"))
@@ -1098,7 +1098,8 @@ def test_begrunnelse_js_finnes_og_bruker_post():
     from pathlib import Path
 
     js = (Path(__file__).resolve().parent.parent / "app" / "static" / "begrunnelse.js").read_text(encoding="utf-8")
-    assert 'method: "POST"' in js and "begrunnelse-svar" in js
+    assert 'method: "POST"' in js and 'querySelectorAll("[data-ki-url]")' in js
+    assert '"data-ki-mal"' in js and '"data-ki-klasse"' in js and "replaceChildren" in js
     assert "Testmodus (ekte kall feilet)" in js
     assert "innerHTML" not in js  # svaret settes som tekst, aldri som HTML
 
@@ -1122,3 +1123,202 @@ def test_overskrift_paa_begrunnelsen_bare_ved_varsel(modell_validering, varsel, 
 def test_overskrift_paa_baselinen(client):
     _, d = _detalj(client)
     assert _begrunnelse_overskrift(d) == "Om prediksjonen"
+
+
+# --- Forstyrrelsesbriefen øverst på skjerm A (E3-S05, PRD FR12, FR11a, FR11b) ---------------------------------
+# Baselinen i standardvinduet. Modellrader bare fra VALIDERING_NAA (regelen om testrader).
+
+from app.begrunnelse.klartekst import brief_innledning, velg_varslede  # noqa: E402
+from app.begrunnelse.testmodus import app_brief  # noqa: E402
+
+HENTER_BRIEF = "Henter oversikt …"
+
+
+def _forside_dok(client):
+    svar = client.get("/")
+    assert svar.status_code == 200
+    return parse_html(svar.get_data(as_text=True))
+
+
+def _brief_tekst(d):
+    return _ren(_med_id(d, "brief-svar").tekst())
+
+
+def _valideringspar():
+    inputs = [lag_input(a, VALIDERING_NAA) for a in anlop_i_vindu(VALIDERING_NAA)]
+    return list(zip(inputs, ModellPrediktor(prediksjon.MODELL_DIR).prediker(inputs, VALIDERING_NAA)))
+
+
+def _godt_brief_svar():
+    valgte, antall = velg_varslede(_valideringspar())
+    return f"{brief_innledning(valgte, antall)} Begge kommer senere enn vanlig. Følg med på dem."
+
+
+def test_brief_nevner_varslede(modell_validering):
+    """Modell v1 i valideringsvinduet: briefen står først, nevner de varslede anløpene i avviksrekkefølge og ingen
+    andre skip. Testmodus: server-rendret, merket «Testmodus», uten JavaScript og uten kall."""
+    d = _forside_dok(modell_validering)
+    main = d.finn_alle("main")[0]
+    seksjoner = [n for n in main.children if not isinstance(n, str)]
+    assert seksjoner[0].attrs.get("id") == "brief"
+    assert "prediktor" in seksjoner[1].attrs.get("class", "").split()
+    assert _ren(_med_id(d, "brief-tittel").tekst()) == "Oversikt over vinduet"
+    region = _med_id(d, "brief-svar")
+    assert region.attrs.get("aria-live") == "polite" and "data-ki-url" not in region.attrs
+    tekst = _brief_tekst(d)
+    par = _valideringspar()
+    varslede = sorted([(i, p) for i, p in par if p.forventet_forsinket is True],
+                      key=lambda ip: -ip[1].forklaring["predikert_avvik_min"])
+    assert len(varslede) >= 2
+    assert tekst.startswith(f"Testmodus {len(varslede)} anløp har varsel. ")
+    posisjoner = [tekst.index(i.shipname) for i, _ in varslede[:3]]
+    assert posisjoner == sorted(posisjoner)
+    andre = {i.shipname for i, _ in par} - {i.shipname for i, _ in varslede[:3]}
+    assert not any(re.search(r"(?<!\w)" + re.escape(n) + r"(?!\w)", tekst) for n in andre)
+    assert d.finn_alle("script") == [] and d.finn_alle("noscript") == []
+    assert begrunnelse.antall_kall() == 0
+
+
+@pytest.mark.parametrize("modus", ["test", "ekte"])
+def test_brief_uten_varsler(client, monkeypatch, modus):
+    """Baselinen (standardvinduet): appen skriver briefen, merket «Laget av appen», server-rendret, uten kall, i begge
+    modusene. POST /brief gir det samme."""
+    t = _ekte(monkeypatch, FalskTransport("skal ikke brukes")) if modus == "ekte" else None
+    d = _forside_dok(client)
+    assert _brief_tekst(d) == (
+        "Laget av appen 15 anløp har rapportert ETA i vinduet. Modellen har ikke vurdert noen av dem, og ingen har "
+        "varsel. Tidene bygger bare på vanlig avvik for skipsgruppen, og den beregningen kan ikke varsle.")
+    assert d.finn_alle("script") == [] and d.finn_alle("noscript") == []
+    svar = client.post("/brief")
+    assert svar.status_code == 200 and svar.get_json()["merke"] == "Laget av appen"
+    assert begrunnelse.antall_kall() == 0 and (t is None or t.kall == [])
+
+
+def test_brief_baseline_i_ekte_modus_i_valideringsvinduet(monkeypatch):
+    """`PREDIKTOR=baseline` i ekte modus: ingen kall for GET og POST, «Laget av appen»."""
+    t = _ekte(monkeypatch, FalskTransport("skal ikke brukes"))
+    c = create_app({"TESTING": True, "STANDARD_NAA": VALIDERING_NAA}).test_client()
+    assert _brief_tekst(_forside_dok(c)).startswith("Laget av appen")
+    assert c.post("/brief").get_json()["merke"] == "Laget av appen"
+    assert t.kall == [] and begrunnelse.antall_kall() == 0
+
+
+def test_brief_modell_uten_varsler_er_laget_av_appen(modell_validering, monkeypatch):
+    """Modell v1 uten varsler i vinduet (varslene skrudd av i prediktoren): appens brief, ingen kall."""
+    t = _ekte(monkeypatch, FalskTransport("skal ikke brukes"))
+    ekte_prediker = ModellPrediktor.prediker
+
+    def uten_varsler(self, inputs, naa):
+        return [dataclasses.replace(p, forventet_forsinket=False if p.forventet_forsinket else p.forventet_forsinket)
+                for p in ekte_prediker(self, inputs, naa)]
+
+    monkeypatch.setattr(ModellPrediktor, "prediker", uten_varsler)
+    tekst = _brief_tekst(_forside_dok(modell_validering))
+    assert tekst.startswith("Laget av appen 13 anløp har rapportert ETA i vinduet. Modellen har vurdert 6 av dem, "
+                            "og ingen har varsel. De 7 andre er ikke vurdert:")
+    assert modell_validering.post("/brief").get_json()["merke"] == "Laget av appen"
+    assert t.kall == []
+
+
+def test_brief_venter_ikke_paa_spraakmodellen(modell_validering, monkeypatch):
+    """FR11a: en transport som sover 30 s, rører ikke GET /. Siden svarer på under 1 s med «Henter oversikt …»,
+    og uten JavaScript viser <noscript> mal-briefen merket «Testmodus»."""
+    class Sover(FalskTransport):
+        def __call__(self, *a, **k):
+            self.kall.append(a)
+            time.sleep(30)
+
+    t = _ekte(monkeypatch, Sover())
+    _forside_dok(modell_validering)  # oppvarming: data og prediktor lastes før tidtakingen
+    start = time.perf_counter()
+    d = _forside_dok(modell_validering)
+    assert time.perf_counter() - start < 1
+    assert t.kall == []
+    region = _med_id(d, "brief-svar")
+    assert region.attrs.get("aria-live") == "polite"
+    assert _ren(region.tekst()) == HENTER_BRIEF
+    assert region.attrs["data-ki-url"] == "/brief"
+    mal = begrunnelse.testbrief(_valideringspar()).tekst
+    assert region.attrs["data-ki-mal"] == mal
+    brief = _med_id(d, "brief")
+    noscript = brief.finn_alle("noscript")
+    assert len(noscript) == 1 and _ren(noscript[0].tekst()) == _ren(f"Testmodus {mal}")
+    head = d.finn_alle("head")[0]
+    assert any("#brief-henter" in n.tekst() and "display: none" in n.tekst() for n in head.finn_alle("noscript"))
+    assert [s.attrs.get("src") for s in d.finn_alle("script")] == ["/static/begrunnelse.js"]
+
+
+def test_brief_cachet_vises_server_rendret(modell_validering, monkeypatch):
+    t = _ekte(monkeypatch, FalskTransport(_godt_brief_svar()))
+    svar = modell_validering.post("/brief")
+    assert svar.status_code == 200
+    assert svar.get_json() == {"tekst": _godt_brief_svar(), "merke": "KI-GENERERT"}
+    _forside_dok(modell_validering)
+    start = time.perf_counter()
+    d = _forside_dok(modell_validering)
+    assert time.perf_counter() - start < 1
+    assert _brief_tekst(d) == f"KI-GENERERT {_godt_brief_svar()}"
+    assert d.finn_alle("script") == []
+    modell_validering.post("/brief")
+    assert len(t.kall) == 1
+
+
+@pytest.mark.parametrize("utfall, kode", [
+    (TimeoutError(), "timeout"), (500, "http_500"), (402, "kvote_402"), ("", "kontroll_tom"),
+    ("Været er dårlig. Det er alt. Slutt.", "kontroll_konklusjon"),
+])
+def test_brief_endepunkt_alltid_200(modell_validering, monkeypatch, caplog, utfall, kode):
+    _ekte(monkeypatch, FalskTransport(utfall))
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        svar = modell_validering.post("/brief")
+    assert svar.status_code == 200
+    mal = begrunnelse.testbrief(_valideringspar()).tekst
+    assert svar.get_json() == {"tekst": mal, "merke": "Testmodus (ekte kall feilet)"}
+    assert f"brief: {kode} naa={VALIDERING_NAA.isoformat()} prediktor=Modell v1" in caplog.text
+    assert FALSK_NOKKEL not in svar.get_data(as_text=True) + caplog.text
+    assert _brief_tekst(_forside_dok(modell_validering)).startswith("Testmodus (ekte kall feilet)")
+
+
+def test_brief_kallgrensen_er_naadd(modell_validering, monkeypatch):
+    monkeypatch.setenv("LLM_MAKS_KALL", "1")
+    t = _ekte(monkeypatch, FalskTransport(_godt_svar()))
+    modell_validering.post(f"/anlop/{_modellrad(True)[0].voyageid}/begrunnelse")  # bruker det ene kallet
+    svar = modell_validering.post("/brief")
+    assert svar.get_json()["merke"] == "Testmodus (kallgrensen er nådd)" and len(t.kall) == 1
+
+
+def test_brief_endepunkt_uventet_feil_gir_200(modell_validering, monkeypatch):
+    def feiler(*a, **k):
+        raise RuntimeError(FALSK_NOKKEL)
+
+    monkeypatch.setattr(begrunnelse, "hent_brief", feiler)
+    svar = modell_validering.post("/brief")
+    assert svar.status_code == 200 and svar.get_json()["merke"] == "Testmodus (ekte kall feilet)"
+    assert FALSK_NOKKEL not in svar.get_data(as_text=True)
+
+
+def test_brief_kreves_med_post(client):
+    assert client.get("/brief").status_code == 405
+
+
+def test_brief_tomt_vindu(tomt_client, tomt_dokument):
+    """0 anløp: ingen briefseksjon. Endepunktet svarer likevel 200."""
+    assert _med_id(tomt_dokument, "brief") is None
+    assert tomt_client.post("/brief").status_code == 200
+
+
+def test_brief_app_tekst_stemmer_med_testmodus(client):
+    """Teksten på siden er ``app_brief`` for parene i vinduet."""
+    from app import _par
+
+    _, _, par = _par(STANDARD_NAA)
+    assert _brief_tekst(_forside_dok(client)) == _ren(f"Laget av appen {app_brief(par)}")
+
+
+def test_begrunnelse_js_finner_alle_ki_regioner():
+    from pathlib import Path
+
+    js = (Path(__file__).resolve().parent.parent / "app" / "static" / "begrunnelse.js").read_text(encoding="utf-8")
+    assert 'querySelectorAll("[data-ki-url]")' in js
+    assert "data-ki-mal" in js and "data-ki-klasse" in js
+    assert "getElementById" not in js  # ingen fast region: skjerm A og C bruker samme kode

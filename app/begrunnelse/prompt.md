@@ -1,6 +1,6 @@
 # Prompt: begrunnelse per anløp
 
-**Versjon:** `begrunnelse-v6` (19.11.2026, E3-S03). v6: timer i faktaene er avrundet til hele tall og skrevet «ca. 42 timer», og «ca.» er lov slik det står i faktaene. v5: innledningen (konklusjonen om havneområdet, og på baseline- og varselrader én setning til) skrives av appen og står først ordrett. Avgangshavn og ETD er registrert informasjon, ikke sikre fakta (beslutning 11). På modellrader er «vanlig avvik for skipsgruppen» ikke forklaringen. v4: konklusjonen regnes ut i appen, faktaene er i vanlig språk, høyst 300 tegn. v3: retningen for baselinen følger fortegnet på forskyvningen. v2: tall med sifre og retningsord som stemmer. v1 ga ingen tekst, fordi resonneringen brukte alle 300 tokens (rettet i klienten med `reasoning.effort`).
+**Versjon:** `begrunnelse-v8` (23.11.2026, E3-S05). v8: avstand, fart og retning skrives i fortid, ved siste posisjon, med tidspunktet når det står i faktaene. Kontrollen avviser presens (`presens`). v7: «Rekker fram til rapportert ETA med farten ved siste posisjon» sendes bare når skipet er på vei mot havna. For et skip på vei bort fra havna ble det lest som en selvmotsigelse (røykkall brief-v1). v6 (19.11.2026, E3-S03): timer i faktaene er avrundet til hele tall og skrevet «ca. 42 timer», og «ca.» er lov slik det står i faktaene. v5: innledningen (konklusjonen om havneområdet, og på baseline- og varselrader én setning til) skrives av appen og står først ordrett. Avgangshavn og ETD er registrert informasjon, ikke sikre fakta (beslutning 11). På modellrader er «vanlig avvik for skipsgruppen» ikke forklaringen. v4: konklusjonen regnes ut i appen, faktaene er i vanlig språk, høyst 300 tegn. v3: retningen for baselinen følger fortegnet på forskyvningen. v2: tall med sifre og retningsord som stemmer. v1 ga ingen tekst, fordi resonneringen brukte alle 300 tokens (rettet i klienten med `reasoning.effort`).
 
 `openrouter_klient.bygg_prompt` leser denne fila. Teksten mellom `<!-- SYSTEM -->` og `<!-- BRUKER -->` er systemmeldingen, og teksten etter `<!-- BRUKER -->` er brukermeldingen. `{fakta}` byttes ut med faktaene fra `input.lag_fakta`, én linje per felt. Svaret kontrolleres av `kontroll.py` før det vises. Kontrollen er et vern, ikke et bevis på at teksten er riktig.
 
@@ -20,6 +20,7 @@ Regler:
 - Ikke finn på årsaker. Du vet ingenting om vær, streik, motor, mannskap, kø eller hendelser.
 - Hvis «Varsel» ikke begynner med «ja», skal du ikke skrive at anløpet blir forsinket.
 - Ikke bruk forkortelser med punktum, som «ca.» eller «kl.», utenom slik de står i innledningen eller faktaene.
+- Avstand, fart og retning gjelder siste AIS-posisjon, ikke nå. Skriv dem i fortid, for eksempel «var 74 km fra havna med 8,1 knop og på vei mot havna ved siste posisjon», og ta med tidspunktet når det står under «Siste AIS-posisjon». Skriv aldri «er … km fra havna», «går med …» eller «er på vei».
 <!-- BRUKER -->
 Fakta om anløpet:
 {fakta}
