@@ -82,6 +82,10 @@ Det ble gjort 3 kall med de samme vinduene. Alle gikk til Particle AI, stoppet a
 
 Det ble gjort 1 kall: briefen med 3 varsler (24.06.2025 08:00). Med 2–3 varsler får modellen nå legge til én kort setning per skip, og per skip sendes bare skip, avstand, retning og fart. Svaret ble godtatt (KI-GENERERT), med 536 tegn og 5 setninger, og modellen skrev én setning per skip. Kallet gikk til Particle AI, stoppet av seg selv og brukte ingen resonnering. Det brukte 1 160 input-tokens og 207 output-tokens, og kostet USD 0,00012. Input-tokens falt fra 2 305 til 1 160, fordi det sendes færre fakta per skip. Modellen skrev «er 212 km fra havna» i presens, men tallet gjelder siste AIS-posisjon. Svaret hadde også linjeskift, som HTML viser som mellomrom.
 
+### Røykkall brief-v4, 23.11.2026
+
+Det ble gjort 1 kall: briefen med 3 varsler (24.06.2025 08:00). Avstand, fart og retning skal nå skrives i fortid, ved siste posisjon, og kontrollen avviser presens. Svaret ble godtatt (KI-GENERERT), med 562 tegn og 5 setninger, alle i fortid («NYKSUND var ved siste posisjon 212 km fra havna med 13,7 knop på vei mot havna.»). Modellen tok ikke med tidspunktet for siste posisjon, selv om det sto i faktaene. Kallet gikk til Particle AI, brukte ingen resonnering, brukte 1 247/213 tokens og kostet USD 0,00013.
+
 ## Begrunnelse
 
 Nøkkelen med hard bruksgrense er det eneste som faktisk setter et tak på forbruket når appen kjører på flere instanser. Adapteren gjør leverandøren byttbar (A8), så valget koster lite å endre: modellen og routingen er miljøvariabler, og klienten er én fil.
