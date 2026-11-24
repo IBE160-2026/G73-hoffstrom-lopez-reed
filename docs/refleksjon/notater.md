@@ -377,3 +377,13 @@ Råmateriale til refleksjonsrapporten, ikke ferdig tekst. **Regel:** hver gang v
 - **Lærdom (råt):**
   - Et testoppsett som gir rødt, er ikke det samme som en feil i koden. Finn årsaken før noe endres, slik Theodor ba om.
   - Et blokkeringsmønster må sjekkes mot alle URL-ene siden laster, ikke bare den som skal treffes. Et skript som heter det samme som endepunktet, er en felle.
+
+## 2026-11-24 — Opptaksskriptet kunne miste betalte svar (E3-S06)
+
+- **Hva:** Claudes implementering av `scripts/ta_opp_begrunnelser.py` hadde to feil i flettingen før fila skrives.
+  - En oppføring i den eksisterende fila som ikke var et objekt, ga `AttributeError` i sorteringen. Det skjedde etter alle de betalte kallene, så ingenting ble skrevet.
+  - En ny kjøring der kallene feilet (for eksempel HTTP 402), slettet alle de gode opptakene for vinduet.
+- I tillegg skrev skriptet fila direkte, uten temp-fil, og ytterligere 6 småfunn ble rettet.
+- **Hvordan det ble oppdaget:** gjennom review med tre lag i `bmad-build`, før skriptet ble kjørt mot nettet. Ingen kall ble gjort, og ingenting gikk tapt.
+- **Resultat:** ugyldige oppføringer droppes, og gamle opptak beholdes når et nytt svar mangler. Fila skrives atomisk. Det er to nye tester for dette (`85359b2`, PR #14).
+- **Lærdom (råt):** et skript som bruker penger, bør feile før kallene, ikke etter. Det som er betalt for, må skrives trygt, også når fila fra før er rar. Testene dekket ikke en ny kjøring med feil, fordi underagenten bare testet første kjøring.
