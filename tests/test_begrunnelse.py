@@ -1590,3 +1590,176 @@ def test_brief_med_presens_gir_mal(monkeypatch):
     t = FalskTransport(f"{start} Den første er på vei mot havna. Den andre var nær. Den tredje var nær.")
     monkeypatch.setattr(begrunnelse, "transport", t)
     assert hent_brief(par, NAA_SYNT, MODELL).merke == MERKE_FEILET
+
+
+# --- E3-S06: opptak av ekte svar --------------------------------------------------------------------------------
+#
+# Opptaksfilene er håndlaget i ``tmp_path``. Modellrader bare fra ``VALIDERING_NAA`` (regelen om testrader).
+
+import app.begrunnelse.testmodus as testmodus  # noqa: E402
+from app.begrunnelse.testmodus import MERKE_OPPTAK, fakta_hash  # noqa: E402
+
+OPPTATT = "Opptatt svar fra språkmodellen."
+TATT_OPP = "2026-11-24T10:15:00+01:00"
+
+
+def oppforing(naa, anlop, prediktor, fakta, versjon=None, tekst=OPPTATT, **over):
+    o = {"naa": naa.isoformat(), "anlop": anlop, "prediktor": prediktor,
+         "prompt_versjon": versjon or openrouter_klient.prompt_versjon(
+             openrouter_klient.PROMPT_BRIEF_FIL if anlop == "brief" else openrouter_klient.PROMPT_FIL),
+         "modell": "deepseek/deepseek-v4.1-flash-1017:floor", "tatt_opp": TATT_OPP,
+         "fakta_sha256": fakta_hash(fakta), "tekst": tekst}
+    o.update(over)
+    return o
+
+
+def skriv_opptak(monkeypatch, tmp_path, oppforinger, innhold=None):
+    sti = tmp_path / "begrunnelser_opptak.json"
+    sti.write_text(innhold if innhold is not None else json.dumps({"format": 1, "opptak": oppforinger}),
+                   encoding="utf-8")
+    monkeypatch.setattr(testmodus, "OPPTAK_FIL", sti)
+    testmodus.nullstill_opptak()
+    return sti
+
+
+def valideringsmodellpar():
+    from conftest import VALIDERING_NAA
+
+    from app.prediksjon import MODELL_DIR
+    from app.prediksjon.modell import ModellPrediktor
+
+    inputs = [lag_input(a, VALIDERING_NAA) for a in anlop_i_vindu(VALIDERING_NAA)]
+    return VALIDERING_NAA, list(zip(inputs, ModellPrediktor(MODELL_DIR).prediker(inputs, VALIDERING_NAA)))
+
+
+def test_testmodus_bruker_opptak(monkeypatch, tmp_path):
+    """FR13: i testmodus vises opptaket når nøkkel, prompt-versjon og faktahash stemmer, merket med datoen."""
+    from conftest import VALIDERING_NAA
+
+    inp, p = modellpar(monkeypatch, True)
+    skriv_opptak(monkeypatch, tmp_path, [oppforing(VALIDERING_NAA, inp.voyageid, MODELL, lag_fakta(inp, p))])
+    forventet = Begrunnelse(OPPTATT, MERKE_OPPTAK, "24.11.2026")
+    assert hent_begrunnelse(inp, p, MODELL, naa=VALIDERING_NAA) == forventet
+    assert cachet(inp, p, MODELL, naa=VALIDERING_NAA) == forventet
+    assert forventet.som_dict() == {"tekst": OPPTATT, "merke": "Testmodus (opptak av ekte svar)",
+                                    "tatt_opp": "24.11.2026"}
+    assert begrunnelse.antall_kall() == 0
+    # Uten vindu, med en annen prediktor, et annet vindu eller en annen seilas: malen.
+    mal_svar = Begrunnelse(begrunnelse.mal(inp, p), MERKE_TEST)
+    assert hent_begrunnelse(inp, p, MODELL) == mal_svar
+    assert hent_begrunnelse(inp, p, BASELINE, naa=VALIDERING_NAA) == mal_svar
+    assert hent_begrunnelse(inp, p, MODELL, naa=STANDARD_NAA) == mal_svar
+    annen, q = modellpar(monkeypatch, False)
+    assert hent_begrunnelse(annen, q, MODELL, naa=VALIDERING_NAA).merke == MERKE_TEST
+
+
+def test_opptak_med_endrede_fakta_gir_mal(monkeypatch, tmp_path):
+    from conftest import VALIDERING_NAA
+
+    inp, p = modellpar(monkeypatch, True)
+    fakta = dict(lag_fakta(inp, p), Skip="ET ANNET SKIP")
+    skriv_opptak(monkeypatch, tmp_path, [oppforing(VALIDERING_NAA, inp.voyageid, MODELL, fakta)])
+    assert hent_begrunnelse(inp, p, MODELL, naa=VALIDERING_NAA) == Begrunnelse(begrunnelse.mal(inp, p), MERKE_TEST)
+
+
+def test_opptak_med_annen_prompt_versjon_gir_mal(monkeypatch, tmp_path):
+    from conftest import VALIDERING_NAA
+
+    inp, p = modellpar(monkeypatch, True)
+    skriv_opptak(monkeypatch, tmp_path, [oppforing(VALIDERING_NAA, inp.voyageid, MODELL, lag_fakta(inp, p),
+                                                   versjon="begrunnelse-v7")])
+    assert hent_begrunnelse(inp, p, MODELL, naa=VALIDERING_NAA).merke == MERKE_TEST
+    # Samme fil med versjonen fra i dag gir opptaket, og en ny prompt-versjon gir malen igjen.
+    skriv_opptak(monkeypatch, tmp_path, [oppforing(VALIDERING_NAA, inp.voyageid, MODELL, lag_fakta(inp, p))])
+    assert hent_begrunnelse(inp, p, MODELL, naa=VALIDERING_NAA).merke == MERKE_OPPTAK
+    monkeypatch.setattr(openrouter_klient, "prompt_versjon", lambda fil: "begrunnelse-v99")
+    assert hent_begrunnelse(inp, p, MODELL, naa=VALIDERING_NAA).merke == MERKE_TEST
+
+
+def test_prompt_versjon_fra_fila(tmp_path):
+    assert openrouter_klient.prompt_versjon() == "begrunnelse-v8"
+    assert openrouter_klient.prompt_versjon(openrouter_klient.PROMPT_BRIEF_FIL) == "brief-v4"
+    uten = tmp_path / "uten.md"
+    uten.write_text("# Prompt\n\nIngen versjon.\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        openrouter_klient.prompt_versjon(uten)
+
+
+def test_faktahash_er_sortert_json_i_utf8():
+    import hashlib
+
+    a = {"Skip": "ÆØÅ", "Avstand": "12 km"}
+    b = {"Avstand": "12 km", "Skip": "ÆØÅ"}
+    assert fakta_hash(a) == fakta_hash(b) == hashlib.sha256(
+        json.dumps(a, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
+    assert fakta_hash(a) != fakta_hash(dict(a, Skip="AOA"))
+
+
+@pytest.mark.parametrize("innhold", [None, "{ikke json", "[]", '{"opptak": 3}', ""])
+def test_opptaksfil_mangler_eller_er_ugyldig(monkeypatch, tmp_path, caplog, innhold):
+    """Manglende eller ugyldig fil: malen, ingen feil, og én advarsel per prosess."""
+    from conftest import VALIDERING_NAA
+
+    inp, p = modellpar(monkeypatch, True)
+    if innhold is None:
+        monkeypatch.setattr(testmodus, "OPPTAK_FIL", tmp_path / "finnes_ikke.json")
+        testmodus.nullstill_opptak()
+    else:
+        skriv_opptak(monkeypatch, tmp_path, None, innhold)
+    with caplog.at_level(logging.WARNING, logger="app.begrunnelse"):
+        for _ in range(3):
+            assert hent_begrunnelse(inp, p, MODELL, naa=VALIDERING_NAA) == Begrunnelse(
+                begrunnelse.mal(inp, p), MERKE_TEST)
+    assert sum("opptak:" in r.getMessage() for r in caplog.records) == 1
+
+
+def test_ugyldige_oppforinger_hoppes_over(monkeypatch, tmp_path):
+    from conftest import VALIDERING_NAA
+
+    inp, p = modellpar(monkeypatch, True)
+    god = oppforing(VALIDERING_NAA, inp.voyageid, MODELL, lag_fakta(inp, p))
+    skriv_opptak(monkeypatch, tmp_path, [3, {"naa": "x"}, dict(god, tekst=None), dict(god, anlop=True), god])
+    assert hent_begrunnelse(inp, p, MODELL, naa=VALIDERING_NAA).merke == MERKE_OPPTAK
+    skriv_opptak(monkeypatch, tmp_path, [dict(god, tatt_opp="ikke en dato")])
+    assert hent_begrunnelse(inp, p, MODELL, naa=VALIDERING_NAA).merke == MERKE_TEST
+
+
+def test_opptak_brukes_ikke_i_ekte_modus(monkeypatch, tmp_path):
+    """Ekte modus har sin egen cache og sitt eget tilbakefall: opptaket brukes aldri der."""
+    from conftest import VALIDERING_NAA
+
+    inp, p = modellpar(monkeypatch, True)
+    skriv_opptak(monkeypatch, tmp_path, [oppforing(VALIDERING_NAA, inp.voyageid, MODELL, lag_fakta(inp, p))])
+    ekte(monkeypatch)
+    sett_transport(monkeypatch, FalskTransport(500))
+    svar = hent_begrunnelse(inp, p, MODELL, naa=VALIDERING_NAA)
+    assert svar == Begrunnelse(begrunnelse.mal(inp, p), MERKE_FEILET)
+    assert cachet(inp, p, MODELL, naa=VALIDERING_NAA) == svar
+    # Tilbakefallsmerkene gir alltid malen, også i testmodus.
+    for merke in (MERKE_FEILET, MERKE_GRENSE):
+        assert begrunnelse.testtekst(inp, p, merke, naa=VALIDERING_NAA, prediktor_navn=MODELL).merke == merke
+
+
+def test_brief_bruker_opptak(monkeypatch, tmp_path):
+    naa, par = valideringsmodellpar()
+    valgte, antall = velg_varslede(par)
+    assert antall
+    fakta = lag_brief_fakta(par, naa, valgte, antall)
+    skriv_opptak(monkeypatch, tmp_path, [oppforing(naa, "brief", MODELL, fakta, tekst="Opptatt brief.")])
+    forventet = Begrunnelse("Opptatt brief.", MERKE_OPPTAK, "24.11.2026")
+    assert hent_brief(par, naa, MODELL) == cachet_brief(par, naa, MODELL) == forventet
+    assert begrunnelse.testbrief(par) == Begrunnelse(brief_mal(valgte, antall), MERKE_TEST)  # noscript-malen
+    assert begrunnelse.testbrief(par, MERKE_FEILET, naa=naa, prediktor_navn=MODELL).merke == MERKE_FEILET
+    # Endret fakta eller prompt-versjon: malen.
+    skriv_opptak(monkeypatch, tmp_path, [oppforing(naa, "brief", MODELL, dict(fakta, Vindu="annet"))])
+    assert hent_brief(par, naa, MODELL).merke == MERKE_TEST
+    skriv_opptak(monkeypatch, tmp_path, [oppforing(naa, "brief", MODELL, fakta, versjon="brief-v3")])
+    assert hent_brief(par, naa, MODELL).merke == MERKE_TEST
+
+
+def test_brief_uten_varsler_bruker_aldri_opptak(monkeypatch, tmp_path):
+    """B1: appens egen brief vises, også når fila har en oppføring for vinduet."""
+    par = [baselinepar()[:2]]
+    skriv_opptak(monkeypatch, tmp_path, [oppforing(STANDARD_NAA, "brief", BASELINE, {})])
+    assert hent_brief(par, STANDARD_NAA, BASELINE) == cachet_brief(par, STANDARD_NAA, BASELINE) == Begrunnelse(
+        app_brief(par), MERKE_APP)

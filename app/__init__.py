@@ -156,20 +156,21 @@ def create_app(config=None):
             varsel_grunn=DELEGERT_TEKST.get(p.forklaring.get("delegert")),
             metode=metode_tekst(inp, p),
             prediktor_navn=prediktor.navn,
-            begrunnelse=begrunnelse.cachet(inp, p, prediktor.navn),
+            begrunnelse=begrunnelse.cachet(inp, p, prediktor.navn, naa=naa),
             mal=begrunnelse.testtekst(inp, p).tekst,
         )
 
     @app.post("/anlop/<int:voyageid>/begrunnelse")
     def begrunnelse_json(voyageid):
-        """Begrunnelsen som JSON ``{tekst, merke}``. Alltid 200 for en kjent seilas, også når kallet feiler.
+        """Begrunnelsen som JSON ``{tekst, merke}``, og ``tatt_opp`` (dato) når det er et opptak (E3-S06). Alltid 200 for en kjent seilas, også når kallet feiler.
         POST, så søkeroboter ikke utløser betalte kall."""
-        treff = _ett_anlop(voyageid, current_app.config["STANDARD_NAA"])
+        naa = current_app.config["STANDARD_NAA"]
+        treff = _ett_anlop(voyageid, naa)
         if treff is None:
             abort(404)
         prediktor, inp, p = treff
         try:
-            svar = begrunnelse.hent_begrunnelse(inp, p, prediktor.navn)
+            svar = begrunnelse.hent_begrunnelse(inp, p, prediktor.navn, naa=naa)
         except Exception as feil:  # aldri HTTP 500 for begrunnelsen; meldingen logges ikke
             logging.getLogger("app.begrunnelse").warning(
                 "begrunnelse: uventet_%s voyageid=%s prediktor=%s", type(feil).__name__, voyageid, prediktor.navn)
@@ -178,7 +179,7 @@ def create_app(config=None):
 
     @app.post("/brief")
     def brief_json():
-        """Briefen for vinduet som JSON ``{tekst, merke}``. Alltid 200, også når kallet feiler (E3-S05, FR11a).
+        """Briefen for vinduet som JSON ``{tekst, merke}``, og ``tatt_opp`` (dato) når det er et opptak (E3-S06). Alltid 200, også når kallet feiler (E3-S05, FR11a).
         POST, så søkeroboter ikke utløser betalte kall."""
         naa = current_app.config["STANDARD_NAA"]
         prediktor, _, par = _par(naa)
