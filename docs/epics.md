@@ -52,6 +52,7 @@ Status: ☐ ikke startet · ◐ pågår · ✅ ferdig · ✗ forkastet
 | E0-S20 | Refleksjonsrapporten opprettet etter kursmalen, med utkast til svar på faglærers to refleksjonsspørsmål. De individuelle refleksjonene står tomme. | `docs/refleksjon/rapport.md` | ◐ utkast |
 | E0-S21 | Vercel-deploy: eget inngangspunkt (`wsgi.py`), Python 3.12, utelatelser i bunten, test av at appen ikke skriver til disk. Arkitektur §11. I produksjon på <https://g73-hoffstrom-lopez-reed.vercel.app> (PR #7). | `wsgi.py`, `.python-version`, `vercel.json`, `tests/test_wsgi.py`, `docs/arkitektur.md`, `README.md` | ✅ |
 | E0-S22 | `technology.md` fjernet etter faglærers svar (rest, ikke et krav). `.env.example` har fått `OPENROUTER_API_KEY` for kursnøkkelen. Den lokale `.env` er ignorert av git. | `_bmad-output/planning-artifacts/architecture/`, `.env.example` | ✅ |
+| E0-S23 | Sjekkliste før levering 15.12: krav fra sensorveiledningen og rapportmalen med status, det som gjenstår i E3, rapportarbeidet og forslag til fordeling | `docs/levering-sjekkliste.md` | ✅ |
 
 ---
 
