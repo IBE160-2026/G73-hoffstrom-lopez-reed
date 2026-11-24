@@ -403,11 +403,13 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 
 **Test:** `tests/test_ruter.py::test_brief_nevner_varslede`, `::test_brief_uten_varsler`, `::test_brief_venter_ikke_paa_spraakmodellen` (FR11a), `tests/test_begrunnelse.py::test_brief_velger_varslede_sortert_etter_avvik`, `::test_brief_deler_kallgrensen_med_begrunnelsene` (FR11b), og den manuelle sjekken (åpen)
 
-### E3-S06 — Opptak av ekte svar for demodager ☐
+### E3-S06 — Opptak av ekte svar for demodager ✅
 **Krav:** FR13 · **Avhenger av:** E3-S05
-- `scripts/ta_opp_begrunnelser.py` kjører ekte modus for demovinduene 08.10.2025 08:00 og 17.09.2025 08:00 og lagrer svarene i `data/begrunnelser_opptak.json`. Testmodus viser opptaket når det finnes, så sensor ser ekte output uten nøkkel.
+- `scripts/ta_opp_begrunnelser.py` kjører ekte modus for demovinduet 08.10.2025 08:00 gjennom adapteren (`hent_begrunnelse`, `hent_brief`) og lagrer de godkjente svarene («KI-GENERERT») i `data/begrunnelser_opptak.json`. Testmodus viser opptaket når det finnes, så sensor ser ekte output uten nøkkel.
+- Bare 08.10 tas opp: appen viser bare standardvinduet til tidsvelgeren (E1-S07) er bygd (spec-valg O1). Merket er «Testmodus (opptak av ekte svar)» med datoen for opptaket (O2). Opptaket brukes bare når nøkkelen (vindu, anløp eller «brief», prediktor), prompt-versjonen og SHA-256 av faktaene stemmer, ellers vises malen.
+- Opptakskjøringen lar Modell v1 predikere 08.10, som ligger i testperioden. Det er bare til visning: ingen fasit sendes eller leses, og ingen låste filer endres (O3). Felipe bekrefter før kjøringen, og Theodor starter den. Kjøringen og kostnaden logges i `.logs/` og i beslutning 13. Koden og testene er ferdige, mens selve opptaket er et eget steg.
 
-**Test:** `tests/test_begrunnelse.py::test_testmodus_bruker_opptak`
+**Test:** `tests/test_begrunnelse.py::test_testmodus_bruker_opptak`, `tests/test_ruter.py::test_skjerm_a_og_c_viser_opptaket`, `tests/test_opptak_skript.py`
 
 ### E3-S07 — README for AI-laget ☐
 **Krav:** NFR1 · **Avhenger av:** E3-S06
@@ -492,3 +494,4 @@ UU1–UU7 er ikke KAN. Minimumskravene står som akseptansekriterier i E1-S06 (d
 - **2026-11-18** — E0-S22 er ferdig. Faglærer svarte at `technology.md` var en rest og ikke skal brukes, så den er fjernet. Han deler ut en OpenRouter-nøkkel med bruksgrense til testing. Navnet `OPENROUTER_API_KEY` står i `.env.example`, og nøkkelen legges bare i den lokale `.env`. Hvilken leverandør E3 bruker (arkitekturen sier fortsatt Anthropic), er ikke avgjort her (Theodor Gimming).
 - **2026-11-18** — E3-S01–S03 er ferdige på `epic/e3-ai-lag`: adapter med testmodus, input fra modellens egne data og ekte klient mot OpenRouter (beslutning 13). E3-S03 sier nå `openrouter_klient.py` og `OPENROUTER_API_KEY` i stedet for `anthropic_klient.py` og `ANTHROPIC_API_KEY` (Theodor Gimming).
 - **2026-11-18** — E3-S04 er ferdig på `epic/e3-ai-lag`: skjerm C med begrunnelsen, JSON-endepunktet og UU-radene i UX §6 (☐ til manuell sjekk). Kjernen i E1-S11 er levert her (Theodor Gimming).
+- **2026-11-24** — E3-S06: opptak av ekte svar bare for 08.10.2025 08:00 (spec-valg O1), merket «Testmodus (opptak av ekte svar)» med dato (O2), og testrader bare til visning i opptakskjøringen (O3). Koden og testene er ferdige, og selve opptaket kjøres etter at Felipe har bekreftet (Theodor Gimming).

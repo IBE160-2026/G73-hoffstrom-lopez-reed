@@ -193,7 +193,8 @@ Standardtilstand: «nå» = ons 08.10.2025 08:00, fasit av. Radene er de ekte an
 - Datalistene er `<dl>`, ikke en tabell. Det er semantisk riktig for nøkkel–verdi.
 - **Bygd i E3-S04 (minimal, spec-valg S1):** `/anlop/<voyageid>` for standardvinduet, uten `naa`- og fasit-parametre ennå. Siden viser gruppe og seilas-ID (ikke MMSI), tidene i en `<dl>` (rapportert, predikert, horisont, prediktor, varsel), «Slik ble prediksjonen laget» per gruppe og metode, og begrunnelsen. Skipsnavnet i lista på skjerm A er lenke hit. «Tilbake» går til `/`. Faktisk ankomst, avvik og kart er ikke med.
 - **Overskriften på begrunnelsen (18.11.2026, Theodor Gimming):** «Hvorfor avvik er ventet» bare når modellen varsler (`forventet_forsinket` er True). Ellers står «Om prediksjonen»: på baselinen, på rader modellen har delegert, og på modellrader uten varsel. Ingen overskrift skal påstå et avvik som ikke er ventet (FR11). Før det sto «Hvorfor avvik er ventet» over alle rader (review-funn 26 i E3-specen).
-- **Begrunnelsen venter aldri på språkmodellen (FR11a, spec-valg S7).** I testmodus, og når svaret er cachet, er teksten server-rendret med merket. Ellers står «Henter forklaring …» i en `aria-live="polite"`-region som finnes i HTML-en fra start, og `begrunnelse.js` henter svaret med `POST /anlop/<voyageid>/begrunnelse` og bytter bare innholdet i regionen. Merket står som tekst over teksten: «KI-GENERERT», «Testmodus», «Testmodus (ekte kall feilet)» eller «Testmodus (kallgrensen er nådd)». Uten JavaScript viser `<noscript>` mal-teksten merket «Testmodus», og «Henter forklaring …» er skjult.
+- **Begrunnelsen venter aldri på språkmodellen (FR11a, spec-valg S7).** I testmodus, og når svaret er cachet, er teksten server-rendret med merket. Ellers står «Henter forklaring …» i en `aria-live="polite"`-region som finnes i HTML-en fra start, og `begrunnelse.js` henter svaret med `POST /anlop/<voyageid>/begrunnelse` og bytter bare innholdet i regionen. Merket står som tekst over teksten: «KI-GENERERT», «Testmodus», «Testmodus (ekte kall feilet)», «Testmodus (kallgrensen er nådd)» eller «Testmodus (opptak av ekte svar)» med datoen (E3-S06). Uten JavaScript viser `<noscript>` mal-teksten merket «Testmodus», og «Henter forklaring …» er skjult.
+- **Opptak av ekte svar (E3-S06, FR13).** I testmodus viser skjerm C og briefen på skjerm A et opptak av et ekte svar for demovinduet 08.10.2025 08:00 når det finnes og fortsatt passer. Merket er «Testmodus (opptak av ekte svar), tatt opp DD.MM.ÅÅÅÅ» (datoen for opptaket), som tekst. Ellers vises malen merket «Testmodus».
 
 ## 5. Tilstander og feil
 
@@ -234,6 +235,9 @@ Ugyldig tidspunkt:                         Tomt vindu:
 | [E3] Briefen er ikke klar ennå (skjerm A) | «Henter oversikt …» i `aria-live`-regionen til briefen kommer. Uten JavaScript: mal-briefen merket «Testmodus» |
 | [E3] Briefen uten varsler, eller på baseline | Appens egen brief, merket «Laget av appen», server-rendret og uten kall, i begge modusene |
 | [E3] Briefen med flere enn 3 varsler | De 3 med størst predikert avvik, og «N anløp har varsel» |
+| [E3] Testmodus, opptaket finnes og passer (08.10) | Opptaket, server-rendret og merket «Testmodus (opptak av ekte svar), tatt opp DD.MM.ÅÅÅÅ», på skjerm C og i briefen |
+| [E3] Testmodus uten opptak, eller prompt-versjonen eller faktaene er endret | Malen merket «Testmodus», som før |
+| [E3] Opptaksfila mangler eller er ugyldig | Malen merket «Testmodus», status 200, og én advarsel i loggen per prosess |
 | [E3] 0 anløp i vinduet | Ingen brief |
 
 ## 6. Sjekkliste for universell utforming
@@ -314,3 +318,4 @@ Fokusring: 3 px `--aksent` med 2 px avstand, aldri `outline: none` uten erstatni
 - **2026-11-18** — E3-S04, skjerm C er bygd minimalt (spec-valg S1): tider i `<dl>`, «Slik ble prediksjonen laget» og «Hvorfor avvik er ventet» med merket som tekst. Skipsnavnet i lista er lenke til siden. §4 beskriver hva som er bygd og hvordan begrunnelsen hentes uten at siden venter, §5 har fått tilstandene for kallgrensen, «Henter forklaring …» og ukjent seilas, og §6 har tre nye rader for skjerm C (tastatur, `aria-live` og uten JavaScript), merket ☐ til den manuelle sjekken. Avvik fra skissen: ingen MMSI, faktisk ankomst, avvik eller kart, og «Tilbake» beholder ikke spørringen ennå (skjerm A har ingen spørring).
 - **2026-11-18** — E3-S04: overskriften på begrunnelsen er «Hvorfor avvik er ventet» bare når modellen varsler, ellers «Om prediksjonen» (§4) (Theodor Gimming).
 - **2026-11-19** — E3-S05: forstyrrelsesbriefen øverst på skjerm A (§2), tilstandene for briefen (§5) og UU-radene for `aria-live`, uten JS og lesersjekken (§6), alle ☐ til den manuelle kjøringen.
+- **2026-11-24** — E3-S06: opptak av ekte svar i testmodus for 08.10.2025 08:00, merket «Testmodus (opptak av ekte svar)» med datoen (§4, §5) (Theodor Gimming).

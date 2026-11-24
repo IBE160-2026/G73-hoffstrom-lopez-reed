@@ -43,7 +43,7 @@
   <div id="begrunnelse-svar" aria-live="polite" aria-atomic="true"
     {%- if not begrunnelse %} data-ki-url="{{ url_for('begrunnelse_json', voyageid=inp.voyageid) }}" data-ki-mal="{{ mal }}"{% endif %}>
     {%- if begrunnelse %}
-    <p class="ki-merke">{{ begrunnelse.merke }}</p>
+    <p class="ki-merke">{{ begrunnelse.merke }}{% if begrunnelse.tatt_opp %}, tatt opp {{ begrunnelse.tatt_opp }}{% endif %}</p>
     <p class="begrunnelse-tekst">{{ begrunnelse.tekst }}</p>
     {%- else %}
     <p id="begrunnelse-henter" class="begrunnelse-henter">Henter forklaring …</p>

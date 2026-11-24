@@ -41,6 +41,16 @@ def _prompt(fil: Path = PROMPT_FIL) -> Tuple[str, str]:
     return system.strip(), bruker.strip()
 
 
+@lru_cache(maxsize=None)
+def prompt_versjon(fil: Path = PROMPT_FIL) -> str:
+    """Versjonen i prompt-fila, f.eks. ``begrunnelse-v8`` eller ``brief-v4``, fra linja ``**Versjon:** `…```.
+    Opptakene (E3-S06) lagrer den, og et opptak med en annen versjon brukes ikke."""
+    treff = re.search(r"^\*\*Versjon:\*\*\s*`([^`]+)`", Path(fil).read_text(encoding="utf-8"), flags=re.MULTILINE)
+    if treff is None:
+        raise ValueError(f"fant ingen **Versjon:**-linje i {Path(fil).name}")
+    return treff.group(1)
+
+
 def bygg_prompt(fakta: Mapping[str, str], fil: Path = PROMPT_FIL) -> Tuple[str, str]:
     """(systemmelding, brukermelding) fra prompt-fila (standard ``prompt.md``, briefen ``prompt_brief.md``) og
     faktaene."""

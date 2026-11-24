@@ -14,7 +14,7 @@
   <div id="brief-svar" aria-live="polite" aria-atomic="true"
     {%- if not brief %} data-ki-url="{{ url_for('brief_json') }}" data-ki-mal="{{ brief_mal }}" data-ki-klasse="brief-tekst"{% endif %}>
     {%- if brief %}
-    <p class="ki-merke">{{ brief.merke }}</p>
+    <p class="ki-merke">{{ brief.merke }}{% if brief.tatt_opp %}, tatt opp {{ brief.tatt_opp }}{% endif %}</p>
     <p class="brief-tekst">{{ brief.tekst }}</p>
     {%- else %}
     <p id="brief-henter" class="begrunnelse-henter">Henter oversikt …</p>

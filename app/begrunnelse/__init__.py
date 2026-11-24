@@ -3,7 +3,8 @@
 Rutene kaller bare ``cachet``, ``hent_begrunnelse``, ``cachet_brief`` og ``hent_brief`` herfra, aldri leverandøren
 direkte. Briefen (E3-S05) går gjennom samme cache, kallgrense og kontroll som begrunnelsen.
 
-- **Testmodus** (``LLM_MODUS=test``, standard): deterministisk mal-tekst merket «Testmodus». Ingen nett.
+- **Testmodus** (``LLM_MODUS=test``, standard): et opptak av et ekte svar merket «Testmodus (opptak av ekte svar)»
+  når det finnes og fortsatt passer (E3-S06), ellers deterministisk mal-tekst merket «Testmodus». Ingen nett.
 - **Ekte modus** (``LLM_MODUS=ekte``): ett kall til OpenRouter per (seilas, prediktor), og svaret kontrolleres før
   det vises. Alle feil gir mal-teksten merket «Testmodus (ekte kall feilet)», og siden svarer alltid 200.
 
@@ -27,7 +28,8 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Optional, Tuple
 
 from app.begrunnelse import konfig
-from app.begrunnelse.testmodus import MERKE_APP, MERKE_FEILET, MERKE_GRENSE, MERKE_KI, MERKE_TEST, mal
+from app.begrunnelse.testmodus import (BRIEF_NOKKEL, MERKE_APP, MERKE_FEILET, MERKE_GRENSE, MERKE_KI, MERKE_OPPTAK,
+                                       MERKE_TEST, mal, nullstill_opptak, opptak_for)
 from app.prediksjon import Prediksjon, PrediksjonsInput
 
 logger = logging.getLogger(__name__)
@@ -36,10 +38,16 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class Begrunnelse:
     tekst: str
-    merke: str  # «KI-GENERERT», «Testmodus», «Testmodus (ekte kall feilet)» eller «Testmodus (kallgrensen er nådd)»
+    # «KI-GENERERT», «Testmodus», «Testmodus (ekte kall feilet)», «Testmodus (kallgrensen er nådd)»,
+    # «Laget av appen» (briefen, B1) eller «Testmodus (opptak av ekte svar)» (E3-S06)
+    merke: str
+    tatt_opp: Optional[str] = None  # «24.11.2026» for et opptak (E3-S06, merket «Testmodus (opptak av ekte svar)»)
 
     def som_dict(self) -> dict:
-        return {"tekst": self.tekst, "merke": self.merke}
+        svar = {"tekst": self.tekst, "merke": self.merke}
+        if self.tatt_opp is not None:
+            svar["tatt_opp"] = self.tatt_opp
+        return svar
 
 
 # Tilstand per prosess. Testene nullstiller den (``nullstill``) og bytter ut klokke og transport.
@@ -52,11 +60,12 @@ transport = None  # None = urllib mot OpenRouter (``openrouter_klient``). Testen
 
 
 def nullstill() -> None:
-    """Tøm cachen og telleren (testene)."""
+    """Tøm cachen og telleren, og glem opptaksfila (testene)."""
     global _kall
     with _laas:
         _cache.clear()
         _kall = 0
+    nullstill_opptak()
 
 
 def antall_kall() -> int:
@@ -73,8 +82,31 @@ def _sjekk(inp, prediksjon) -> None:
         raise ValueError("prediksjonen hører til en annen seilas enn inputen")
 
 
-def testtekst(inp, prediksjon, merke: str = MERKE_TEST) -> Begrunnelse:
-    """Mal-teksten med et testmodus-merke."""
+def _fra_opptak(naa, anlop, prediktor_navn, fakta, prompt_fil) -> Optional[Begrunnelse]:
+    """Et opptak som fortsatt passer (E3-S06), ellers None. Kaster aldri: en feil gir malen."""
+    from app.begrunnelse.openrouter_klient import prompt_versjon
+
+    try:
+        treff = opptak_for(naa, anlop, prediktor_navn, fakta, prompt_versjon(prompt_fil))
+    except Exception as feil:  # opptaket er en pynt: aldri HTTP 500 for det
+        logger.warning("opptak: oppslaget feilet (%s)", type(feil).__name__)
+        return None
+    if treff is None:
+        return None
+    tekst, dato = treff
+    return Begrunnelse(tekst, MERKE_OPPTAK, dato)
+
+
+def testtekst(inp, prediksjon, merke: str = MERKE_TEST, naa=None, prediktor_navn: Optional[str] = None) -> Begrunnelse:
+    """Mal-teksten med et testmodus-merke. Med merket «Testmodus», ``naa`` og ``prediktor_navn`` vises heller et
+    opptak av et ekte svar når det finnes og fortsatt passer (E3-S06). Tilbakefallsmerkene gir alltid malen."""
+    if merke == MERKE_TEST and naa is not None and prediktor_navn is not None:
+        from app.begrunnelse.input import lag_fakta
+        from app.begrunnelse.openrouter_klient import PROMPT_FIL
+
+        opptak = _fra_opptak(naa, inp.voyageid, prediktor_navn, lambda: lag_fakta(inp, prediksjon), PROMPT_FIL)
+        if opptak is not None:
+            return opptak
     return Begrunnelse(mal(inp, prediksjon), merke)
 
 
@@ -94,14 +126,15 @@ def _fra_cache(nokkel) -> Optional[Begrunnelse]:
     return svar
 
 
-def cachet(inp, prediksjon, prediktor_navn: str) -> Optional[Begrunnelse]:
-    """Det siden kan vise uten å vente: mal-teksten i testmodus, et cachet svar i ekte modus, ellers None.
+def cachet(inp, prediksjon, prediktor_navn: str, naa=None) -> Optional[Begrunnelse]:
+    """Det siden kan vise uten å vente: opptaket eller mal-teksten i testmodus, et cachet svar i ekte modus, ellers
+    None.
 
     Gjør aldri et kall og teller ingenting. Med None viser siden «Henter forklaring …» og henter svaret med POST.
     """
     _sjekk(inp, prediksjon)
     if konfig.modus() == "test":
-        return testtekst(inp, prediksjon)
+        return testtekst(inp, prediksjon, naa=naa, prediktor_navn=prediktor_navn)
     with _laas:
         return _fra_cache((inp.voyageid, prediktor_navn))
 
@@ -171,11 +204,12 @@ def _hent_med_cache(nokkel, ekte_kall: Callable[[str], Tuple[Optional[str], Opti
     return svar
 
 
-def hent_begrunnelse(inp, prediksjon, prediktor_navn: str) -> Begrunnelse:
-    """Begrunnelsen for ett anløp. Kaster aldri for feil hos leverandøren eller i svaret: alt gir testmodus-tekst."""
+def hent_begrunnelse(inp, prediksjon, prediktor_navn: str, naa=None) -> Begrunnelse:
+    """Begrunnelsen for ett anløp. Kaster aldri for feil hos leverandøren eller i svaret: alt gir testmodus-tekst.
+    Opptak (E3-S06) brukes bare i testmodus, aldri i ekte modus."""
     _sjekk(inp, prediksjon)
     if konfig.modus() == "test":
-        return testtekst(inp, prediksjon)
+        return testtekst(inp, prediksjon, naa=naa, prediktor_navn=prediktor_navn)
     return _hent_med_cache(
         (inp.voyageid, prediktor_navn),
         lambda api_nokkel: _ekte(inp, prediksjon, api_nokkel),
@@ -207,8 +241,10 @@ def _logg_brief(kode: str, naa, prediktor_navn: str) -> None:
     logger.warning("brief: %s naa=%s prediktor=%s", kode, naa.isoformat(), prediktor_navn)
 
 
-def testbrief(par, merke: str = MERKE_TEST) -> Begrunnelse:
-    """Briefen uten kall: appens egen brief uten varsler (merket «Laget av appen»), ellers mal-briefen med ``merke``."""
+def testbrief(par, merke: str = MERKE_TEST, naa=None, prediktor_navn: Optional[str] = None) -> Begrunnelse:
+    """Briefen uten kall: appens egen brief uten varsler (merket «Laget av appen»), ellers mal-briefen med ``merke``.
+    Med merket «Testmodus», ``naa`` og ``prediktor_navn`` vises heller et opptak når det finnes og fortsatt passer
+    (E3-S06). Appens egen brief tas aldri opp."""
     from app.begrunnelse.klartekst import velg_varslede
     from app.begrunnelse.testmodus import app_brief, brief_mal
 
@@ -216,6 +252,14 @@ def testbrief(par, merke: str = MERKE_TEST) -> Begrunnelse:
     valgte, antall = velg_varslede(par)
     if not antall:
         return Begrunnelse(app_brief(par), MERKE_APP)
+    if merke == MERKE_TEST and naa is not None and prediktor_navn is not None:
+        from app.begrunnelse.input import lag_brief_fakta
+        from app.begrunnelse.openrouter_klient import PROMPT_BRIEF_FIL
+
+        opptak = _fra_opptak(naa, BRIEF_NOKKEL, prediktor_navn,
+                             lambda: lag_brief_fakta(par, naa, valgte, antall), PROMPT_BRIEF_FIL)
+        if opptak is not None:
+            return opptak
     return Begrunnelse(brief_mal(valgte, antall), merke)
 
 
@@ -223,8 +267,10 @@ def cachet_brief(par, naa, prediktor_navn: str) -> Optional[Begrunnelse]:
     """Det skjerm A kan vise uten å vente: appens egen brief (B1), mal-briefen i testmodus, et cachet svar i ekte
     modus, ellers None. Gjør aldri et kall. Med None viser siden «Henter oversikt …» og henter briefen med POST."""
     par = _sjekk_par(par)
+    if konfig.modus() == "test":
+        return testbrief(par, naa=naa, prediktor_navn=prediktor_navn)
     svar = testbrief(par)
-    if svar.merke == MERKE_APP or konfig.modus() == "test":
+    if svar.merke == MERKE_APP:
         return svar
     with _laas:
         return _fra_cache(_brief_nokkel(naa, prediktor_navn))
@@ -234,8 +280,10 @@ def hent_brief(par, naa, prediktor_navn: str) -> Begrunnelse:
     """Briefen for vinduet. ``par`` er (``PrediksjonsInput``, ``Prediksjon``) for alle anløp i vinduet.
     Kaster aldri for feil hos leverandøren eller i svaret: alt gir testmodus-tekst."""
     par = _sjekk_par(par)
+    if konfig.modus() == "test":
+        return testbrief(par, naa=naa, prediktor_navn=prediktor_navn)
     svar = testbrief(par)
-    if svar.merke == MERKE_APP or konfig.modus() == "test":
+    if svar.merke == MERKE_APP:
         return svar
 
     def ekte_kall(api_nokkel):

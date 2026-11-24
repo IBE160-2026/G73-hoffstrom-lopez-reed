@@ -52,6 +52,18 @@ def _ingen_modell_paa_testrader(request, monkeypatch):
     monkeypatch.setattr(ModellPrediktor, "prediker", vaktet)
 
 
+@pytest.fixture(autouse=True)
+def _ingen_opptak(monkeypatch, tmp_path_factory):
+    """Ingen test avhenger av det ekte opptaket (E3-S06): ``OPPTAK_FIL`` peker på en fil som ikke finnes, med mindre
+    testen skriver sin egen (``tmp_path``)."""
+    import app.begrunnelse.testmodus as testmodus
+
+    monkeypatch.setattr(testmodus, "OPPTAK_FIL", tmp_path_factory.mktemp("opptak") / "finnes_ikke.json")
+    testmodus.nullstill_opptak()
+    yield
+    testmodus.nullstill_opptak()
+
+
 class NettSperret(AssertionError):
     """En test prøvde å åpne en socket. AI-testene bruker bare testmodus eller en falsk transport (E3-S01)."""
 
@@ -103,6 +115,35 @@ class FalskTransport:
         kropp = {"choices": [{"message": {"role": "assistant", "content": self.svar},
                               "finish_reason": self.finish_reason}]}
         return 200, json.dumps(kropp).encode("utf-8")
+
+
+class OpptakTransport(FalskTransport):
+    """Falsk transport for opptaksskriptet (E3-S06): svarer med mal-teksten for innledningen i forespørselen, så svaret
+    består kontrollen. ``svar`` er {innledning: tekst}. Innledninger i ``avvis`` får et svar kontrollen avviser."""
+
+    def __init__(self, svar, avvis=()):
+        super().__init__()
+        self.tekster = dict(svar)
+        self.avvis = set(avvis)
+
+    def __call__(self, url, headers, body, timeout):
+        import re
+
+        bruker = json.loads(body)["messages"][1]["content"]
+        start = re.search(r"^- Innledning \(skriv ordrett først\): (.*)$", bruker, flags=re.MULTILINE).group(1)
+        self.svar = "Været er dårlig." if start in self.avvis else self.tekster[start]
+        return super().__call__(url, headers, body, timeout)
+
+
+def last_opptaksskript():
+    """``scripts/ta_opp_begrunnelser.py`` som modul (pytest kjører aldri ``--kjor`` mot nettet)."""
+    import importlib.util
+
+    sti = Path(__file__).resolve().parent.parent / "scripts" / "ta_opp_begrunnelser.py"
+    spec = importlib.util.spec_from_file_location("ta_opp_begrunnelser", sti)
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
 
 
 # Den ekte ``metrikker.json`` sett som før testkjøringen (E2-S10, beslutning 1A): ``testkjoringer = 0``, tom logg og uten

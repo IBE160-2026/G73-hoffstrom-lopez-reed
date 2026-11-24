@@ -154,10 +154,11 @@ app/
     modell.py          ModellPrediktor                                        (E2)
     koding.py          matrise(): F1–F16 til modellens input, delt med scripts/tren.py (E2)
   begrunnelse/                                                                (E3)
-    __init__.py        hent_begrunnelse(), cachet(), hent_brief(par, naa, prediktor_navn), cachet_brief(...) (E3-S05)
+    __init__.py        hent_begrunnelse(inp, p, prediktor_navn, naa), cachet(...), hent_brief(par, naa, prediktor_navn),
+                       cachet_brief(...) (E3-S05); testmodus spør opptaket først (E3-S06)
                        — velger modus, felles cache og kallgrense for begrunnelse og brief
     konfig.py          all LLM-konfigurasjon; modellstrengen bygges bare her
-    testmodus.py       opptak (E3-S06) + deterministisk mal, merkene
+    testmodus.py       opptak (E3-S06: opptak_for, nøkkel + prompt-versjon + faktahash) + deterministisk mal, merkene
     input.py           lag_fakta(): input bygd fra PrediksjonsInput + Prediksjon
     openrouter_klient.py  ekte klient (urllib), injiserbar transport
     kontroll.py        kontroll av svaret før det vises
@@ -245,7 +246,7 @@ PRD-en beskriver kravene uten filnavn og ruter (faglærers tilbakemelding på PR
 - **Størrelse:** grensen for en Python-funksjon er 500 MB. Pakkene for Linux med 3.12 er ca. 235 MB, og koden og `data/` er ca. 8 MB etter utelatelsene i `vercel.json` (`excludeFiles`: `tests/`, `docs/`, `_bmad*/`, `.logs/`, `.claude/`, `pipeline/`, `scripts/` og skjermbildene). Målt 17.11.2026.
 - **pytest blir i `requirements.txt`.** Den utgjør ca. 8 MB, så bunten holder seg godt under grensen uansett. README og klone-testen bygger på én `pip install -r requirements.txt` før `pytest`, og det skal ikke brytes.
 - **Skrivebeskyttet filsystem.** Appen skriver ingenting til disk når den kjører: den leser `data/` og maler, og modellartefaktene caches i minnet (`lru_cache`). `tests/test_wsgi.py` sperrer alle skrivekall mens forsiden, stilarket og modellen lastes. Den 17.11.2026 ble appen i tillegg kjørt fra en skrivebeskyttet kopi med Python 3.12 og de ekte filene: `/` svarte 200 med modellen, og ingen filer ble skrevet.
-- **E3: caching bare i minnet.** Svarene fra språkmodellen (PRD FR11b) caches i minnet i prosessen, aldri på disk, av samme grunn. På Vercel lever en prosess bare så lenge funksjonsinstansen gjør, og det kan være flere instanser samtidig, så cachen og kallgrensen (`LLM_MAKS_KALL`) gjelder per instans, ikke per demo. Det totale forbruket stoppes av bruksgrensen på USD 20 på OpenRouter-nøkkelen (HTTP 402, logget som `kvote_402`), ikke av appen (beslutning 13). Begrunnelsen hentes i en egen `POST`-forespørsel som nettleseren starter etter at siden er vist, ikke i en bakgrunnstråd, fordi arbeid etter svaret kan bli stoppet på Vercel. Opptakene av ekte svar (`data/begrunnelser_opptak.json`, E3-S06) lages lokalt med skriptet og committes. De skrives aldri av appen.
+- **E3: caching bare i minnet.** Svarene fra språkmodellen (PRD FR11b) caches i minnet i prosessen, aldri på disk, av samme grunn. På Vercel lever en prosess bare så lenge funksjonsinstansen gjør, og det kan være flere instanser samtidig, så cachen og kallgrensen (`LLM_MAKS_KALL`) gjelder per instans, ikke per demo. Det totale forbruket stoppes av bruksgrensen på USD 20 på OpenRouter-nøkkelen (HTTP 402, logget som `kvote_402`), ikke av appen (beslutning 13). Begrunnelsen hentes i en egen `POST`-forespørsel som nettleseren starter etter at siden er vist, ikke i en bakgrunnstråd, fordi arbeid etter svaret kan bli stoppet på Vercel. Opptakene av ekte svar (`data/begrunnelser_opptak.json`, E3-S06) lages lokalt med `scripts/ta_opp_begrunnelser.py --kjor` og committes. Appen leser fila én gang per prosess og skriver den aldri. Manglende eller ugyldig fil gir malen og status 200. Et opptak brukes bare i testmodus, og bare når nøkkelen (vindu, anløp eller «brief», prediktor), prompt-versjonen (`**Versjon:**` i prompt-fila) og SHA-256 av faktaene stemmer.
 - **Statiske filer:** Flask serverer `app/static/` fra funksjonen, som lokalt. Vercels dokumentasjon anbefaler `public/` for statiske filer på CDN. Det er ikke gjort, så appen er lik lokalt og på Vercel. Sjekkes i forhåndsvisningen.
 
 ## Endringslogg

@@ -1322,3 +1322,84 @@ def test_begrunnelse_js_finner_alle_ki_regioner():
     assert 'querySelectorAll("[data-ki-url]")' in js
     assert "data-ki-mal" in js and "data-ki-klasse" in js
     assert "getElementById" not in js  # ingen fast region: skjerm A og C bruker samme kode
+
+
+# --- E3-S06: opptak av ekte svar på skjerm C og skjerm A ---------------------------------------------------------
+#
+# Opptaksfila lages av skriptet med en falsk transport i ``VALIDERING_NAA`` (regelen om testrader), og sidene åpnes
+# i testmodus etterpå.
+
+import app.begrunnelse.testmodus as testmodus  # noqa: E402
+from conftest import OpptakTransport, last_opptaksskript  # noqa: E402
+
+from app import _par  # noqa: E402
+from app.begrunnelse import openrouter_klient  # noqa: E402
+from app.begrunnelse.klartekst import brief_innledning, velg_varslede  # noqa: E402
+from app.begrunnelse.testmodus import brief_mal, mal  # noqa: E402
+
+OPPTAKSMERKE = "Testmodus (opptak av ekte svar)"
+
+
+def _lag_opptak(monkeypatch, tmp_path):
+    """Opptaksfil fra skriptet (falsk transport, svaret er mal-teksten med et kjennetegn), så tilbake til testmodus."""
+    _, _, par = _par(VALIDERING_NAA)
+    tekster = {innledning(inp, p): mal(inp, p) for inp, p in par}
+    valgte, antall = velg_varslede(par)
+    tekster[brief_innledning(valgte, antall)] = brief_mal(valgte, antall)
+    _ekte(monkeypatch, OpptakTransport(tekster))
+    sti = tmp_path / "begrunnelser_opptak.json"
+    last_opptaksskript().kjor([VALIDERING_NAA], sti, skriv=lambda *_: None)
+    monkeypatch.setenv("LLM_MODUS", "test")
+    monkeypatch.setattr(testmodus, "OPPTAK_FIL", sti)
+    begrunnelse.nullstill()
+    return par, sti
+
+
+def test_skjerm_a_og_c_viser_opptaket(monkeypatch, tmp_path, modell_validering):
+    par, sti = _lag_opptak(monkeypatch, tmp_path)
+    dato = testmodus.tatt_opp_dato(json.loads(sti.read_text(encoding="utf-8"))["opptak"][0]["tatt_opp"])
+    t = begrunnelse.transport
+    antall = len(t.kall)
+    # Skjerm C, et varslet anløp: server-rendret opptak med merket og datoen, uten JavaScript.
+    inp, p = next((i, q) for i, q in par if q.forventet_forsinket is True)
+    svar, d = _detalj(modell_validering, inp.voyageid)
+    assert svar.status_code == 200
+    region = _med_id(d, "begrunnelse-svar")
+    assert "data-ki-url" not in region.attrs and d.finn_alle("script") == []
+    assert _ren(region.tekst()) == _ren(f"{OPPTAKSMERKE}, tatt opp {dato} {mal(inp, p)}")
+    # Skjerm A: briefen er opptaket.
+    svar = modell_validering.get("/")
+    assert svar.status_code == 200
+    brief = _med_id(parse_html(svar.get_data(as_text=True)), "brief-svar")
+    assert _ren(brief.tekst()).startswith(f"{OPPTAKSMERKE}, tatt opp {dato} ")
+    assert "data-ki-url" not in brief.attrs
+    # POST-rutene gir det samme i testmodus.
+    data = modell_validering.post(f"/anlop/{inp.voyageid}/begrunnelse").get_json()
+    assert data["merke"] == OPPTAKSMERKE and data["tatt_opp"] == dato
+    assert modell_validering.post("/brief").get_json()["merke"] == OPPTAKSMERKE
+    assert len(t.kall) == antall and begrunnelse.antall_kall() == 0
+
+
+def test_endret_prompt_versjon_gir_malen_paa_sidene(monkeypatch, tmp_path, modell_validering):
+    par, _ = _lag_opptak(monkeypatch, tmp_path)
+    monkeypatch.setattr(openrouter_klient, "prompt_versjon", lambda fil: "ny-versjon")
+    inp, p = next((i, q) for i, q in par if q.forventet_forsinket is True)
+    _, d = _detalj(modell_validering, inp.voyageid)
+    assert _ren(_med_id(d, "begrunnelse-svar").tekst()) == _ren(f"Testmodus {mal(inp, p)}")
+    brief = _med_id(parse_html(modell_validering.get("/").get_data(as_text=True)), "brief-svar")
+    assert _ren(brief.tekst()).startswith("Testmodus ") and OPPTAKSMERKE not in brief.tekst()
+
+
+@pytest.mark.parametrize("innhold", ["{ikke json", '{"opptak": "x"}'])
+def test_ugyldig_opptaksfil_gir_malen_og_200(monkeypatch, tmp_path, modell_validering, innhold):
+    sti = tmp_path / "begrunnelser_opptak.json"
+    sti.write_text(innhold, encoding="utf-8")
+    monkeypatch.setattr(testmodus, "OPPTAK_FIL", sti)
+    begrunnelse.nullstill()
+    svar = modell_validering.get("/")
+    assert svar.status_code == 200
+    assert _ren(_med_id(parse_html(svar.get_data(as_text=True)), "brief-svar").tekst()).startswith("Testmodus ")
+    _, _, par = _par(VALIDERING_NAA)
+    svar, d = _detalj(modell_validering, par[0][0].voyageid)
+    assert svar.status_code == 200
+    assert _ren(_med_id(d, "begrunnelse-svar").tekst()).startswith("Testmodus ")
